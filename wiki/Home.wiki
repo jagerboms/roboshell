@@ -4,7 +4,7 @@
 
 After using many shells we came to the realisation than the world was still in need of a modern software development construct for rapid creation of robust, PC-based applications.
 
-Existing programs just didn't do what I wanted them to well enough. I needed to be able to develop several user interfaces be easy to extend, and I wanted the long-term groundwork put into each to be available to the next in a structured, repeatable way.
+Existing programs just didn't do what I wanted them to do neatly. I needed to be able to develop several user interfaces in such a way that they would be easy to extend and quick to implement. I donn't like comprimising polish or functionality and I wanted the long-term groundwork put into each to be available to the next in a structured, repeatable way.
 
 Above all, I wanted a Shell that enabled my thinking and facilitated innovation, rather than have me re-using features from previous programs and risk comprimising current projects for the sake of re-using code.  I like things clean, but I don't like to do everything from the ground-up to achieve it.
 
@@ -31,8 +31,6 @@ Installing Roboshell
   #MS .Net requirements
   #Installing with MS-SQL Express
   #Installing with MS-SQL Server
-
-
 
 
 
