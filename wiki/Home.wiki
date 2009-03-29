@@ -1,0 +1,41 @@
+#The what, when and why of roboshell
+
+= Introduction =
+
+After using many shells we came to the realisation than the world was still in need of a modern software development construct for rapid creation of robust, PC-based applications.
+
+Existing programs just didn't do what I wanted them to well enough. I needed to be able to develop several user interfaces be easy to extend, and I wanted the long-term groundwork put into each to be available to the next in a structured, repeatable way.
+
+Above all, I wanted a Shell that enabled my thinking and facilitated innovation, rather than have me re-using features from previous programs and risk comprimising current projects for the sake of re-using code.  I like things clean, but I don't like to do everything from the ground-up to achieve it.
+
+= Details =
+
+Please bare with us whilst we build the site: Beware, some of the following pages are yet to be written. 
+
+Roboshell Documentation
+
+Your app's documentation; how to do it sing Roboshell.
+
+Compiling Roboshell
+
+Making changes to Roboshell
+  #Joining our Team (becoming a contributor)
+  #Checking in and out of Subversion. 
+  #How we do things: Staying out of trouble with the team
+
+Installing Roboshell
+  #MS Windows XP 32
+  #MS Windows XP 64
+  #MS Windows 2003 Server family
+  #MS Windows 2008
+  #MS .Net requirements
+  #Installing with MS-SQL Express
+  #Installing with MS-SQL Server
+
+
+
+
+
+
+
+
