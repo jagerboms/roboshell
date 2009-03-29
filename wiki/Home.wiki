@@ -12,27 +12,26 @@ Above all, I wanted a Shell that enabled my thinking and facilitated innovation,
 
 Please bare with us whilst we build the site: Beware, some of the following pages are yet to be written. 
 
-Roboshell Documentation
+== Roboshell Documentation ==
 
-Your app's documentation; how to do it sing Roboshell.
+== Documentation construct built into Roboshell- Creating program documentation the easy way ==
 
-Compiling Roboshell
+== Compiling Roboshell ==
 
-Making changes to Roboshell
-  #Joining our Team (becoming a contributor)
-  #Checking in and out of Subversion. 
-  #How we do things: Staying out of trouble with the team
+== Making changes to Roboshell ==
 
-Installing Roboshell
-  #MS Windows XP 32
-  #MS Windows XP 64
-  #MS Windows 2003 Server family
-  #MS Windows 2008
-  #MS .Net requirements
-  #Installing with MS-SQL Express
-  #Installing with MS-SQL Server
+  # Joining our Team (becoming a contributor)
+  # Checking in and out of Subversion. 
+  # How we do things: Staying out of trouble with the team
 
-
+== Installing Roboshell ==
+  # MS Windows XP 32
+  # MS Windows XP 64
+  # MS Windows 2003 Server family
+  # MS Windows 2008
+  # MS .Net requirements
+  # Installing with MS-SQL Express
+  # Installing with MS-SQL Server
 
 
 
