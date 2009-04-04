@@ -1,0 +1,24 @@
+# Security Admin
+
+mod.SecurityAdmin.sql
+proc.shlSecurityAdminGet.sql
+proc.shlUserPermGet.sql
+proc.shlModuleUserDelete.sql
+proc.shlModuleUserDeny.sql
+proc.shlModuleUserGrant.sql
+proc.shlModuleUserRevoke.sql
+proc.shlRoleMembersGet.sql
+
+config.shlGroupMemberGet.sql
+config.shlSecurityAdminGet.sql
+config.shlUserPermGet.sql
+config.shlModuleUserDelete.sql
+config.shlModuleUserDeny.sql
+config.shlModuleUserGrant.sql
+config.shlModuleUserRevoke.sql
+config.shlGroupMember.sql
+config.shlUserPerm.sql
+config.shlRoleMembersGet.sql
+config.shlRoleMembers.sql
+
+config.shlSecurityAdmin.sql

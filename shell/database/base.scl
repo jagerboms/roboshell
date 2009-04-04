@@ -1,0 +1,12 @@
+# base shell SQL compile list
+
+table.shlModuleOwners.sql
+table.shlModules.sql
+fkey.shlModuleOwners.sql
+proc.shlModulesInsert.sql
+mod.Base.sql
+{scl=shl\shl.scl}
+data.shlUserModules.sql
+data.Messages.sql
+
+#end

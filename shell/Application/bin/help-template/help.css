@@ -1,0 +1,71 @@
+body{
+margin:0;
+padding:0;
+line-height: 1.5em;
+}
+
+b{font-size: 110%;}
+em{color: blue;}
+
+#topsection{
+background: #C8FC98;
+height: 50px; /*Height of top section*/
+}
+
+#topsection h1{
+margin: 0;
+padding-top: 15px;
+text-align: Center;
+color:#006600;
+}
+
+#contentwrapper{
+float: left;
+width: 100%;
+}
+
+#contentcolumn{
+margin-left: 200px; /*Set left margin to LeftColumnWidth*/
+height:600px;
+overflow:auto;
+}
+
+#leftcolumn{
+float: left;
+width: 200px; /*Width of left column*/
+margin-left: -100%;
+font-size: 12px;
+background: #C8FC98;
+color:#006600;
+height:600px;
+}
+
+#leftcolumn a{
+color:#006600;
+}
+
+#leftcolumn b{
+font-size: 20px;
+}
+
+#leftcolumn img{
+border:0;
+}
+
+#footer{
+clear: left;
+width: 100%;
+background: #C8FC98;
+text-align: Right;
+padding: 4px 0;
+color:#006600;
+}
+
+#footer a{
+color:#006600;
+}
+
+.innertube{
+margin: 10px; /*Margins for inner DIV inside each column (to provide padding)*/
+margin-top: 0;
+}
