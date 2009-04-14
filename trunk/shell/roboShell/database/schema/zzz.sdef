@@ -1,0 +1,15 @@
+<?xml version='1.0'?>
+<roboshell connect="roboShell">
+  <objects>
+    <tabledefn table="helpSystems" />
+    <tabledefn table="helpObjects" />
+    <tabledefn table="helpActions" />
+    <tabledefn table="helpColours" />
+    <tabledefn table="helpFields" />
+    <tableauditdefn table="helpSystems" />
+    <tableauditdefn table="helpObjects" />
+    <tableauditdefn table="helpActions" />
+    <tableauditdefn table="helpColours" />
+    <tableauditdefn table="helpFields" />
+  </objects>
+</roboshell>

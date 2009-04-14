@@ -1,0 +1,13 @@
+proc.helpObjectsGet.sql
+proc.helpObjectsAuditGet.sql
+proc.helpObjectsUpdate.sql
+
+config.SystemIDTrans.sql
+config.helpObjectGet.sql
+config.helpObjectAuditGet.sql
+config.helpObjectUpdate.sql
+config.helpObjectEdit.sql
+config.helpObjectAudit.sql
+config.helpObject.sql
+
+#end

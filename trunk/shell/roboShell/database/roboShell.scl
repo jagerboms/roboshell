@@ -1,0 +1,16 @@
+# Tolbeam Pty Limited - the Shell
+
+{database=roboShell}
+
+{scl=..\..\database\base.scl}
+
+data.roboShell.sql
+mod.roboShell.sql
+
+{scl=schema\schema.scl}
+{scl=systems\systems.scl}
+{scl=common\common.scl}
+
+config.MainMenu.sql
+
+#end

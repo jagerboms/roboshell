@@ -1,0 +1,12 @@
+proc.helpFieldsGet.sql
+proc.helpFieldsAuditGet.sql
+proc.helpFieldsUpdate.sql
+
+config.helpFieldsGet.sql
+config.helpFieldsAuditGet.sql
+config.helpFieldsUpdate.sql
+config.helpFieldsEdit.sql
+config.helpFieldsAudit.sql
+config.helpFields.sql
+
+#end
