@@ -18,7 +18,7 @@ create procedure dbo.shlProcessesInsert
    ,@SuccessProcess varchar(32) = null
    ,@FailProcess varchar(32) = null
    ,@ConfirmMsg varchar(100) = null
-   ,@UpdateParent char(1) = 'N'
+   ,@UpdateParent char(1) = 'N'     -- (Y)es, (S)uspend or (N)o
    ,@dbo char(1) = 'N'
    ,@LoadVariables char(1) = 'N'
 as
@@ -112,7 +112,7 @@ begin
         end
 
         set @UpdateParent = upper(@UpdateParent)
-        if @UpdateParent <> 'Y'
+        if @UpdateParent not in ('Y', 'S')
         begin
             set @UpdateParent = 'N'
         end

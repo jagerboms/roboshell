@@ -67,7 +67,7 @@
     <DefineConstants>
     </DefineConstants>
     <DefineDebug>false</DefineDebug>
-    <DefineTrace>true</DefineTrace>
+    <DefineTrace>false</DefineTrace>
     <DebugSymbols>false</DebugSymbols>
     <Optimize>true</Optimize>
     <RegisterForComInterop>false</RegisterForComInterop>
@@ -123,6 +123,7 @@
     <Compile Include="CallOut.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Directory.vb" />
     <Compile Include="StoredProc.vb">
       <SubType>Code</SubType>
     </Compile>

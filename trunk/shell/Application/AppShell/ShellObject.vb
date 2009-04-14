@@ -94,6 +94,7 @@ Public MustInherit Class ShellObject
     Public RegKey As String
     Public Messages As New ShellMessages
     Public Parent As Object
+    Public SuccessFlag As Boolean = True
 
     Private MyParams As New ShellParameters
 
