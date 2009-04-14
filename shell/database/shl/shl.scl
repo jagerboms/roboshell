@@ -49,7 +49,6 @@ udf.shlUserProcessGet.sql
 udf.shlVariableGet.sql
 udf.shlHTMLEncode.sql
 
-proc.shldbObjectDetails.sql
 proc.shlModuleUsersAuditInsert.sql
 proc.shlGrantRevoke.sql
 proc.shlObjectsInsert.sql
@@ -86,5 +85,8 @@ proc.shlCallOutInsert.sql
 proc.shlGridEditFormInsert.sql
 proc.shlTableWriteInsert.sql
 proc.shlMailToInsert.sql
+proc.shlFileOpenInsert.sql
+proc.shlDirectoryInsert.sql
 
 {scl=SecurityAdmin\SecurityAdmin.scl}
+{scl=Notifications\Notifications.scl}

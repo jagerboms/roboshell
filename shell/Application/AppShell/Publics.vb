@@ -155,7 +155,7 @@ Module Publics
                               GetString(dr.Item("SuccessProcess")), _
                               GetString(dr.Item("FailProcess")), _
                               GetString(dr.Item("ConfirmMsg")), _
-                              (CType(dr.Item("UpdateParent"), String) = "Y"), _
+                              GetString(dr.Item("UpdateParent")), _
                               GetString(dr.Item("ObjectName")), _
                               (CType(dr.Item("LoadVariables"), String) = "Y"))
                 Application.DoEvents()
@@ -198,6 +198,12 @@ Module Publics
                         Objects.Add(ob)
                     Case "Menu"
                         Dim ob As New MenuDefn(GetString(dr.Item("ObjectName")))
+                        Objects.Add(ob)
+                    Case "FileOpen"
+                        Dim ob As New FileOpenDefn(GetString(dr.Item("ObjectName")))
+                        Objects.Add(ob)
+                    Case "Directory"
+                        Dim ob As New DirectoryDefn(GetString(dr.Item("ObjectName")))
                         Objects.Add(ob)
                 End Select
 
@@ -526,6 +532,7 @@ Module Publics
                 Application.DoEvents()
             Next
 
+            psConn.Close()
             Return True
 
         Catch ex As Exception
@@ -828,6 +835,7 @@ Module Publics
             psAdapt.SelectCommand.Parameters("@PropertyType").Value = PropertyType
             psAdapt.SelectCommand.Parameters("@Value").Value = Value
             psAdapt.SelectCommand.ExecuteNonQuery()
+            psConn.Close()
 
         Catch ex As Exception
             MessageOut(ex.Message, "C")

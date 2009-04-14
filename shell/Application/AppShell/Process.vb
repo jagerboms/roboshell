@@ -11,6 +11,7 @@ Public Class ShellProcess
     Public Sub New(ByVal ProcessKey As String, ByVal Owner As Object, _
                                                 ByVal parms As ShellParameters)
         Dim p As ProcessDefn
+        Dim b As Boolean
         Me.sProcessKey = ProcessKey
         Me.oOwner = Owner
         If LCase(sProcessKey) = "null" Then
@@ -25,12 +26,12 @@ Public Class ShellProcess
             oOwner.MsgOut(Msgs)
             Exit Sub
         End If
-        If p.UpdateParent Then
+        If p.SuspendParent Then
             oOwner.Suspend(True)
         End If
         If p.ConfirmMsg <> "" Then
             If MsgBox(p.ConfirmMsg, MsgBoxStyle.YesNo) = MsgBoxResult.No Then
-                If p.UpdateParent Then
+                If p.SuspendParent Then
                     Me.oOwner.Suspend(False)
                 End If
                 Success = False
@@ -40,17 +41,24 @@ Public Class ShellProcess
         If p.LoadVariables Then
             Publics.GetVars()
         End If
+        b = False
         ProcessObject = Objects.Item(p.ObjectKey).Create()
-        If ProcessObject Is Nothing Then
-            Owner.ProcessError(ProcessObject.Messages)
-            ProcessObject_ExitFail()
-        Else
+        If Not ProcessObject Is Nothing Then
             ProcessObject.Parent = Owner
             Dim n As ShellProcess
             ProcessObject.Update(parms)
-            If p.SuccessProcess <> "" Then
-                n = New ShellProcess(p.SuccessProcess, Me.oOwner, ProcessObject.Parms)
+            If ProcessObject.SuccessFlag Then
+                b = True
+                If p.SuccessProcess <> "" Then
+                    n = New ShellProcess(p.SuccessProcess, Me.oOwner, ProcessObject.parms)
+                End If
             End If
+        End If
+        If Not b Then
+            If ProcessObject.Messages.count > 0 Then
+                Owner.MsgOut(ProcessObject.Messages)
+            End If
+            ProcessObject_ExitFail()
         End If
     End Sub
 
@@ -81,6 +89,8 @@ Public Class ShellProcess
         Next
         If p.UpdateParent Then
             Me.oOwner.Update(ProcessObject.Parms)
+        End If
+        If p.SuspendParent Then
             Me.oOwner.Suspend(False)
         End If
     End Sub

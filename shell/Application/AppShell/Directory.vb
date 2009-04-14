@@ -1,23 +1,21 @@
 Option Explicit On
 Option Strict On
 
-Public Class FileOpenDefn
+Public Class DirectoryDefn
     Inherits ObjectDefn
 
     Public Title As String
     Public TitleParameter() As String
     Public InitialDirectory As String = "c:\"
-    Public Filter As String = "txt files (*.txt)|*.txt|All files (*.*)|*.*"
-    Public FilterIndex As Integer = 2
-    Public Multiselect As Boolean = True
     Public OutputParameter As String
+    Public AllowNew As Boolean = True
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
     End Sub
 
     Public Function Create() As ShellObject
-        Return CType(New FileOpen(Me), ShellObject)
+        Return CType(New Directory(Me), ShellObject)
     End Function
 
     Public Overrides Sub SetProperty(ByVal Name As String, ByVal Value As Object)
@@ -29,53 +27,40 @@ Public Class FileOpenDefn
                 TitleParameter = Split(GetString(Value), "||")
             Case "InitialDirectory"
                 InitialDirectory = GetString(Value)
-            Case "Filter"
-                Filter = GetString(Value)
-            Case "FilterIndex"
-                FilterIndex = CInt(GetString(Value))
-            Case "Multiselect"
-                Multiselect = CType(IIf(GetString(Value) = "Y", True, False), Boolean)
             Case "OutputParameter"
                 OutputParameter = GetString(Value)
+            Case "AllowNew"
+                AllowNew = CType(IIf(GetString(Value) = "Y", True, False), Boolean)
             Case Else
-                Publics.MessageOut(Name & " property is not supported by FileOpen object")
+                Publics.MessageOut(Name & " property is not supported by Directory object")
         End Select
     End Sub
 End Class
 
-Public Class FileOpen
+Public Class Directory
     Inherits ShellObject
 
-    Private sDefn As FileOpenDefn
+    Private sDefn As DirectoryDefn
 
-    Public Sub New(ByVal Defn As FileOpenDefn)
+    Public Sub New(ByVal Defn As DirectoryDefn)
         sDefn = Defn
-        sDefn.Parms.Clone(MyBase.Parms)
+        sDefn.Parms.Clone(MyBase.parms)
     End Sub
 
     Public Overrides Sub Update(ByVal Parms As ShellParameters)
         Try
-            Me.Parms.MergeValues(Parms)
-            Dim s As String = ""
-            Dim ss As String
-            Dim openFileDialog As New System.Windows.Forms.OpenFileDialog
+            Me.parms.MergeValues(Parms)
+            Dim FolderDialog As New System.Windows.Forms.FolderBrowserDialog
 
-            openFileDialog.Title = GetTitle()
-            openFileDialog.InitialDirectory = sDefn.InitialDirectory
-            openFileDialog.Filter = sDefn.Filter
-            openFileDialog.FilterIndex = sDefn.FilterIndex
-            openFileDialog.Multiselect = sDefn.Multiselect
-            openFileDialog.RestoreDirectory = True
-
-            If openFileDialog.ShowDialog() = System.Windows.Forms.DialogResult.OK Then
-                For Each ss In openFileDialog.FileNames
-                    s &= "||" & ss
-                Next
-                Me.parms.Item(sDefn.OutputParameter).Value = Mid(s, 3)
+            FolderDialog.Description = GetTitle()
+            FolderDialog.SelectedPath = sDefn.InitialDirectory
+            FolderDialog.ShowNewFolderButton = sDefn.AllowNew
+            If FolderDialog.ShowDialog() = Windows.Forms.DialogResult.OK Then
+                Me.parms.Item(sDefn.OutputParameter).Value = FolderDialog.SelectedPath
                 Me.OnExitOkay()
             Else
-                Me.OnExitFail()
                 Me.SuccessFlag = False
+                Me.OnExitFail()
             End If
         Catch ex As Exception
             If ex.InnerException Is Nothing Then
@@ -87,8 +72,8 @@ Public Class FileOpen
                     ex2 = ex2.InnerException
                 Loop
             End If
-            Me.OnExitFail()
             Me.SuccessFlag = False
+            Me.OnExitFail()
         End Try
     End Sub
 

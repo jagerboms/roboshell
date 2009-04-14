@@ -14,6 +14,7 @@ Public Class ProcessDefn
     Public FailProcess As String
     Public ConfirmMsg As String
     Public UpdateParent As Boolean
+    Public SuspendParent As Boolean
     Public ObjectKey As String
     Public LoadVariables As Boolean
 End Class
@@ -76,7 +77,7 @@ Public Class ProcessDefns
                     ByVal SuccessProcess As String, _
                     ByVal FailProcess As String, _
                     ByVal ConfirmMsg As String, _
-                    ByVal UpdateParent As Boolean, _
+                    ByVal UpdateParent As String, _
                     ByVal ObjectKey As String, _
                     ByVal LoadVariables As Boolean) As ProcessDefn
         Dim parm As New ProcessDefn
@@ -86,7 +87,17 @@ Public Class ProcessDefns
             .SuccessProcess = SuccessProcess
             .FailProcess = FailProcess
             .ConfirmMsg = ConfirmMsg
-            .UpdateParent = UpdateParent
+            Select Case Mid(LCase(UpdateParent), 1, 1)
+                Case "y"
+                    .UpdateParent = True
+                    .SuspendParent = False
+                Case "s"
+                    .UpdateParent = True
+                    .SuspendParent = True
+                Case Else
+                    .UpdateParent = False
+                    .SuspendParent = False
+            End Select
             .ObjectKey = ObjectKey
             .LoadVariables = LoadVariables
         End With
