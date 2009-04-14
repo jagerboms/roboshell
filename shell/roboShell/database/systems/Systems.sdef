@@ -1,0 +1,29 @@
+<?xml version='1.0'?><roboshell connect="roboshell">
+  <objects>
+    <moduledefn module="helpSystem" parent="statics" description="Systems" maintain="Y" />
+    <procget table="helpSystems" procname="helpSystemsGet" objectname="SystemsGet" module="helpSystem" />
+    <proclist table="helpSystems" procname="helpSystemsList" objectname="SystemsList" module="public" />
+    <procauditget table="helpSystems" procname="helpSystemsAuditGet" objectname="SystemsAuditGet" module="helpSystem" />
+    <procinsert table="helpSystems" objectname="SystemsInsert" formobject="SystemsAdd" module="helpSystemMaintain" item="System" mode="all" success="SystemsGet">
+      <field name="SystemID" label="SystemID" width="50" helptext="help text here" />
+      <field name="SystemName" label="SystemName" width="150" helptext="help text here" />
+      <field name="Copyright" label="Copyright" width="150" helptext="help text here" />
+    </procinsert>
+    <procupdate table="helpSystems" procname="helpSystemsUpdate" objectname="SystemsUpdate" formobject="SystemsEdit" seekkey="System" module="helpSystemMaintain" item="System">
+      <field name="SystemID" label="SystemID" width="50" />
+      <field name="SystemName" label="SystemName" width="150" helptext="help text here" />
+      <field name="Copyright" label="Copyright" width="150" helptext="help text here" />
+    </procupdate>
+    <procdisable table="helpSystems" objectname="SystemsDisable" module="helpSystem" seekkey="System" procname="helpSystemsDisable" item="System" />
+    <configaudit table="helpSystems" objectname="SystemsAudit" module="helpSystem" item="System">
+      <field name="SystemID" label="SystemID" width="50" />
+      <field name="SystemName" label="SystemName" width="150" />
+      <field name="Copyright" label="Copyright" width="150" />
+    </configaudit>
+    <configgrid table="helpSystems" objectname="Systems" process="SystemsGet" module="helpSystem" seekkey="System" item="System" description="Systems">
+      <field name="SystemID" label="SystemID" width="50" />
+      <field name="SystemName" label="SystemName" width="150" />
+      <field name="Copyright" label="Copyright" width="150" />
+    </configgrid>
+  </objects>
+</roboshell>

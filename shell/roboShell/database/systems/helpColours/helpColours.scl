@@ -1,0 +1,11 @@
+proc.helpColoursGet.sql
+config.helpColoursGet.sql
+proc.helpColoursAuditGet.sql
+config.helpColoursAuditGet.sql
+proc.helpColoursUpdate.sql
+config.helpColoursUpdate.sql
+config.helpColoursEdit.sql
+config.helpColoursAudit.sql
+config.helpColours.sql
+
+#end

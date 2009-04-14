@@ -1,0 +1,8 @@
+udf.helpSystemModules.sql
+udf.gnFirstLineGet.sql
+
+proc.helpObjectsInsert.sql
+proc.helpActionsInsert.sql
+proc.helpFieldsInsert.sql
+proc.helpColoursInsert.sql
+proc.helpHelpGet.sql

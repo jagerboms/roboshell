@@ -1,0 +1,24 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "HelpTool", "HelpTool.vbproj", "{65F5D588-D80A-4E65-B763-8C6FD0234FBF}"
+EndProject
+Global
+	GlobalSection(SubversionScc) = preSolution
+		Svn-Managed = True
+		Manager = AnkhSVN - Subversion Support for Visual Studio
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{65F5D588-D80A-4E65-B763-8C6FD0234FBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65F5D588-D80A-4E65-B763-8C6FD0234FBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65F5D588-D80A-4E65-B763-8C6FD0234FBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65F5D588-D80A-4E65-B763-8C6FD0234FBF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

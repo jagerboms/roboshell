@@ -1,0 +1,11 @@
+proc.helpActionsGet.sql
+config.helpActionsGet.sql
+proc.helpActionsAuditGet.sql
+config.helpActionsAuditGet.sql
+proc.helpActionsUpdate.sql
+config.helpActionsUpdate.sql
+config.helpActionsEdit.sql
+config.helpActionsAudit.sql
+config.helpActions.sql
+
+#end
