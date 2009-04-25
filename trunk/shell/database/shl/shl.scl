@@ -89,4 +89,3 @@ proc.shlFileOpenInsert.sql
 proc.shlDirectoryInsert.sql
 
 {scl=SecurityAdmin\SecurityAdmin.scl}
-{scl=Notifications\Notifications.scl}
