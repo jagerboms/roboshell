@@ -60,7 +60,8 @@ Module Scriptor
                 Console.WriteLine("     provided the local machine is used.")
                 Console.WriteLine("")
                 Console.WriteLine("   -dDatabase is the name of the database to access.")
-                Console.WriteLine("     If not provided the master database is used.")
+                Console.WriteLine("     If not provided either the master database or for job types")
+                Console.WriteLine("     the msdb database is used.")
                 Console.WriteLine("     Use an asterisk * to extract from all the databases on the")
                 Console.WriteLine("     Server. The data is extracted into a directory with the database")
                 Console.WriteLine("     name. If the directory does not exist it will be created, otherwise")
@@ -73,9 +74,10 @@ Module Scriptor
                 Console.WriteLine("     is ignored except when a UserID is provided.")
                 Console.WriteLine("")
                 Console.WriteLine("   -tType is the type of object to retrieve. If not provided all")
-                Console.WriteLine("     type are returned. Can be one of:")
+                Console.WriteLine("     types except jobs are returned. Can be one of:")
                 Console.WriteLine("      P - stored procedure        U - user table")
                 Console.WriteLine("      F - user defined function   V - view")
+                Console.WriteLine("      J - job")
                 Console.WriteLine("")
                 Console.WriteLine("   -oObject is the like object name to retrieve. If not provided")
                 Console.WriteLine("     all objects are retrieved. This performs a database 'like'")
@@ -118,11 +120,9 @@ Module Scriptor
                 Return
             End If
 
-
             Server = GetCommandParameter("-s")
             If Server = "" Then Server = System.Environment.MachineName
             Database = GetCommandParameter("-d")
-            If Database = "" Then Database = "master"
             UserID = GetCommandParameter("-u")
             Password = GetCommandParameter("-p")
             Network = GetCommandParameter("-n")
@@ -135,9 +135,12 @@ Module Scriptor
                 ConsName = False
             End If
 
-            If Database = "*" Then
+            If Mid(LCase(sType), 1, 1) = "j" Then
+                ProcessJobs(Database)
+            ElseIf Database = "*" Then
                 ProcessAllDBs()
             Else
+                If Database = "" Then Database = "master"
                 ProcessDB(Database)
             End If
 
@@ -150,6 +153,64 @@ Module Scriptor
             Console.Read()
         End If
     End Sub
+
+    Sub ProcessJobs(ByVal Database As String)
+        Dim s As String
+        Dim psConn As SqlConnection
+        Dim psAdapt As SqlDataAdapter
+        Dim Details As New DataSet
+        Dim dr As DataRow
+
+        Try                                 ' Read the config XML into a DataSet
+            If Database = "" Or Database = "*" Then
+                Database = "msdb"
+            End If
+            Connect = GetConnectString(Database)
+            psConn = New SqlConnection(Connect)
+            AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
+            psConn.Open()
+
+            s = "select job_id "
+            s &= "from dbo.sysjobs "
+            If sObject <> "" Then
+                s &= "and name like '" & sObject & "' "
+            End If
+            s &= "order by name"
+
+            psAdapt = New SqlDataAdapter(s, psConn)
+            psAdapt.SelectCommand.CommandType = CommandType.Text
+            psAdapt.Fill(Details)
+            psConn.Close()
+
+            For Each dr In Details.Tables(0).Rows
+                s = GetString(dr.Item("job_id"))
+                GetJob(s, Connect, mode)
+            Next
+
+        Catch ex As Exception
+            Console.WriteLine(ex.ToString)
+        End Try
+    End Sub
+
+    Private Function GetJob(ByVal sJobID As String, ByVal sConnect As String, ByVal mode As Boolean) As Integer
+        Dim js As New Job(sJobID, sConnect)
+        Dim sOut As String = ""
+        Dim s As String
+
+        s = js.JobName
+        If s = "" Then Return -1
+
+        If mode Then
+            sOut = js.FullText
+        Else
+            sOut = js.FullText
+        End If
+        sOut &= "go" & vbCrLf
+        sOut &= vbCrLf
+
+        PutFile("job." & s & ".sql", sOut)
+        Return 0
+    End Function
 
     Sub ProcessAllDBs()
         Dim s As String
