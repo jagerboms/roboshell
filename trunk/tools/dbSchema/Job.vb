@@ -51,7 +51,7 @@ Public Class Job
         End If
 
         If dr Is Nothing Then Return ""
-        sName = GetString(dr("name"))
+        sName = GetSQLString(dr("name"))
 
         sOut = "declare" & vbCrLf
         sOut &= "    @rc integer," & vbCrLf
@@ -103,9 +103,9 @@ Public Class Job
         If s <> "" Then
             sOut &= "            @notify_page_operator_name = '" & s & "'," & vbCrLf
         End If
-        sOut &= "            @description = '" & GetString(dr("description")) & "'," & vbCrLf
-        sOut &= "            @category_name = '" & GetString(dr("category")) & "'," & vbCrLf
-        sOut &= "            @owner_login_name = '" & GetString(dr("owner")) & "'," & vbCrLf
+        sOut &= "            @description = '" & GetSQLString(dr("description")) & "'," & vbCrLf
+        sOut &= "            @category_name = '" & GetSQLString(dr("category")) & "'," & vbCrLf
+        sOut &= "            @owner_login_name = '" & GetSQLString(dr("owner")) & "'," & vbCrLf
         sOut &= "            @job_id = @JobID output" & vbCrLf
         sOut &= "        if @rc <> 0 break" & vbCrLf
         sOut &= vbCrLf
@@ -137,21 +137,21 @@ Public Class Job
             sOut &= "    execute @rc = msdb.dbo.sp_add_jobstep" & vbCrLf
             sOut &= "        @job_id = @JobID," & vbCrLf
             sOut &= "        @step_id = " & CInt(ds("step_id")) & "," & vbCrLf
-            sOut &= "        @step_name = '" & GetString(ds("step_name")) & "'"
+            sOut &= "        @step_name = '" & GetSQLString(ds("step_name")) & "'"
             s = GetString(ds("subsystem"))
             If s <> "TSQL" Then
                 sOut &= "," & vbCrLf
                 sOut &= "        @subsystem = '" & s & "'"
             End If
-            s = GetString(ds("command"))
+            s = GetSQLString(ds("command"))
             If s <> "" Then
                 sOut &= "," & vbCrLf
-                sOut &= "        @command = '" & Replace(s, "'", "''") & "'"
+                sOut &= "        @command = '" & s & "'"
             End If
-            s = GetString(ds("additional_parameters"))
+            s = GetSQLString(ds("additional_parameters"))
             If s <> "" Then
                 sOut &= "," & vbCrLf
-                sOut &= "        @additional_parameters = '" & Replace(s, "'", "''") & "'"
+                sOut &= "        @additional_parameters = '" & s & "'"
             End If
             i = CInt(ds("cmdexec_success_code"))
             If i <> 0 Then
@@ -178,17 +178,17 @@ Public Class Job
                 sOut &= "," & vbCrLf
                 sOut &= "        @on_fail_step_id = " & i
             End If
-            s = GetString(ds("server"))
+            s = GetSQLString(ds("server"))
             If s <> "" Then
                 sOut &= "," & vbCrLf
                 sOut &= "        @server = '" & s & "'"
             End If
-            s = GetString(ds("database_name"))
+            s = GetSQLString(ds("database_name"))
             If s <> "" Then
                 sOut &= "," & vbCrLf
                 sOut &= "        @database_name = '" & s & "'"
             End If
-            s = GetString(ds("database_user_name"))
+            s = GetSQLString(ds("database_user_name"))
             If s <> "" Then
                 sOut &= "," & vbCrLf
                 sOut &= "        @database_user_name = '" & s & "'"
@@ -208,7 +208,7 @@ Public Class Job
                 sOut &= "," & vbCrLf
                 sOut &= "        @os_run_priority = " & i
             End If
-            s = GetString(ds("output_file_name"))
+            s = GetSQLString(ds("output_file_name"))
             If s <> "" Then
                 sOut &= "," & vbCrLf
                 sOut &= "        @output_file_name = '" & s & "'"
@@ -218,7 +218,7 @@ Public Class Job
                 sOut &= "," & vbCrLf
                 sOut &= "        @flags = " & i
             End If
-            s = GetString(ds("proxy"))
+            s = GetSQLString(ds("proxy"))
             If s <> "" Then
                 sOut &= "," & vbCrLf
                 sOut &= "        @proxy_name = '" & s & "'"
@@ -246,7 +246,7 @@ Public Class Job
             End If
             sOut &= "        execute @rc = msdb.dbo.sp_add_jobschedule" & vbCrLf
             sOut &= "            @job_id = @JobID," & vbCrLf
-            sOut &= "            @name = '" & GetString(ds("name")) & "'"
+            sOut &= "            @name = '" & GetSQLString(ds("name")) & "'"
             i = CInt(ds("freq_type"))
             If i <> 1 Then
                 sOut &= "," & vbCrLf
@@ -383,6 +383,10 @@ Public Class Job
             ByVal e As System.Data.SqlClient.SqlInfoMessageEventArgs)
         Console.WriteLine(e.Message)
     End Sub
+
+    Public Function GetSQLString(ByVal objValue As Object) As String
+        Return Replace(GetString(objValue), "'", "''")
+    End Function
 
     Public Function GetString(ByVal objValue As Object) As String
         If IsDBNull(objValue) Then

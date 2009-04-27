@@ -200,6 +200,9 @@ Module Scriptor
         s = js.JobName
         If s = "" Then Return -1
 
+        s = Replace(s, ":", "_")
+        s = Replace(s, "\", "_")
+        s = Replace(s, "/", "_")
         If mode Then
             sOut = js.FullText
         Else
