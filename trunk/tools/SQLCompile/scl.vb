@@ -123,31 +123,10 @@ Public Class scl
     Private Function CompileOne(ByVal sFile As String) As Boolean
         Dim i As Integer = 0
         Dim s As String = ""
-        Dim st As String
-        Dim line As String
 
         Try
             Dim file As New System.IO.StreamReader(sFile)
-            Do
-                line = file.ReadLine()
-                If Len(line) > 2 Then
-                    If LCase(Mid(line, 1, 3)) = "go " Then
-                        st = LTrim(Mid(line, 3))
-                        If st = "" Or Mid(st, 1, 2) = "--" Then    ' trim the space from go statements
-                            line = "go"                     ' so the split in CleanSQL will work
-                        End If                              ' correctly.
-                    End If
-                End If
-                If line = "go" Then
-                    If i = 0 Then
-                        line = vbCrLf & "go"
-                    End If
-                    i = 0
-                Else
-                    i += 1
-                End If
-                s &= line & vbCrLf
-            Loop Until file.EndOfStream
+            s = file.ReadToEnd
             file.Close()
         Catch ex As Exception
             WriteLine("CompileOne error [" & sFile & "]:", "E")
@@ -203,8 +182,13 @@ Public Class scl
     Private Function CompileSQL(ByVal sText As String) As Boolean
         Dim psConn As SqlConnection
         Dim psAdapt As SqlDataAdapter
-        Dim sCommands() As String
+        Dim sCommands As String = ""
+        Dim i As Integer
+        Dim j As Integer = 1
+        Dim k As Integer = 0
+        Dim Mode As Integer = 0
         Dim b As Boolean = True
+        Dim c As String
 
         Try
             CompileSQL = False
@@ -212,31 +196,130 @@ Public Class scl
             AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
             psConn.Open()
             psAdapt = New SqlDataAdapter("", psConn)
-            sCommands = Split(sText, vbCrLf & "go" & vbCrLf, , CompareMethod.Text)
 
-            For Each s As String In sCommands
-                Try
-                    If Trim(s) <> "" Then
-                        psAdapt.SelectCommand.CommandText = s
-                        psAdapt.SelectCommand.ExecuteNonQuery()
+            For i = 1 To Len(sText)
+                c = Mid(sText, i, 1)
+                If Mode = 0 Then    ' for looking for go
+                    If c <> vbCr And c <> vbLf Then
+                        k = i
+                        If LCase(Mid(sText, i, 2)) = "go" Then
+                            Mode = 9
+                            i += 2
+                            c = Mid(sText, i, 1)
+                        Else
+                            Mode = 1
+                        End If
                     End If
-                Catch ex As Exception
-                    If ex.InnerException Is Nothing Then
-                        sResult &= ex.Message & vbCrLf
-                    Else
-                        Dim ex2 As Exception = ex.InnerException
-                        Do While Not ex2 Is Nothing
-                            sResult &= ex2.Message & vbCrLf
-                            ex2 = ex2.InnerException
-                        Loop
+                End If
+                Select Case Mode
+                    Case 1   ' general text
+                        Select Case c
+                            Case vbCr, vbLf
+                                Mode = 0
+                            Case "'"
+                                Mode = 2
+                            Case """"
+                                Mode = 3
+                            Case "-"
+                                If Mid(sText, i + 1, 1) = "-" Then
+                                    Mode = 4
+                                    i += 1
+                                End If
+                            Case "/"
+                                If Mid(sText, i + 1, 1) = "*" Then
+                                    Mode = 5
+                                    i += 1
+                                End If
+                        End Select
+
+                    Case 2     ' quotes
+                        If c = "'" Then
+                            Mode = 1
+                        End If
+
+                    Case 3     ' double quotes
+                        If c = """" Then
+                            Mode = 1
+                        End If
+
+                    Case 4     ' line comment
+                        If c = vbCr Or c = vbLf Then
+                            Mode = 0
+                        End If
+
+                    Case 5     ' block comments
+                        If c = "*" Then
+                            If Mid(sText, i + 1, 1) = "/" Then
+                                Mode = 1
+                                i += 1
+                            End If
+                        End If
+
+                    Case 9     ' go?
+                        Select Case c
+                            Case " ", vbTab
+
+                            Case vbCr
+                                If Mid(sText, i + 1, 1) = vbLf Then
+                                    i += 1
+                                End If
+                                Mode = 99
+
+                            Case vbLf
+                                Mode = 99
+
+                            Case "-"
+                                If Mid(sText, i + 1, 1) = "-" Then
+                                    Mode = 98
+                                    i += 1
+                                End If
+
+                            Case Else
+                                Mode = 1
+                        End Select
+
+                    Case 98
+                        If c = vbCr Then
+                            If Mid(sText, i + 1, 1) = vbLf Then
+                                Mode = 99
+                                i += 1
+                            End If
+                        Else
+                            If c = vbLf Then
+                                Mode = 99
+                            End If
+                        End If
+
+                End Select
+                If Mode = 99 Then
+                    If k > j Then
+                        sCommands = Mid(sText, j, k - j)
+                        If Not CompileIt(sCommands, psAdapt) Then
+                            b = False
+                        End If
                     End If
-                    b = False
-                End Try
+                    Mode = 0
+                    j = i + 1
+                End If
             Next
 
             psConn.Close()
             CompileSQL = b
 
+        Catch ex As Exception
+            sResult &= ex.ToString & vbCrLf
+        End Try
+    End Function
+
+    Private Function CompileIt(ByVal sText As String, ByVal psAdapt As SqlDataAdapter) As Boolean
+        Dim b As Boolean = True
+
+        CompileIt = False
+        Try
+            If Trim(sText) <> "" Then
+                psAdapt.SelectCommand.CommandText = sText
+                psAdapt.SelectCommand.ExecuteNonQuery()
+            End If
         Catch ex As Exception
             If ex.InnerException Is Nothing Then
                 sResult &= ex.Message & vbCrLf
@@ -247,7 +330,9 @@ Public Class scl
                     ex2 = ex2.InnerException
                 Loop
             End If
+            b = False
         End Try
+        CompileIt = b
     End Function
 
     Private Sub psConn_InfoMessage(ByVal sender As Object, _
