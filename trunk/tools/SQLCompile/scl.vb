@@ -186,6 +186,7 @@ Public Class scl
         Dim i As Integer
         Dim j As Integer = 1
         Dim k As Integer = 0
+        Dim cc As Integer = 0
         Dim Mode As Integer = 0
         Dim b As Boolean = True
         Dim c As String
@@ -197,6 +198,7 @@ Public Class scl
             psConn.Open()
             psAdapt = New SqlDataAdapter("", psConn)
 
+            sText &= vbCrLf & "go" & vbCrLf
             For i = 1 To Len(sText)
                 c = Mid(sText, i, 1)
                 If Mode = 0 Then    ' for looking for go
@@ -229,6 +231,7 @@ Public Class scl
                                 If Mid(sText, i + 1, 1) = "*" Then
                                     Mode = 5
                                     i += 1
+                                    cc = 1
                                 End If
                         End Select
 
@@ -248,12 +251,21 @@ Public Class scl
                         End If
 
                     Case 5     ' block comments
-                        If c = "*" Then
-                            If Mid(sText, i + 1, 1) = "/" Then
-                                Mode = 1
-                                i += 1
-                            End If
-                        End If
+                        Select Case c
+                            Case "/"
+                                If Mid(sText, i + 1, 1) = "*" Then
+                                    i += 1
+                                    cc += 1
+                                End If
+                            Case "*"
+                                If Mid(sText, i + 1, 1) = "/" Then
+                                    i += 1
+                                    cc -= 1
+                                    If cc = 0 Then
+                                        Mode = 1
+                                    End If
+                                End If
+                        End Select
 
                     Case 9     ' go?
                         Select Case c
