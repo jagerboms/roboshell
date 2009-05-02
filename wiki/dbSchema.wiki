@@ -1,0 +1,36 @@
+dbSchema utility description.
+
+= Introduction =
+
+The Roboshell dbSchema utility can be used to create scripts for database objects. dbSchema is a windows command line program, that can be automated using DOS batch files.
+
+= Details =
+
+Usage: dbSchema [-sServer] [-dDatabase] [-uUserID [-pPassword]]
+                [-tType] [-oObject] [-f] [-c] [-?]
+
+*where:*
+
+*-sServer* is the name of the SQL server to access. This parameter is optional and the local machine is used if no server is provided.
+
+*-dDatabase* is the name of the database to extract data from. This parameter is optional and if provided the master database is used.
+Specifying an asterisk (-d*) will use all the non-system databases on the server. The system databases are master, model, tempdb and msdb. Each database has it's extracted data into a new  database named directory. If the directory exists the current contents are moved to a backup directory.
+
+*-uUserID* is the name of the user for database access. If no user is entered then database connection is made using windows authenication.
+
+*-pPassword* is the user's password for database access. This parameter is ignored except when a UserID parameter is provided.
+
+*-tType* allows specific types of object to be retrieved. This is an optional parameter and if no type is provided all types are returned. Type can be one of:
+
+<table>
+<tr><td>P - stored procedure</td><td>U - user table</td></tr>
+<tr><td>F - user defined function</td><td>V - view</td></tr>
+</table>
+
+*-oObject* allows for a specific object to be retrieved. This is an optional parameter. The object name search uses a 'like' statement so the wildcard characters '%' and '_' can be used to return objects matching a pattern.
+
+*-f* turns on the full text output option. If this option is used the output scripts include existance checks and individual files are created table, index and foreign key definitions.
+
+*-c* turns on the constraint name exclusion option. When this option is on, constraint names are not used in default and primary key constraints in generated table scripts.
+
+*-?* is the help switch and when used causes the usage clause to be printed to the console.
