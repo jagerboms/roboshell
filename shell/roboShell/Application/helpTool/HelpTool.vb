@@ -398,7 +398,7 @@ Public Class HelpTool
         sOut = "<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>" & vbCrLf
         sOut &= "<html>" & vbCrLf
         sOut &= "  <head>" & vbCrLf
-        sOut &= "    <title>Application Shell Licence</title>" & vbCrLf
+        sOut &= "    <title>Roboshell Licence</title>" & vbCrLf
         sOut &= "    <link rel='shortcut icon' href='favicon.ico' type='image/x-icon' />" & vbCrLf
         sOut &= "    <link rel ='stylesheet' href='help.css' type='text/css' />" & vbCrLf
         sOut &= "    <link rel ='stylesheet' href='shell.css' type='text/css' />" & vbCrLf
@@ -406,17 +406,17 @@ Public Class HelpTool
         sOut &= "  <body>" & vbCrLf
         sOut &= "<div id='maincontainer'>" & vbCrLf
         sOut &= "  <div id='topsection'>" & vbCrLf
-        sOut &= "    <div class='innertube'><h1>Application Shell Licence</h1></div>" & vbCrLf
+        sOut &= "    <div class='innertube'><h1>Roboshell Licence</h1></div>" & vbCrLf
         sOut &= "  </div>" & vbCrLf
         sOut &= "  <div id='contentwrapper'>" & vbCrLf
         sOut &= "    <div id='contentcolumn'>" & vbCrLf
         sOut &= "      <div class='innertube'>" & vbCrLf
         sOut &= "        <b>Description</b><br />" & vbCrLf
-        sOut &= "Application Shell is free software issued as open source; you can redistribute it and/or modify it under the terms of the GNU General Public License version 2 as published by the Free Software Foundation.<br /><br />" & vbCrLf
-        sOut &= "Application Shell is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; " & vbCrLf
+        sOut &= "Roboshell and the Roboshell tools is free software issued as open source; you can redistribute it and/or modify it under the terms of the GNU General Public License version 2 as published by the Free Software Foundation.<br /><br />" & vbCrLf
+        sOut &= "Roboshell and the Roboshell tools is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; " & vbCrLf
         sOut &= "without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. " & vbCrLf
         sOut &= "See the GNU General Public License for more details.<br /><br />" & vbCrLf
-        sOut &= "You should have received a copy of the GNU General Public License along with Application Shell; if not, go to the <a href='http://www.gnu.org/licenses/gpl-2.0.html'>web site</a> or write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA." & vbCrLf
+        sOut &= "You should have received a copy of the GNU General Public License along with Roboshell application suite; if not, go to the <a href='http://www.gnu.org/licenses/gpl-2.0.html'>web site</a> or write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA." & vbCrLf
         sOut &= "      </div>" & vbCrLf
         sOut &= "    </div>" & vbCrLf
         sOut &= "  </div>" & vbCrLf
