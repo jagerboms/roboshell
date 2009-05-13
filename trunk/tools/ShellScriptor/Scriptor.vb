@@ -93,7 +93,7 @@ Module Scriptor
             Return 1
         End If
 
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
 
         dom.PreserveWhitespace = True
         node = dom.CreateProcessingInstruction("xml", "version='1.0'")
@@ -591,9 +591,9 @@ Module Scriptor
             Return -1
         End If
 
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
 
-        sOut = Header("") & vbCrLf & tDefn.TableText & Footer()
+        sOut = Header("") & vbCrLf & tDefn.FullTableText & Footer()
         PutFile("table." & tDefn.TableName & ".sql", sOut)
 
         i = TableIndexes(tDefn)
@@ -637,7 +637,7 @@ Module Scriptor
             End Select
         Next
 
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
         Dim aDefn As TableColumns
         Dim sName As String
         Dim sOut As String
@@ -648,7 +648,7 @@ Module Scriptor
         End If
 
         sName = tDefn.TableName & "Audit"
-        aDefn = New TableColumns(sName, sConnect)
+        aDefn = New TableColumns(sName, sConnect, True)
         If aDefn.State = 3 Then
             aDefn = New TableColumns()
             aDefn.TableName = sName
@@ -669,7 +669,7 @@ Module Scriptor
             aDefn.AddColumn("UserID", "sysname", 0, 0, 0, "N", False, sName & "UserID", "(suser_sname())")
         End If
 
-        sOut = Header("") & vbCrLf & aDefn.TableText & Footer()
+        sOut = Header("") & vbCrLf & aDefn.FullTableText & Footer()
 
         PutFile("table." & sName & ".sql", sOut)
         Return AuditInsert(aDefn)
@@ -931,7 +931,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
         If tDefn.State <> 2 Then Return -1
 
         If sProcName = "" Then sProcName = tDefn.TableName & "Get"
@@ -1032,7 +1032,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
         If tDefn.State <> 2 Then Return -1
         If sProcName = "" Then sProcName = sTable & "List"
         If sObject = "" Then sObject = sProcName
@@ -1123,7 +1123,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
         If tDefn.State <> 2 Then Return -1
         If Not tDefn.hasAudit Then
             Return -1
@@ -1236,7 +1236,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
         If tDefn.State <> 2 Then Return -1
 
         If sProcName = "" Then sProcName = sTable & "Insert"
@@ -1867,7 +1867,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
         If tDefn.State <> 2 Then Return -1
         If sProcName = "" Then sProcName = tDefn.TableName & "Update"
         If sFormObject = "" Then sFormObject = sTable & "Edit"
@@ -2239,7 +2239,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
         If tDefn.State <> 2 Then Return -1
         If Not tDefn.hasState Then Return -1
 
@@ -2439,7 +2439,7 @@ Module Scriptor
         If sProcess = "" Then sProcess = sObject & "Get"
         If ssItem = "" Then ssItem = sObject
 
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
         If Not tDefn.hasAudit Then
             Return 0
         End If
@@ -2630,7 +2630,7 @@ Module Scriptor
         If sSeekKey = "" Then sSeekKey = sObject
         If ssItem = "" Then ssItem = sObject
 
-        Dim tDefn As New TableColumns(sTable, sConnect)
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
 
         sOut = Header("")
         sOut &= vbCrLf

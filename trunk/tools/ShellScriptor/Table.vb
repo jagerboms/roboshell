@@ -71,6 +71,8 @@ Public Class TableColumns
     Private sIdentity As String = ""
     Private bAudit As Boolean = False
     Private bState As Boolean = False
+    Private bConsName As Boolean = True
+    Private fixdef As Boolean = False
 
     Private xPKeys(0) As String
     Private xFKeys(0) As String
@@ -85,7 +87,7 @@ Public Class TableColumns
         PreLoad = 0
     End Sub
 
-    Public Sub New(ByVal sTableName As String, ByVal sConnect As String)
+    Public Sub New(ByVal sTableName As String, ByVal sConnect As String, ByVal bDef As Boolean)
         Dim s As String = "a"
         Dim b As Boolean = False
         Dim sdn As String
@@ -100,6 +102,7 @@ Public Class TableColumns
         Dim dr As DataRow
         Dim i As Integer
 
+        fixdef = bDef
         PreLoad = 2
         psConn = New SqlConnection(sConnect)
         AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
@@ -124,8 +127,7 @@ Public Class TableColumns
                 b = False
             End If
             sdn = GetString(dr.Item("DEFAULT_NAME"))
-            sdv = GetString(dr.Item("DEFAULT_TEXT"))
-
+            sdv = FixDefaultText(GetString(dr.Item("DEFAULT_TEXT")))
             AddColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
                 dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, b, sdn, sdv)
         Next
@@ -135,25 +137,25 @@ Public Class TableColumns
         b = False
         sName = ""
         For Each dr In dtIndexs.Rows
-            If GetString(dr.Item("PrimaryKey")) = "Y" Then
+            s = GetString(dr.Item("name"))
+            If CInt(dr.Item("is_primary_key")) = -1 Then
                 If Not b Then
-                    sPKey = GetString(dr.Item("IndexName"))
-                    s = GetString(dr.Item("Cluster"))
-                    If s <> "Y" Then
-                        bPKClust = False
-                    Else
+                    sPKey = s
+                    i = CInt(dr.Item("type"))
+                    If i = 1 Then
                         bPKClust = True
+                    Else
+                        bPKClust = False
                     End If
                     b = True
                 End If
                 sPK = GetString(dr.Item("ColumnName"))
-                If GetString(dr.Item("Descending")) = "Y" Then
+                If CInt(dr.Item("is_descending_key")) = -1 Then
                     AddPKey(sPK, True)
                 Else
                     AddPKey(sPK, False)
                 End If
             Else
-                s = GetString(dr.Item("IndexName"))
                 If sName <> s Then
                     sName = s
                     i = xIndexs.GetUpperBound(0)
@@ -240,9 +242,6 @@ Public Class TableColumns
         If parm.Name = "State" Then
             bState = True
         End If
-        If parm.DefaultName = "" Then
-            parm.DefaultValue = ""
-        End If
 
         If parm.Type = "int" Then
             parm.Type = "integer"
@@ -276,6 +275,11 @@ Public Class TableColumns
                 parm.Scale = 0
 
             Case "decimal"
+                parm.TypeText = parm.Type & "(" & parm.Precision & "," & parm.Scale & ")"
+                parm.vbType = "double"
+                parm.Length = 0
+
+            Case "numeric"
                 parm.TypeText = parm.Type & "(" & parm.Precision & "," & parm.Scale & ")"
                 parm.vbType = "double"
                 parm.Length = 0
@@ -365,6 +369,15 @@ Public Class TableColumns
         End Get
     End Property
 
+    Public Property ScriptConstraints() As Boolean
+        Get
+            ScriptConstraints = bConsName
+        End Get
+        Set(ByVal value As Boolean)
+            bConsName = value
+        End Set
+    End Property
+
     Public ReadOnly Property IdentityColumn() As String
         Get
             Return sIdentity
@@ -404,61 +417,13 @@ Public Class TableColumns
 
     Public ReadOnly Property TableText() As String
         Get
-            Dim sOut As String
-            Dim Comma As String
-            Dim s As String
-            Dim tc As TableColumn
+            Return CreateTable(False)
+        End Get
+    End Property
 
-            sOut = "if object_id('dbo." & sTable & "') is null" & vbCrLf
-            sOut &= "begin" & vbCrLf
-            sOut &= "    print 'creating dbo." & sTable & "'" & vbCrLf
-            sOut &= "    create table dbo." & sTable & vbCrLf
-            sOut &= "    (" & vbCrLf
-            Comma = " "
-
-            For Each s In Keys
-                tc = CType(Values.Item(s), TableColumn)
-                sOut &= "       " & Comma & tc.Name & " " & tc.TypeText
-                If tc.Identity Then
-                    sOut &= " identity(1, 1)"
-                End If
-                If tc.Nullable = "N" Then
-                    sOut &= " not"
-                End If
-                sOut &= " null"
-
-                If tc.DefaultName <> "" Then
-                    sOut &= " constraint " & tc.DefaultName & " default " & tc.DefaultValue
-                End If
-
-                Comma = ","
-                sOut &= vbCrLf
-            Next
-
-            If sPKey <> "" Then
-                Comma = " "
-                sOut &= "       ,constraint " & sPKey & " primary key"
-                If bPKClust Then
-                    sOut &= " clustered"
-                End If
-                sOut &= vbCrLf
-                sOut &= "        (" & vbCrLf
-                For Each s In xPKeys
-                    tc = CType(Values.Item(s), TableColumn)
-                    sOut &= "           " & Comma & tc.Name
-                    If tc.Descend Then
-                        sOut &= " desc"
-                    End If
-                    Comma = ","
-                    sOut &= vbCrLf
-                Next
-                sOut &= "        )" & vbCrLf
-            End If
-
-            sOut &= "    )" & vbCrLf
-            sOut &= "end" & vbCrLf
-
-            Return sOut
+    Public ReadOnly Property FullTableText() As String
+        Get
+            Return CreateTable(True)
         End Get
     End Property
 
@@ -477,53 +442,71 @@ Public Class TableColumns
             End If
 
             For Each r As DataRow In dtIndexs.Rows
-                If GetString(r.Item("PrimaryKey")) <> "Y" Then
-                    If IndexName = GetString(r.Item("IndexName")) Then
+                If CInt(r.Item("is_primary_key")) = 0 Then
+                    If IndexName = GetString(r.Item("name")) Then
                         If i = 0 Then
-                            sOut = "if (" & vbCrLf
-                            sOut &= "    select  count(*)" & vbCrLf
-                            sOut &= "    from    dbo.sysindexes i" & vbCrLf
-                            sOut &= "    join    dbo.sysindexkeys k" & vbCrLf
-                            sOut &= "    on      k.id = i.id" & vbCrLf
-                            sOut &= "    and     k.indid = i.indid" & vbCrLf
-                            sOut &= "    join" & vbCrLf
+                            sOut = "declare @o integer, @i integer, @t tinyint" & vbCrLf
+                            sOut &= "       ,@c1 integer, @c2 integer" & vbCrLf
+                            sOut &= "set @o = object_id('" & sTable & "')" & vbCrLf
+                            sOut &= vbCrLf
+                            sOut &= "select  @i = i.index_id" & vbCrLf
+                            sOut &= "       ,@t = i.type" & vbCrLf
+                            sOut &= "from    sys.indexes i" & vbCrLf
+                            sOut &= "where   i.object_id = @o" & vbCrLf
+                            sOut &= "and     i.name = '" & IndexName & "'" & vbCrLf
+                            sOut &= vbCrLf
+                            sOut &= "if @@rowcount > 0" & vbCrLf
+                            sOut &= "begin" & vbCrLf
+                            sOut &= "    select  @c1 = sum(1)" & vbCrLf
+                            sOut &= "           ,@c2 = sum(case when x.keyorder is null then 0 else 1 end)" & vbCrLf
+                            sOut &= "    from    sys.index_columns ic" & vbCrLf
+                            sOut &= "    join    sys.columns c" & vbCrLf
+                            sOut &= "    on      c.object_id = @o" & vbCrLf
+                            sOut &= "    and     c.column_id = ic.column_id" & vbCrLf
+                            sOut &= "    left join" & vbCrLf
                             sOut &= "    (" & vbCrLf
-                            sOut &= "        select  1 keyorder, '" & GetString(r.Item("ColumnName")) & "' ColumnName, '" & GetString(r.Item("Descending")) & "' Descending" & vbCrLf
+                            sOut &= "        select  " & GetString(r.Item("index_column_id")) & " keyorder"
+                            sOut &= ", '" & GetString(r.Item("ColumnName")) & "' ColumnName, "
+                            If CInt(r.Item("is_descending_key")) = 0 Then
+                                sOut &= "0"
+                            Else
+                                sOut &= "1"
+                            End If
+                            sOut &= " Descending" & vbCrLf
 
                             sRest = "    ) x" & vbCrLf
-                            sRest &= "    on      x.keyorder = k.keyno" & vbCrLf
-                            sRest &= "    and     x.ColumnName = index_col(object_name(i.id), i.indid, k.keyno)" & vbCrLf
-                            sRest &= "    and     x.Descending = case indexkey_property(i.id, i.indid, k.colid, 'isdescending') when 1 then 'Y' else 'N' end" & vbCrLf
-                            sRest &= "    where   i.name = '" & IndexName & "'" & vbCrLf
-                            sRest &= "    and     i.id = object_id('" & sTable & "')" & vbCrLf
-                            sRest &= "    and" & vbCrLf
-                            sRest &= "    (" & vbCrLf
-                            sRest &= "        select  count(*)" & vbCrLf
-                            sRest &= "        from    dbo.sysindexes ix" & vbCrLf
-                            sRest &= "        where   ix.name = '" & IndexName & "'" & vbCrLf
-                            sRest &= "        and     ix.id = object_id('" & sTable & "')" & vbCrLf
-                            sRest &= "    ) = ~~" & vbCrLf
-                            sRest &= ") <> ~~" & vbCrLf
-                            sRest &= "begin" & vbCrLf
-                            sRest &= "    if exists" & vbCrLf
-                            sRest &= "    (" & vbCrLf
-                            sRest &= "        select  'a'" & vbCrLf
-                            sRest &= "        from    sysindexes o" & vbCrLf
-                            sRest &= "        where   o.id = object_id('dbo." & sTable & "')" & vbCrLf
-                            sRest &= "        and     o.name = '" & IndexName & "'" & vbCrLf
-                            sRest &= "    )" & vbCrLf
+                            sRest &= "    on      x.keyorder = ic.index_column_id" & vbCrLf
+                            sRest &= "    and     x.ColumnName = c.name" & vbCrLf
+                            sRest &= "    and     x.Descending = ic.is_descending_key" & vbCrLf
+                            sRest &= "    where   @t = " & GetString(r.Item("type")) & vbCrLf
+                            sRest &= "    and     ic.object_id = @o" & vbCrLf
+                            sRest &= "    and     ic.index_id = @i" & vbCrLf
+                            sRest &= vbCrLf
+                            sRest &= "    if @c1 <> @c2 or @c1 <> ~~" & vbCrLf
                             sRest &= "    begin" & vbCrLf
                             sRest &= "        print 'changing index ''" & IndexName & "'''" & vbCrLf
                             sRest &= "        drop index dbo." & sTable & "." & IndexName & vbCrLf
+                            sRest &= "        set @i = null" & vbCrLf
                             sRest &= "    end" & vbCrLf
-                            sRest &= "    else" & vbCrLf
-                            sRest &= "    begin" & vbCrLf
-                            sRest &= "        print 'creating index ''" & IndexName & "'''" & vbCrLf
-                            sRest &= "    end" & vbCrLf
-                            sRest &= "    create " & GetString(IIf(GetString(r.Item("UniqueIndex")) = "Y", "unique ", ""))
-                            sRest &= GetString(IIf(GetString(r.Item("Cluster")) = "Y", "clustered", "nonclustered")) & " index " & IndexName & " on dbo." & sTable & " ("
+                            sRest &= "end" & vbCrLf
+                            sRest &= vbCrLf
+                            sRest &= "if @i is null" & vbCrLf
+                            sRest &= "begin" & vbCrLf
+                            sRest &= "    print 'creating index ''" & IndexName & "'''" & vbCrLf
+                            sRest &= "    create" & GetString(IIf(CInt(r.Item("is_unique")) = -1, " unique", ""))
+                            sRest &= GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
+                            sRest &= " index " & IndexName & " on dbo." & sTable & " ("
                             sRest &= GetString(r.Item("ColumnName"))
                         Else
+                            sOut &= "        union select  " & GetString(r.Item("index_column_id"))
+                            sOut &= ", '" & GetString(r.Item("ColumnName")) & "', "
+                            If CInt(r.Item("is_descending_key")) = 0 Then
+                                sOut &= "0"
+                            Else
+                                sOut &= "1"
+                            End If
+                            sOut &= vbCrLf
+
                             sRest &= "," & GetString(r.Item("ColumnName"))
                         End If
                         i += 1
@@ -553,11 +536,12 @@ Public Class TableColumns
             End If
 
             For Each r As DataRow In dtIndexs.Rows
-                If GetString(r.Item("PrimaryKey")) <> "Y" Then
-                    If IndexName = GetString(r.Item("IndexName")) Then
+                If CInt(r.Item("is_primary_key")) = 0 Then
+                    If IndexName = GetString(r.Item("name")) Then
                         If i = 0 Then
-                            sOut &= "create " & GetString(IIf(GetString(r.Item("UniqueIndex")) = "Y", "unique ", ""))
-                            sOut &= GetString(IIf(GetString(r.Item("Cluster")) = "Y", "clustered", "nonclustered")) & " index " & IndexName & " on dbo." & sTable & " ("
+                            sOut &= "create" & GetString(IIf(CInt(r.Item("is_unique")) = -1, " unique", ""))
+                            sOut &= GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
+                            sOut &= " index " & IndexName & " on dbo." & sTable & " ("
                             sOut &= GetString(r.Item("ColumnName"))
                         Else
                             sOut &= "," & GetString(r.Item("ColumnName"))
@@ -579,6 +563,7 @@ Public Class TableColumns
             Dim ss As String = ""
             Dim sOut As String = ""
             Dim sRest As String = ""
+            Dim sFTable As String = ""
 
             If dtFKeys Is Nothing Then
                 Return ""
@@ -591,45 +576,53 @@ Public Class TableColumns
             For Each r As DataRow In dtFKeys.Rows
                 If sFKeyName = GetString(r.Item("ConstraintName")) Then
                     If i = 0 Then
-                        sOut &= "if (" & vbCrLf
-                        sOut &= "    select  count(*)" & vbCrLf
-                        sOut &= "    from    dbo.sysforeignkeys k" & vbCrLf
+                        sFTable = GetString(r.Item("LinkedTable"))
+                        sOut &= "declare @c1 integer, @c2 integer" & vbCrLf
+                        sOut &= vbCrLf
+                        sOut &= "if object_id('" & sFKeyName & "') is not null" & vbCrLf
+                        sOut &= "begin" & vbCrLf
+                        sOut &= "    select  @c1 = sum(1)" & vbCrLf
+                        sOut &= "           ,@c2 = sum(case when x.keyno is null then 0 else 1 end)" & vbCrLf
+                        sOut &= "    from    INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c" & vbCrLf
+                        sOut &= "    join    INFORMATION_SCHEMA.KEY_COLUMN_USAGE u1" & vbCrLf
+                        sOut &= "    on      u1.CONSTRAINT_CATALOG = c.CONSTRAINT_CATALOG" & vbCrLf
+                        sOut &= "    and     u1.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA" & vbCrLf
+                        sOut &= "    and     u1.CONSTRAINT_NAME = c.CONSTRAINT_NAME" & vbCrLf
+                        sOut &= "    join    INFORMATION_SCHEMA.KEY_COLUMN_USAGE u2" & vbCrLf
+                        sOut &= "    on      u2.CONSTRAINT_CATALOG = c.UNIQUE_CONSTRAINT_CATALOG" & vbCrLf
+                        sOut &= "    and     u2.CONSTRAINT_SCHEMA = c.UNIQUE_CONSTRAINT_SCHEMA" & vbCrLf
+                        sOut &= "    and     u2.CONSTRAINT_NAME = c.UNIQUE_CONSTRAINT_NAME" & vbCrLf
+                        sOut &= "    and     u2.ORDINAL_POSITION = u1.ORDINAL_POSITION" & vbCrLf
                         sOut &= "    join" & vbCrLf
                         sOut &= "    (" & vbCrLf
-                        sOut &= "        select  1 keyno, '" & GetString(r.Item("ColumnName")) & "' lkey, '" & GetString(r.Item("LinkedColumn")) & "' fkey" & vbCrLf
+                        sOut &= "        select  " & CInt(r.Item("Sequence")) & " keyno, '"
+                        sOut &= GetString(r.Item("ColumnName")) & "' lkey, '"
+                        sOut &= GetString(r.Item("LinkedColumn")) & "' fkey" & vbCrLf
 
                         sRest = "    ) x" & vbCrLf
-                        sRest &= "    on      x.keyno = k.keyno" & vbCrLf
-                        sRest &= "    and     x.lkey = col_name(k.fkeyid, k.fkey)" & vbCrLf
-                        sRest &= "    and     x.fkey = col_name(k.rkeyid, k.rkey)" & vbCrLf
-                        sRest &= "    where   k.constid = object_id('" & sFKeyName & "')" & vbCrLf
-                        sRest &= "    and     k.fkeyid = object_id('" & sTable & "')" & vbCrLf
-                        sRest &= "    and     k.rkeyid = object_id('" & GetString(r.Item("LinkedTable")) & "')" & vbCrLf
-                        sRest &= "    and" & vbCrLf
-                        sRest &= "    (" & vbCrLf
-                        sRest &= "        select  count(*)" & vbCrLf
-                        sRest &= "        from    dbo.sysforeignkeys k" & vbCrLf
-                        sRest &= "        where   k.constid = object_id('" & sFKeyName & "')" & vbCrLf
-                        sRest &= "        and     k.fkeyid = object_id('" & sTable & "')" & vbCrLf
-                        sRest &= "        and     k.rkeyid = object_id('" & GetString(r.Item("LinkedTable")) & "')" & vbCrLf
-                        sRest &= "    ) = ~~" & vbCrLf
-                        sRest &= ") <> ~~" & vbCrLf
-                        sRest &= "begin" & vbCrLf
-                        sRest &= "    if object_id('" & sFKeyName & "') is not null" & vbCrLf
+                        sRest &= "    on      x.keyno = u1.ORDINAL_POSITION" & vbCrLf
+                        sRest &= "    and     x.lkey = u1.COLUMN_NAME" & vbCrLf
+                        sRest &= "    and     x.fkey = u2.COLUMN_NAME" & vbCrLf
+                        sRest &= "    where   c.CONSTRAINT_NAME = '" & sFKeyName & "'" & vbCrLf
+                        sRest &= "    and     u1.TABLE_NAME = '" & sTable & "'" & vbCrLf
+                        sRest &= "    and     u2.TABLE_NAME = '" & sFTable & "'" & vbCrLf
+                        sRest &= vbCrLf
+                        sRest &= "    if @c1 <> @c2 or @c1 <> ~~" & vbCrLf
                         sRest &= "    begin" & vbCrLf
                         sRest &= "        print 'changing foreign key ''" & sFKeyName & "'''" & vbCrLf
                         sRest &= "        alter table dbo." & sTable & " drop constraint " & sFKeyName & vbCrLf
                         sRest &= "    end" & vbCrLf
-                        sRest &= "    else" & vbCrLf
-                        sRest &= "    begin" & vbCrLf
-                        sRest &= "        print 'creating foreign key ''" & sFKeyName & "'''" & vbCrLf
-                        sRest &= "    end" & vbCrLf
+                        sRest &= "end" & vbCrLf
+                        sRest &= vbCrLf
+                        sRest &= "if object_id('" & sFKeyName & "') is null" & vbCrLf
+                        sRest &= "begin" & vbCrLf
+                        sRest &= "    print 'creating foreign key ''" & sFKeyName & "'''" & vbCrLf
                         sRest &= "    alter table dbo." & sTable & " add constraint " & sFKeyName & vbCrLf
                         sRest &= "    foreign key (" & GetString(r.Item("ColumnName"))
-
                         ss = ") references dbo." & GetString(r.Item("LinkedTable")) & "(" & GetString(r.Item("LinkedColumn"))
                     Else
-                        sOut &= "        union select  " & CInt(r.Item("Sequence")) & ", '" & GetString(r.Item("ColumnName")) & "', '" & GetString(r.Item("LinkedColumn")) & "'" & vbCrLf
+                        sOut &= "        union select  " & CInt(r.Item("Sequence")) & ", '" & GetString(r.Item("ColumnName"))
+                        sOut &= "', '" & GetString(r.Item("LinkedColumn")) & "'" & vbCrLf
                         sRest &= "," & GetString(r.Item("ColumnName"))
                         ss &= "," & GetString(r.Item("LinkedColumn"))
                     End If
@@ -680,6 +673,82 @@ Public Class TableColumns
         End Get
     End Property
 
+    Private Function CreateTable(ByVal bFull As Boolean) As String
+        Dim sOut As String = ""
+        Dim Comma As String
+        Dim s As String
+        Dim sTab As String
+        Dim tc As TableColumn
+
+        If bFull Then
+            sTab = "    "
+            sOut = "if object_id('dbo." & sTable & "') is null" & vbCrLf
+            sOut &= "begin" & vbCrLf
+            sOut &= "    print 'creating dbo." & sTable & "'" & vbCrLf
+        Else
+            sTab = ""
+        End If
+
+        sOut &= sTab & "create table dbo." & sTable & vbCrLf
+        sOut &= sTab & "(" & vbCrLf
+        Comma = " "
+
+        For Each s In Keys
+            tc = CType(Values.Item(s), TableColumn)
+            sOut &= sTab & "   " & Comma & FixFieldName(tc.Name) & " " & tc.TypeText
+            If tc.Identity Then
+                sOut &= " identity(1, 1)"
+            End If
+            If tc.Nullable = "N" Then
+                sOut &= " not"
+            End If
+            sOut &= " null"
+
+            If tc.DefaultName <> "" Then
+                If bConsName Then
+                    sOut &= " constraint " & tc.DefaultName
+                End If
+                sOut &= " default " & tc.DefaultValue
+            End If
+
+            Comma = ","
+            sOut &= vbCrLf
+        Next
+
+        If sPKey <> "" Then
+            Comma = " "
+            sOut &= sTab & "   ,"
+            If bConsName Then
+                sOut &= "constraint " & sPKey & " primary key"
+            Else
+                sOut &= "primary key"
+            End If
+            If bPKClust Then
+                sOut &= " clustered"
+            Else
+                sOut &= " nonclustered"
+            End If
+            sOut &= vbCrLf
+            sOut &= sTab & "    (" & vbCrLf
+            For Each s In xPKeys
+                tc = CType(Values.Item(s), TableColumn)
+                sOut &= sTab & "       " & Comma & FixFieldName(tc.Name)
+                If tc.Descend Then
+                    sOut &= " desc"
+                End If
+                Comma = ","
+                sOut &= vbCrLf
+            Next
+            sOut &= sTab & "    )" & vbCrLf
+        End If
+
+        sOut &= sTab & ")" & vbCrLf
+        If bFull Then
+            sOut &= "end" & vbCrLf
+        End If
+        Return sOut
+    End Function
+
 #Region "common functions"
     Private Function GetString(ByVal objValue As Object) As String
         If IsDBNull(objValue) Then
@@ -716,16 +785,15 @@ Public Class TableColumns
         s &= ",i.NUMERIC_PRECISION"
         s &= ",i.NUMERIC_SCALE"
         s &= ",s.name DEFAULT_NAME"
-        s &= ",c.text DEFAULT_TEXT "
+        s &= ",i.COLUMN_DEFAULT DEFAULT_TEXT "
         s &= "from INFORMATION_SCHEMA.COLUMNS i "
+        s &= "join dbo.syscolumns c "
+        s &= "on c.id = @o "
+        s &= "and c.name = i.COLUMN_NAME "
         s &= "left join dbo.sysobjects s "
-        s &= "on s.parent_obj = @o "
-        s &= "and s.xtype = 'D' "
-        s &= "and col_name(@o, s.info) = i.COLUMN_NAME "
-        s &= "left join dbo.syscomments c "
-        s &= "on c.id = s.id "
-        s &= "and c.colid = 1 "
+        s &= "on s.id = c.cdefault "
         s &= "where TABLE_NAME = @n "
+        s &= "and TABLE_SCHEMA = 'dbo' "
         s &= "order by ORDINAL_POSITION"
 
         psAdapt = New SqlDataAdapter(s, psConn)
@@ -740,22 +808,15 @@ Public Class TableColumns
         Dim psAdapt As SqlDataAdapter
         Dim TableDetails As New DataSet
 
-        s = "select x.name IndexName"
-        s &= ",i.keyno KeyOrder"
-        s &= ",index_col(object_name(x.id), x.indid, i.keyno) ColumnName"
-        s &= ",case indexkey_property(x.id, x.indid, i.colid, 'isdescending') when 1 then 'Y' else 'N' end Descending"
-        s &= ",case when indexproperty(x.id, x.name, 'IsClustered') = 1 then 'Y' else 'N' end Cluster"
-        s &= ",case when s.name is not null then 'Y' else 'N' end PrimaryKey"
-        s &= ",case when indexproperty(x.id, x.name, 'IsUnique') = 1 then 'Y' else 'N' end UniqueIndex "
-        s &= "from dbo.sysindexes x "
-        s &= "join dbo.sysindexkeys i "
-        s &= "on i.id = x.id "
-        s &= "and i.indid = x.indid "
-        s &= "left join dbo.sysobjects s "
-        s &= "on s.name = x.name "
-        s &= "and s.parent_obj = x.id "
-        s &= "and s.xtype = 'PK' "
-        s &= "where x.id = object_id('" & sTableName & "') "
+        s = "select i.name,ic.index_column_id,c.name ColumnName,ic.is_descending_key,i.type,i.is_primary_key,i.is_unique "
+        s &= "from sys.indexes i "
+        s &= "join sys.index_columns ic "
+        s &= "on ic.object_id = i.object_id "
+        s &= "and ic.index_id = i.index_id "
+        s &= "join sys.columns c "
+        s &= "on c.object_id = i.object_id "
+        s &= "and c.column_id = ic.column_id "
+        s &= "where i.object_id = object_id('" & sTable & "') "
         s &= "order by 1, 2, 3"
 
         psAdapt = New SqlDataAdapter(s, psConn)
@@ -770,10 +831,7 @@ Public Class TableColumns
         Dim psAdapt As SqlDataAdapter
         Dim Details As New DataSet
 
-        s = "declare @o integer set @o = object_id('" & sTableName & "') "
-        s &= "select col_name(@o, column_id) ColName "
-        s &= "from sys.identity_columns "
-        s &= "where object_id = @o"
+        s = "select name ColName from syscolumns where id = object_id('" & sTableName & "') and colstat & 1 = 1"
 
         psAdapt = New SqlDataAdapter(s, psConn)
         psAdapt.SelectCommand.CommandType = CommandType.Text
@@ -791,13 +849,22 @@ Public Class TableColumns
         Dim psAdapt As SqlDataAdapter
         Dim TableDetails As New DataSet
 
-        s = "select object_name(k.constid) ConstraintName"
-        s &= ",k.keyno Sequence"
-        s &= ",col_name(k.fkeyid, k.fkey) ColumnName"
-        s &= ",object_name(k.rkeyid) LinkedTable"
-        s &= ",col_name(k.rkeyid, k.rkey) LinkedColumn "
-        s &= "from dbo.sysforeignkeys k "
-        s &= "where k.fkeyid = object_id('" & sTableName & "') "
+        s = "select c.CONSTRAINT_NAME ConstraintName"
+        s &= ",u1.ORDINAL_POSITION Sequence"
+        s &= ",u1.COLUMN_NAME ColumnName"
+        s &= ",u2.TABLE_NAME LinkedTable"
+        s &= ",u2.COLUMN_NAME LinkedColumn "
+        s &= "from INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
+        s &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u1 "
+        s &= "on u1.CONSTRAINT_CATALOG = c.CONSTRAINT_CATALOG "
+        s &= "and u1.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA "
+        s &= "and u1.CONSTRAINT_NAME = c.CONSTRAINT_NAME "
+        s &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u2 "
+        s &= "on u2.CONSTRAINT_CATALOG = c.UNIQUE_CONSTRAINT_CATALOG "
+        s &= "and u2.CONSTRAINT_SCHEMA = c.UNIQUE_CONSTRAINT_SCHEMA "
+        s &= "and u2.CONSTRAINT_NAME = c.UNIQUE_CONSTRAINT_NAME "
+        s &= "and u2.ORDINAL_POSITION = u1.ORDINAL_POSITION "
+        s &= "where u1.TABLE_NAME = '" & sTableName & "' "
         s &= "order by 1, 2"
 
         psAdapt = New SqlDataAdapter(s, psConn)
@@ -805,6 +872,94 @@ Public Class TableColumns
         psAdapt.Fill(TableDetails)
 
         Return TableDetails.Tables(0)
+    End Function
+
+    Private Function FixFieldName(ByVal sField As String) As String
+        Dim s As String = sField
+
+        Select Case LCase(sField)
+            Case "group", "percent", "key", "function", "deny", "order", "return"
+                s = """" & sField & """"
+            Case Else
+                If InStr(sField, " ", CompareMethod.Text) > 0 Then
+                    s = """" & sField & """"
+                End If
+        End Select
+
+        Return s
+    End Function
+
+    Private Function FixDefaultText(ByVal sDefault As String) As String
+        Dim s As String = ""
+        Dim ss As String
+        Dim sSave As String = ""
+        Dim i As Integer
+        Dim mode As Integer = 0
+
+        For i = 1 To Len(sDefault)
+            ss = Mid(sDefault, i, 1)
+            Select Case mode
+                Case 0
+                    Select Case ss
+                        Case "[", "]"
+
+                        Case "'"
+                            mode = 1
+                            s &= ss
+
+                        Case "("
+                            If fixdef Then
+                                If LCase(Right(s, 4)) <> "char" _
+                                And LCase(Right(s, 7)) <> "decimal" _
+                                And LCase(Right(s, 7)) <> "numeric" Then
+                                    sSave = "("
+                                    mode = 2
+                                Else
+                                    s &= ss
+                                End If
+                            Else
+                                s &= ss
+                            End If
+
+                        Case Else
+                            s &= ss
+
+                    End Select
+
+                Case 1
+                    If ss = "'" Then mode = 0
+                    s &= ss
+
+                Case 2
+                    Select Case ss
+                        Case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "+"
+                            sSave &= ss
+
+                        Case "("
+                            s &= sSave
+                            sSave = "("
+
+                        Case ")"
+                            If Len(sSave) > 1 Then
+                                s &= Mid(sSave, 2)
+                            Else
+                                s &= "()"
+                            End If
+                            mode = 0
+
+                        Case "[", "]"
+                            s &= sSave
+                            mode = 0
+
+                        Case Else
+                            s &= sSave & ss
+                            mode = 0
+
+                    End Select
+            End Select
+        Next
+
+        Return s
     End Function
 
     'Private Function GetTriggers(ByVal sTableName As String, ByVal psConn As SqlConnection) As DataTable
