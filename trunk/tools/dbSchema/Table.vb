@@ -279,6 +279,11 @@ Public Class TableColumns
                 parm.vbType = "double"
                 parm.Length = 0
 
+            Case "numeric"
+                parm.TypeText = parm.Type & "(" & parm.Precision & "," & parm.Scale & ")"
+                parm.vbType = "double"
+                parm.Length = 0
+
             Case "datetime"
                 parm.vbType = "datetime"
                 parm.Length = 0

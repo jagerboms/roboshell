@@ -305,6 +305,158 @@ Public Class Job
         Return sOut
     End Function
 
+    Public Function CommonText() As String
+        Dim sOut As String = ""
+        Dim dr As DataRow = Nothing
+        Dim s As String
+        Dim i As Integer
+        Dim b As Boolean
+        Dim sName As String = ""
+
+        If Not dtJobs Is Nothing Then
+            If dtJobs.Rows.Count > 0 Then
+                dr = dtJobs.Rows(0)
+            End If
+        End If
+
+        If dr Is Nothing Then Return ""
+        sName = GetSQLString(dr("name"))
+
+        sOut = "declare" & vbCrLf
+        sOut &= "    @rc integer," & vbCrLf
+        sOut &= "    @JobID binary(16)," & vbCrLf
+        sOut &= "    @db sysname" & vbCrLf
+        sOut &= vbCrLf
+        sOut &= "set @rc = 0" & vbCrLf
+        sOut &= "while @rc = 0" & vbCrLf
+        sOut &= "begin" & vbCrLf
+        sOut &= "    select  @JobID = job_id" & vbCrLf
+        sOut &= "    from    msdb.dbo.sysjobs" & vbCrLf
+        sOut &= "    where   name = '" & sName & "'" & vbCrLf
+        sOut &= vbCrLf
+        sOut &= "    if @@rowcount = 0" & vbCrLf
+        sOut &= "    begin" & vbCrLf
+        sOut &= "        print 'creating new job ''" & sName & "''.'" & vbCrLf
+        sOut &= "	    execute @rc = msdb.dbo.sp_add_job" & vbCrLf
+        sOut &= "            @job_name = '" & sName & "'," & vbCrLf
+        sOut &= "            @enabled = 0," & vbCrLf
+        i = CInt(dr("delete_level"))
+        If i <> 0 Then
+            sOut &= "            @delete_level = " & i & "," & vbCrLf
+        End If
+        sOut &= "            @description = '" & GetSQLString(dr("description")) & "'," & vbCrLf
+        sOut &= "            @category_name = '" & GetSQLString(dr("category")) & "'," & vbCrLf
+        sOut &= "            @owner_login_name = '" & GetSQLString(dr("owner")) & "'," & vbCrLf
+        sOut &= "            @job_id = @JobID output" & vbCrLf
+        sOut &= "        if @rc <> 0 break" & vbCrLf
+        sOut &= "    end" & vbCrLf
+        sOut &= "    else" & vbCrLf
+        sOut &= "    begin" & vbCrLf
+        sOut &= "        print 'updating job ''" & sName & "''.'" & vbCrLf
+        sOut &= "        execute @rc = msdb.dbo.sp_delete_jobstep" & vbCrLf
+        sOut &= "            @job_id = @JobID," & vbCrLf
+        sOut &= "            @step_id = 0" & vbCrLf
+        sOut &= "        if @rc <> 0 break" & vbCrLf
+        sOut &= "    end" & vbCrLf
+        sOut &= vbCrLf
+
+        For Each ds As DataRow In dtSteps.Rows
+            sOut &= "    execute @rc = msdb.dbo.sp_add_jobstep" & vbCrLf
+            sOut &= "        @job_id = @JobID," & vbCrLf
+            sOut &= "        @step_id = " & CInt(ds("step_id")) & "," & vbCrLf
+            sOut &= "        @step_name = '" & GetSQLString(ds("step_name")) & "'"
+            s = GetString(ds("subsystem"))
+            If s <> "TSQL" Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @subsystem = '" & s & "'"
+            End If
+            s = GetSQLString(ds("command"))
+            If s <> "" Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @command = '" & s & "'"
+            End If
+            s = GetSQLString(ds("additional_parameters"))
+            If s <> "" Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @additional_parameters = '" & s & "'"
+            End If
+            i = CInt(ds("cmdexec_success_code"))
+            If i <> 0 Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @cmdexec_success_code = " & i
+            End If
+            i = CInt(ds("on_success_action"))
+            If i <> 1 Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @on_success_action = " & i
+            End If
+            i = CInt(ds("on_success_step_id"))
+            If i <> 0 Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @on_success_step_id = " & i
+            End If
+            i = CInt(ds("on_fail_action"))
+            If i <> 2 Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @on_fail_action = " & i
+            End If
+            i = CInt(ds("on_fail_step_id"))
+            If i <> 0 Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @on_fail_step_id = " & i
+            End If
+            s = GetSQLString(ds("server"))
+            If s <> "" Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @server = '" & s & "'"
+            End If
+            s = GetSQLString(ds("database_name"))
+            If s <> "" Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @database_name = '" & s & "'"
+            End If
+            s = GetSQLString(ds("database_user_name"))
+            If s <> "" Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @database_user_name = '" & s & "'"
+            End If
+            i = CInt(ds("retry_attempts"))
+            If i <> 0 Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @retry_attempts = " & i
+            End If
+            i = CInt(ds("retry_interval"))
+            If i <> 0 Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @retry_interval = " & i
+            End If
+            i = CInt(ds("os_run_priority"))
+            If i <> 0 Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @os_run_priority = " & i
+            End If
+            s = GetSQLString(ds("output_file_name"))
+            If s <> "" Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @output_file_name = '" & s & "'"
+            End If
+            i = CInt(ds("flags"))
+            If i <> 0 Then
+                sOut &= "," & vbCrLf
+                sOut &= "        @flags = " & i
+            End If
+
+            sOut &= vbCrLf
+            sOut &= "    if @rc <> 0 break" & vbCrLf
+            sOut &= vbCrLf
+        Next
+
+        sOut &= "    break" & vbCrLf
+        sOut &= "end" & vbCrLf
+
+        Return sOut
+    End Function
+
     Private Function GetJob(ByVal sJobID As String, ByVal psConn As SqlConnection) As DataTable
         Dim s As String
         Dim psAdapt As SqlDataAdapter

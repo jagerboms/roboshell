@@ -206,7 +206,7 @@ Module Scriptor
         If mode Then
             sOut = js.FullText
         Else
-            sOut = js.FullText
+            sOut = js.CommonText
         End If
         sOut &= "go" & vbCrLf
         sOut &= vbCrLf
