@@ -12,6 +12,7 @@ Module Publics
     Public Register As New ObjectRegisters
     Public MDIParent As Object
 
+    Private sSystems As String = ""
     Private SystemKey As String
     Private ImageKey As String = ""
     Private Variables As New Hashtable
@@ -25,51 +26,99 @@ Module Publics
     Public inInit As Boolean = True
     Private Ab As System.Windows.Forms.Form
     Private Missing As Image
+    Private PropParm As ShellParameters
 
     Public Function InitialiseApp(ByRef objStartup As MainMenu) As Boolean
         Dim b As Boolean = False
+        Dim i As Integer
         Dim bMDI As Boolean = False
+        Dim dom As New Xml.XmlDocument
+        Dim x As Xml.XmlElement
+        Dim x1 As Xml.XmlElement
         Dim sFile As String
+        Dim sDefault As String = ""
         Dim ar As New System.Configuration.AppSettingsReader
 
         Missing = Image.FromStream(System.Reflection.Assembly.GetExecutingAssembly.GetManifestResourceStream("AppShell.missing.gif"))
-
         SystemKey = GetCommandParameter("-k")
-        If SystemKey = "" Then
-            SystemKey = ar.GetValue("default", SystemKey.GetType).ToString
-        End If
         BusinessDate = Today()
 
         Dim names As String() = ConfigurationManager.AppSettings.AllKeys
         Dim appStgs As NameValueCollection = ConfigurationManager.AppSettings
-        Dim i As Integer
         For i = 0 To appStgs.Count - 1
             Select Case LCase(names(i))
-                Case LCase(SystemKey) & "mdi"
-                    bMDI = True
+                Case "systems"
+                    sSystems = appStgs(i)
+                Case "imagepath"
+                    sImagePath = appStgs(i)
+                Case "helppath"
+                    sHelpPath = appStgs(i)
+                Case "mdi"
                     If LCase(appStgs(i)) = "y" Then
                         IsMDI = True
                     End If
-                Case LCase(SystemKey) & "imagekey"
-                    ImageKey = appStgs(i)
-                Case LCase(SystemKey) & "imagepath"
-                    sImagePath = appStgs(i)
-                Case LCase(SystemKey) & "helppath"
-                    sHelpPath = appStgs(i)
-                Case "mdi"
-                    If LCase(appStgs(i)) = "y" And Not bMDI Then
-                        IsMDI = True
-                    End If
-                Case "imagepath"
-                    If sImagePath = "" Then
-                        sImagePath = appStgs(i)
-                    End If
-                Case "helppath"
-                    If sHelpPath = "" Then
-                        sHelpPath = appStgs(i)
-                    End If
             End Select
         Next
+        dom = GetConfigXML(sSystems)
+        If Not dom Is Nothing Then
+            For Each x In dom.DocumentElement.ChildNodes
+                Select Case x.Name
+                    Case "defaults"
+                        For Each x1 In x.ChildNodes
+                            Select Case x1.Name
+                                Case "default"
+                                    sDefault = GetAttribute(x1.Attributes, "value")
+                                    If LCase(SystemKey) = "default" Then
+                                        SystemKey = sDefault
+                                    End If
+                                Case "imagepath"
+                                    sImagePath = GetAttribute(x1.Attributes, "value")
+                                Case "helppath"
+                                    sHelpPath = GetAttribute(x1.Attributes, "value")
+                            End Select
+                        Next
+                    Case "systems"
+                        For Each x1 In x.ChildNodes
+                            If GetAttribute(x1.Attributes, "name") = sDefault Then
+                                For Each a As Xml.XmlAttribute In x1.Attributes
+                                    Select Case LCase(a.Name)
+                                        Case "imagekey"
+                                            ImageKey = a.InnerText
+                                        Case "imagepath"
+                                            sImagePath = a.InnerText
+                                        Case "helppath"
+                                            sHelpPath = a.InnerText
+                                        Case "mdi"
+                                            If LCase(a.InnerText) = "y" Then
+                                                IsMDI = True
+                                            End If
+                                    End Select
+                                Next
+                            End If
+                        Next
+                End Select
+            Next
+            If SystemKey = "" Then
+                SystemKey = sDefault
+            End If
+        Else
+            sDefault = GetString(ar.GetValue("default", SystemKey.GetType))
+            If SystemKey = "" Or LCase(SystemKey) = "default" Then
+                SystemKey = sDefault
+            End If
+
+            For i = 0 To appStgs.Count - 1
+                Select Case LCase(names(i))
+                    Case LCase(SystemKey) & "imagekey"
+                        ImageKey = appStgs(i)
+                    Case LCase(SystemKey) & "imagepath"
+                        sImagePath = appStgs(i)
+                    Case LCase(SystemKey) & "helppath"
+                        sHelpPath = appStgs(i)
+                End Select
+            Next
+        End If
+
         If ImageKey = "" Then
             ImageKey = SystemKey
         End If
@@ -97,6 +146,32 @@ Module Publics
             End Try
         End If
         Return b
+    End Function
+
+    Private Function GetConfigXML(ByVal sFile As String) As Xml.XmlDocument
+        Dim dom As New Xml.XmlDocument
+
+        Try
+            dom.Load(sFile)
+            If dom.DocumentElement.Name = "roboshell" Then
+                Return dom
+            End If
+        Catch ex As Exception
+            dom = Nothing
+        End Try
+        Return Nothing
+    End Function
+
+    Public Function GetAttribute(ByVal Attribs As Xml.XmlAttributeCollection, ByVal Name As String) As String
+        Dim s As String = ""
+        Dim x As Xml.XmlAttribute
+
+        For Each x In Attribs
+            If x.Name = Name Then
+                Return x.InnerText
+            End If
+        Next
+        Return s
     End Function
 
     Public Function GetCommandParameter(ByRef sSwitch As String, _
@@ -681,18 +756,36 @@ Module Publics
 
     Public Function GetConnectString(ByVal sName As String) As String
         Dim s As String
+        Dim dom As New Xml.XmlDocument
+        Dim x As Xml.XmlElement
+        Dim x1 As Xml.XmlElement
+
         If LCase(sName) = "default" Or sName = "" Then
             s = SystemKey
         Else
             s = sName
         End If
 
-        Dim settings As System.Configuration.ConnectionStringSettingsCollection = _
-            ConfigurationManager.ConnectionStrings
+        dom = GetConfigXML(sSystems)
+        If Not dom Is Nothing Then
+            For Each x In dom.DocumentElement.ChildNodes
+                If x.Name = "connections" Then
+                    For Each x1 In x.ChildNodes
+                        If GetAttribute(x1.Attributes, "name") = s Then
+                            Return GetAttribute(x1.Attributes, "connect")
+                        End If
+                    Next
+                End If
+            Next
+        Else
+            Dim settings As System.Configuration.ConnectionStringSettingsCollection = _
+                ConfigurationManager.ConnectionStrings
 
-        If Not settings Is Nothing Then
-            Return settings.Item(s).ConnectionString
+            If Not settings Is Nothing Then
+                Return settings.Item(s).ConnectionString
+            End If
         End If
+
         Return ""
     End Function
 
@@ -807,8 +900,6 @@ Module Publics
 
     Public Sub SaveProperty(ByVal ObjectName As String, _
                     ByVal PropertyName As String, ByVal PropertyType As String, ByVal Value As String)
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
 
         Try
             Dim td As ObjectDefn = CType(Objects.Item(ObjectName), ObjectDefn)
@@ -825,17 +916,17 @@ Module Publics
                 p.Value = Value
             End If
 
-            psConn = New SqlConnection(Publics.GetConnectString("Default"))
-            psConn.Open()
-            psAdapt = New SqlDataAdapter("shlUserPropertyAlter", psConn)
-            psAdapt.SelectCommand.CommandType = CommandType.StoredProcedure
-            SqlCommandBuilder.DeriveParameters(psAdapt.SelectCommand)
-            psAdapt.SelectCommand.Parameters("@ObjectName").Value = ObjectName
-            psAdapt.SelectCommand.Parameters("@PropertyName").Value = PropertyName
-            psAdapt.SelectCommand.Parameters("@PropertyType").Value = PropertyType
-            psAdapt.SelectCommand.Parameters("@Value").Value = Value
-            psAdapt.SelectCommand.ExecuteNonQuery()
-            psConn.Close()
+            If PropParm Is Nothing Then
+                Dim xd As ObjectDefn = CType(Objects.Item("shlUserPropertyAlter"), ObjectDefn)
+                PropParm = New ShellParameters
+                xd.Parms.Clone(PropParm)
+            End If
+
+            PropParm.Item("ObjectName").Value = ObjectName
+            PropParm.Item("PropertyName").Value = PropertyName
+            PropParm.Item("PropertyType").Value = PropertyType
+            PropParm.Item("Value").Value = Value
+            Dim pr As New ShellProcess("shluserpropertyalter", Nothing, PropParm)
 
         Catch ex As Exception
             MessageOut(ex.Message, "C")

@@ -88,4 +88,7 @@ proc.shlMailToInsert.sql
 proc.shlFileOpenInsert.sql
 proc.shlDirectoryInsert.sql
 
+config.shlUserPropertyAlter.sql
+
 {scl=SecurityAdmin\SecurityAdmin.scl}
+{scl=Notifications\Notifications.scl}

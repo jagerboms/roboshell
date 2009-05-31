@@ -8,11 +8,11 @@ Imports System.Runtime.InteropServices
 
 ' Review the values of the assembly attributes
 
-<Assembly: AssemblyTitle("AppShell")> 
-<Assembly: AssemblyDescription("Application shell")> 
+<Assembly: AssemblyTitle("RoboShell")> 
+<Assembly: AssemblyDescription("RoboShell Application Runner")> 
 <Assembly: AssemblyCompany("Tolbeam Pty Limited")> 
-<Assembly: AssemblyProduct("")> 
-<Assembly: AssemblyCopyright("Tolbeam Pty Limited")> 
+<Assembly: AssemblyProduct("RoboShell")> 
+<Assembly: AssemblyCopyright("Russell Hansen, Tolbeam Pty Limited")> 
 <Assembly: AssemblyTrademark("")> 
 <Assembly: CLSCompliant(True)> 
 
@@ -29,6 +29,6 @@ Imports System.Runtime.InteropServices
 ' You can specify all the values or you can default the Build and Revision Numbers 
 ' by using the '*' as shown below:
 
-<Assembly: AssemblyVersion("1.0.*")> 
+<Assembly: AssemblyVersion("1.1.*")> 
 
 <Assembly: ComVisibleAttribute(False)> 

@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<roboshell>
+  <defaults>
+    <default value="roboshell" />
+    <imagepath value=".\image" />
+    <helppath value=".\help" />
+  </defaults>
+
+  <systems>
+    <system name="roboshell" description="Roboshell" helppath=".\help-roboshell" />
+  </systems>
+
+  <connections>
+    <connect name="roboshell" connect="server=(local);database=roboShell;Integrated Security=SSPI" providerName="System.Data.SqlClient" />
+  </connections>
+</roboshell>
