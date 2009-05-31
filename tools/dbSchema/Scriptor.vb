@@ -74,20 +74,22 @@ Module Scriptor
                 Console.WriteLine("     is ignored except when a UserID is provided.")
                 Console.WriteLine("")
                 Console.WriteLine("   -tType is the type of object to retrieve. If not provided all")
-                Console.WriteLine("     types except jobs are returned. Can be one of:")
+                Console.WriteLine("     types except jobs and data are returned. Can be one of:")
                 Console.WriteLine("      P - stored procedure        U - user table")
                 Console.WriteLine("      F - user defined function   V - view")
-                Console.WriteLine("      J - job")
+                Console.WriteLine("      J - job                     D - data")
                 Console.WriteLine("")
                 Console.WriteLine("   -oObject is the like object name to retrieve. If not provided")
                 Console.WriteLine("     all objects are retrieved. This performs a database 'like'")
                 Console.WriteLine("     operation so wildcard in the name are supported.")
+                Console.WriteLine("     When the type is 'D' the object parameter contains the table")
+                Console.WriteLine("     the data to be scripted.")
                 Console.WriteLine("")
                 Console.WriteLine("   -f full text switch. If provided the scripts are include")
                 Console.WriteLine("     existance checks and table components like indexes are")
                 Console.WriteLine("     created in separate files.")
                 Console.WriteLine("")
-                Console.WriteLine("   -c ignore constraint name switch. If provided constraint")
+                Console.WriteLine("   -c ignore constraint name switch. If provided")
                 Console.WriteLine("     names are not included in the generated scripts.")
                 Console.WriteLine("")
                 Console.WriteLine("   -? displays the usage details on the console.")
@@ -137,6 +139,8 @@ Module Scriptor
 
             If Mid(LCase(sType), 1, 1) = "j" Then
                 ProcessJobs(Database)
+            ElseIf Mid(LCase(sType), 1, 1) = "d" Then
+                ProcessData(Database, sObject)
             ElseIf Database = "*" Then
                 ProcessAllDBs()
             Else
@@ -214,6 +218,21 @@ Module Scriptor
         PutFile("job." & s & ".sql", sOut)
         Return 0
     End Function
+
+    Sub ProcessData(ByVal Database As String, ByVal Table As String)
+        Dim sOut As String = ""
+
+        Try
+            Connect = GetConnectString(Database)
+            Dim tdefn As New TableColumns(Table, Connect, True)
+            sOut = tdefn.DataScript("")
+            sOut &= vbCrLf & "go" & vbCrLf
+            PutFile("data." & Table & ".sql", sOut)
+
+        Catch ex As Exception
+            Console.WriteLine(ex.ToString)
+        End Try
+    End Sub
 
     Sub ProcessAllDBs()
         Dim s As String

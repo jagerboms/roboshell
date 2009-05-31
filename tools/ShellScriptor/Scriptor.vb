@@ -519,15 +519,15 @@ Module Scriptor
                         Select Case files.Name
                             Case "tabledefn"
                                 Table(files)
+                            Case "tableauditdefn"
+                                TableAudit(files)
+                            Case "staticdata"
+                                Data(files)
 
                             Case "storedproc"
                                 SProc(files)
-
                             Case "storedprocconfig"
                                 SProcConfig(files)
-
-                            Case "tableauditdefn"
-                                TableAudit(files)
 
                             Case "moduledefn"
                                 ModuleDefn(files)
@@ -764,6 +764,47 @@ Module Scriptor
         sOut &= Footer()
 
         PutFile("proc." & sName & "Insert.sql", sOut)
+        Return 0
+    End Function
+
+    Private Function Data(ByVal files As Xml.XmlElement) As Integer
+        Dim sTable As String = ""
+        Dim sFilter As String = ""
+        Dim sName As String = ""
+        Dim tc As TableColumn
+        Dim dt As DataTable
+        Dim sOut As String
+        Dim sHead As String
+        Dim sTail As String
+        Dim s As String
+        Dim i As Integer
+        Dim ss As String = ""
+
+        For Each a As Xml.XmlAttribute In files.Attributes
+            Select Case a.Name
+                Case "table"
+                    sTable = a.InnerText
+                Case "filter"
+                    sFilter = a.InnerText
+                Case "filename"
+                    sName = a.InnerText
+            End Select
+        Next
+
+        If sTable = "" Then
+            Return -1
+        End If
+
+        Dim tDefn As New TableColumns(sTable, sConnect, True)
+
+        sOut = Header("") & vbCrLf
+        sOut &= tDefn.DataScript(sFilter)
+        sOut &= Footer()
+
+        If sName = "" Then
+            sName = "data." & tDefn.TableName & ".sql"
+        End If
+        PutFile(sName, sOut)
         Return 0
     End Function
 

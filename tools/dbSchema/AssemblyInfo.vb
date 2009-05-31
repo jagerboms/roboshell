@@ -1,5 +1,3 @@
-Imports System.Resources
-
 Imports System
 Imports System.Reflection
 Imports System.Runtime.InteropServices
@@ -13,8 +11,8 @@ Imports System.Runtime.InteropServices
 <Assembly: AssemblyTitle("db Schema")> 
 <Assembly: AssemblyDescription("database schema retriever")> 
 <Assembly: AssemblyCompany("Tolbeam Pty Limited")> 
-<Assembly: AssemblyProduct("AppShell")> 
-<Assembly: AssemblyCopyright("Russell Hansen")> 
+<Assembly: AssemblyProduct("RoboShell")> 
+<Assembly: AssemblyCopyright("Russell Hansen, Tolbeam Pty Limited")> 
 <Assembly: AssemblyTrademark("")> 
 <Assembly: CLSCompliant(True)> 
 
@@ -31,7 +29,6 @@ Imports System.Runtime.InteropServices
 ' You can specify all the values or you can default the Build and Revision Numbers 
 ' by using the '*' as shown below:
 
-<Assembly: AssemblyVersion("1.3.*")> 
+<Assembly: AssemblyVersion("1.4.*")> 
 
 <Assembly: ComVisibleAttribute(False)> 
-<Assembly: NeutralResourcesLanguageAttribute("")> 
