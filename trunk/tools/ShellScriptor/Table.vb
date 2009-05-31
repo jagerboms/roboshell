@@ -18,6 +18,26 @@ Public Class TableColumn
     Public Descend As Boolean = False
     Public Identity As Boolean = False
     Public vbType As String
+
+    Public Function DataFormat(ByVal Value As Object) As String
+        Dim s As String
+        If IsDBNull(Value) Then
+            s = "null"
+        Else
+            Select Case vbType
+                Case "string"
+                    s = "'" & Value.ToString & "'"
+                Case "datetime"
+                    s = "'" & Format(Value.ToString, "d-MMM-yyyy hh:mm:ss tt") & "'"
+                Case "date"
+                    s = "'" & Format(Value.ToString, "d-MMM-yyyy") & "'"
+                Case Else
+                    s = Value.ToString
+            End Select
+        End If
+        Return s
+    End Function
+
 End Class
 
 Public Class TableColumns
@@ -73,6 +93,7 @@ Public Class TableColumns
     Private bState As Boolean = False
     Private bConsName As Boolean = True
     Private fixdef As Boolean = False
+    Private Connect As String
 
     Private xPKeys(0) As String
     Private xFKeys(0) As String
@@ -102,6 +123,7 @@ Public Class TableColumns
         Dim dr As DataRow
         Dim i As Integer
 
+        Connect = sConnect
         fixdef = bDef
         PreLoad = 2
         psConn = New SqlConnection(sConnect)
@@ -749,6 +771,86 @@ Public Class TableColumns
         Return sOut
     End Function
 
+    Public Function DataScript(ByVal sFilter As String) As String
+        Dim tc As TableColumn
+        Dim dt As DataTable
+        Dim sOut As String = ""
+        Dim sHead As String
+        Dim sTail As String
+        Dim s As String
+        Dim cols As String
+        Dim i As Integer
+        Dim ss As String = ""
+
+        If sIdentity <> "" Then
+            sOut &= "set identity_insert dbo." & sTable & " on" & vbCrLf
+            sOut &= vbCrLf
+        End If
+
+        sHead = "insert into dbo." & sTable & vbCrLf
+        sHead &= "(" & vbCrLf
+        s = "    "
+        For Each cols In Keys
+            tc = CType(Values.Item(cols), TableColumn)
+            sHead &= s & tc.Name
+            s = ", "
+        Next
+        sHead &= vbCrLf
+        sHead &= ")" & vbCrLf
+        s = "select  x."
+        For Each cols In Keys
+            tc = CType(Values.Item(cols), TableColumn)
+            sHead &= s & tc.Name & vbCrLf
+            s = "       ,x."
+        Next
+        sHead &= "from" & vbCrLf
+        sHead &= "(" & vbCrLf
+
+        sTail = ") x" & vbCrLf
+        sTail &= "left join dbo." & sTable & " a" & vbCrLf
+        s = "on      a."
+        For Each cols In xPKeys
+            tc = CType(Values.Item(cols), TableColumn)
+            If ss = "" Then ss = tc.Name
+            sTail &= s & tc.Name & " = x." & tc.Name & vbCrLf
+            s = "and     a."
+        Next
+        sTail &= "where   a." & ss & " is null" & vbCrLf
+
+        i = 0
+        dt = GetTableData(sTable, sFilter)
+        For Each r As DataRow In dt.Rows
+            If i = 0 Then
+                sOut &= sHead
+                s = "    select  "
+                For Each cols In Keys
+                    tc = CType(Values.Item(cols), TableColumn)
+                    sOut &= s & tc.DataFormat(r(tc.Name)) & " " & tc.Name & vbCrLf
+                    s = "           ,"
+                Next
+                i += 1
+            Else
+                s = "    union select "
+                For Each cols In Keys
+                    tc = CType(Values.Item(cols), TableColumn)
+                    sOut &= s & tc.DataFormat(r(tc.Name))
+                    s = ", "
+                Next
+                sOut &= vbCrLf
+                i += 1
+            End If
+            If i = 100 Then i = 0
+        Next
+
+        sOut &= sTail
+        If sIdentity <> "" Then
+            sOut &= vbCrLf
+            sOut &= "set identity_insert dbo." & sTable & " off" & vbCrLf
+        End If
+
+        Return sOut
+    End Function
+
 #Region "common functions"
     Private Function GetString(ByVal objValue As Object) As String
         If IsDBNull(objValue) Then
@@ -866,6 +968,28 @@ Public Class TableColumns
         s &= "and u2.ORDINAL_POSITION = u1.ORDINAL_POSITION "
         s &= "where u1.TABLE_NAME = '" & sTableName & "' "
         s &= "order by 1, 2"
+
+        psAdapt = New SqlDataAdapter(s, psConn)
+        psAdapt.SelectCommand.CommandType = CommandType.Text
+        psAdapt.Fill(TableDetails)
+
+        Return TableDetails.Tables(0)
+    End Function
+
+    Private Function GetTableData(ByVal sTable As String, ByVal sFilter As String) As DataTable
+        Dim s As String = ""
+        Dim psConn As SqlConnection
+        Dim psAdapt As SqlDataAdapter
+        Dim TableDetails As New DataSet
+
+        psConn = New SqlConnection(Connect)
+        AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
+        psConn.Open()
+
+        s = "select * from dbo." & sTable
+        If sFilter <> "" Then
+            s &= " where " & sFilter
+        End If
 
         psAdapt = New SqlDataAdapter(s, psConn)
         psAdapt.SelectCommand.CommandType = CommandType.Text
