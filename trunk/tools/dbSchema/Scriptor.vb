@@ -92,6 +92,8 @@ Module Scriptor
                 Console.WriteLine("   -c ignore constraint name switch. If provided")
                 Console.WriteLine("     names are not included in the generated scripts.")
                 Console.WriteLine("")
+                Console.WriteLine("   -w where clause filter for data scripting. eg. -w""Status<>'dl'""")
+                Console.WriteLine("")
                 Console.WriteLine("   -? displays the usage details on the console.")
                 Console.WriteLine("")
                 Console.WriteLine("   -l displays licence details on the console.")
@@ -221,11 +223,13 @@ Module Scriptor
 
     Sub ProcessData(ByVal Database As String, ByVal Table As String)
         Dim sOut As String = ""
+        Dim s As String
 
         Try
             Connect = GetConnectString(Database)
+            s = GetCommandParameter("-w")
             Dim tdefn As New TableColumns(Table, Connect, True)
-            sOut = tdefn.DataScript("")
+            sOut = tdefn.DataScript(s)
             sOut &= vbCrLf & "go" & vbCrLf
             PutFile("data." & Table & ".sql", sOut)
 
