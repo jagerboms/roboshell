@@ -176,12 +176,12 @@ Module Scriptor
             AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
             psConn.Open()
 
-            s = "select job_id "
-            s &= "from dbo.sysjobs "
+            s = "select job_id"
+            s &= " from dbo.sysjobs"
             If sObject <> "" Then
-                s &= "and name like '" & sObject & "' "
+                s &= " where name like '" & sObject & "'"
             End If
-            s &= "order by name"
+            s &= " order by name"
 
             psAdapt = New SqlDataAdapter(s, psConn)
             psAdapt.SelectCommand.CommandType = CommandType.Text
