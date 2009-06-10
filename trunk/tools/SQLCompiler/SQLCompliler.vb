@@ -235,6 +235,8 @@ Public Class SQLCompliler
     Private Sub AddNode(ByVal File As String, ByVal Type As String, ByVal Source As String)
         Dim s As String
         Dim st As String
+        Dim sErr As String
+        Dim b As Boolean = False
         Dim sql As SQLFile
         Dim co As Connect
 
@@ -245,36 +247,40 @@ Public Class SQLCompliler
         If CurrentNode Is Nothing Then
             If DataBase = "" Then
                 s = "no database"
-                st = "DBE"
-                dbSource = "not defined"
+                st = "U"
+                dbSource = "missing"
+                sErr = "No database key defined."
                 badDB = True
             Else
                 s = DataBase
                 co = Cons.Item(DataBase)
                 If co Is Nothing Then
-                    st = "DBE"
+                    st = "E"
+                    sErr = "The provided database key was not found in the configuration file."
                     badDB = True
                 Else
+                    b = True
                     If co.State = "OK" Then
-                        st = "DB"
+                        st = "C"
                     Else
-                        st = "DBE"
+                        st = "E"
                         badDB = True
                     End If
+                    sErr = co.ErrorText
                 End If
             End If
-            sql = Files.Add(s, st, dbSource)
+            sql = Files.Add(s, dbSource, b, st, sErr)
             CurrentNode = sql.Node
-            sql = Nothing
+            Sql = Nothing
             Me.TreeView1.Nodes.Add(CurrentNode)
             CurrentDB = DataBase
         End If
 
-        sql = Files.Add(File, Type, Source)
-        If Not sql.Exists Then
+        Sql = Files.Add(File, Type, Source)
+        If Not Sql.Exists Then
             hasMissing = True
         End If
-        CurrentNode.Nodes.Add(sql.Node)
+        CurrentNode.Nodes.Add(Sql.Node)
     End Sub
 
     Private Sub TSStart_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TSStart.Click

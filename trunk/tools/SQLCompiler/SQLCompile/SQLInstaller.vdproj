@@ -132,7 +132,7 @@
                     {
                     "Command" = "8:&Open"
                     "Verb" = "8:open"
-                    "Arguments" = "8:\"-f%1\""
+                    "Arguments" = "8:-f\"%1\""
                     "Order" = "3:0"
                     }
                 }
