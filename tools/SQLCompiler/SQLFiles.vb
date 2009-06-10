@@ -37,10 +37,23 @@ Public Class SQLFile
         End Select
 
         If Not bExists Then
-            sResults = "File [" & File & "] does not exist."
+            sResults = "File '" & File & "' does not exist."
         End If
 
         bExists = Exists
+        nNode = New TreeNode(Me.Name)
+        nNode.Tag = File
+        SetNode()
+    End Sub
+
+    Public Sub New(ByVal File As String, ByVal Source As String, ByVal Exists As Boolean, ByVal State As String, ByVal sError As String)
+        sFile = File
+        sFileType = "DB"
+        sSource = Source
+        bExists = Exists
+        sState = State
+        sResults = sError
+
         nNode = New TreeNode(Me.Name)
         nNode.Tag = File
         SetNode()
@@ -111,15 +124,20 @@ Public Class SQLFile
 
         Select Case sFileType
             Case "DB"
-                If bExists Then
-                    nNode.ImageIndex = 1
-                    nNode.SelectedImageIndex = 1
-                    nNode.ForeColor = Drawing.Color.DarkGreen
-                Else
-                    nNode.ImageIndex = 2
-                    nNode.SelectedImageIndex = 2
-                    nNode.ForeColor = Drawing.Color.DarkRed
-                End If
+                Select Case sState
+                    Case "C"
+                        nNode.ImageIndex = 1
+                        nNode.SelectedImageIndex = 1
+                        nNode.ForeColor = Drawing.Color.DarkGreen
+                    Case "E"
+                        nNode.ImageIndex = 2
+                        nNode.SelectedImageIndex = 2
+                        nNode.ForeColor = Drawing.Color.DarkRed
+                    Case Else
+                        nNode.ImageIndex = 0
+                        nNode.SelectedImageIndex = 0
+                        nNode.ForeColor = Drawing.Color.Navy
+                End Select
             Case "SCL"
                 nNode.ImageIndex = 3
                 nNode.SelectedImageIndex = 3
@@ -211,6 +229,13 @@ Public Class SQLFiles
 
     Public Function Add(ByVal File As String, ByVal Type As String, ByVal Source As String) As SQLFile
         Dim parm As New SQLFile(File, Type, Source)
+        Values.Add(File, parm)
+        Keys.Add(File)
+        Return CType(Values.Item(File), SQLFile)
+    End Function
+
+    Public Function Add(ByVal File As String, ByVal Source As String, ByVal Exists As Boolean, ByVal State As String, ByVal sError As String) As SQLFile
+        Dim parm As New SQLFile(File, Source, Exists, State, sError)
         Values.Add(File, parm)
         Keys.Add(File)
         Return CType(Values.Item(File), SQLFile)

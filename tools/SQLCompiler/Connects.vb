@@ -8,6 +8,7 @@ Public Class Connect
     Private sConnectString As String
     Private sProvider As String
     Private sState As String = "U"
+    Private sErr As String = ""
 
     Public Sub New(ByVal Name As String, ByVal ConnectString As String, ByVal Provider As String)
         sName = Name
@@ -40,6 +41,12 @@ Public Class Connect
         End Get
     End Property
 
+    Public ReadOnly Property ErrorText() As String
+        Get
+            ErrorText = sErr
+        End Get
+    End Property
+
     Private Sub CheckAccess()
         Dim psConn As SqlConnection
         Dim psAdapt As SqlDataAdapter
@@ -60,13 +67,19 @@ Public Class Connect
                 If DS.Tables("data").Rows.Count > 0 Then
                     If DS.Tables("data").Rows(0).Item(0).ToString = "1" Then
                         sState = "OK"
+                    Else
+                        sErr &= "The user has insufficient privileges to run SQL compiler in the database." & vbCrLf
                     End If
+                Else
+                    sErr &= "Unable to determine user permissions in the database, the application cannot run with these credentials." & vbCrLf
                 End If
+            Else
+                sErr &= "Failed to connect to the database, the application cannot run with these credentials." & vbCrLf
             End If
             psConn.Close()
 
         Catch ex As Exception
-            Dim i As Integer = 9
+            sErr &= ex.Message & vbCrLf
         End Try
         If sState <> "OK" Then
             sState = "Error"
