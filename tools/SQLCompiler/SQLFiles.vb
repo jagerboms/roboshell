@@ -20,10 +20,6 @@ Public Class SQLFile
         Select Case FileType
             Case "SQL", "DB"
                 bExists = True
-            Case "DBE"
-                sFileType = "DB"
-                bExists = False
-                sState = "E"
             Case "SCL"
                 bExists = False
                 sState = "E"

@@ -233,10 +233,12 @@
   </data>
   <data name="TSRefresh.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
-        iVBORw0KGgoAAAANSUhEUgAAAAwAAAAPCAYAAADQ4S5JAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
-        YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAGpJREFUKFOtUlsO
-        wCAIw5t7c+cLJlhgHyMxIUjLoxRiq9TER06l8oZ7cmYkhE7ySLC2QAHA/l2AGQCPKykAZDPVQ8DZP5P9
-        B0DtjYpwSzx02pIwfN2SWl2kjacoOpX0POwc+iYdlUX5nf0A2jnd1BXONegAAAAASUVORK5CYII=
+        iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
+        YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAM9JREFUOE+lk4sN
+        gCAMRNmpO7ETO7mT9lqOjxRiogkBtNffqyl9eHLJN9YH09gEYslydlAujcJVxM/Ya3Tct07cON/lKm3H
+        2e76jbuVkdOcCSNToDITzMudiGa0ZIE04WSMyJopaPeoD6zbHXjd7yiiaW/rRxSKwhQVjIklWX+aPQLp
+        StNLNTQDK2nlTipj0BA8EY4fKWpUdrMx9oQzALE3eka6EhnmoWPsIs4J5yFA2nGus+BDdkSKmtlEI1OR
+        +l5RnpCyad6wH3/fbh4iZA8LVlEkgb46SgAAAABJRU5ErkJggg==
 </value>
   </data>
   <data name="TSView.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
