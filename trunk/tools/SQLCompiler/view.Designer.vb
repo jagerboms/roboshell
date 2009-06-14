@@ -20,7 +20,7 @@ Partial Class view
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(view))
-        Me.Output = New System.Windows.Forms.TextBox
+        Me.Output = New System.Windows.Forms.RichTextBox
         Me.SuspendLayout()
         '
         'Output
@@ -48,5 +48,5 @@ Partial Class view
         Me.PerformLayout()
 
     End Sub
-    Friend WithEvents Output As System.Windows.Forms.TextBox
+    Friend WithEvents Output As System.Windows.Forms.RichTextBox
 End Class

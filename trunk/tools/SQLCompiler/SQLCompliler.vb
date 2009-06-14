@@ -53,63 +53,110 @@ Public Class SQLCompliler
         LoadFile()
     End Sub
 
-    Private Sub cbxDatabases_Click(ByVal sender As System.Object, ByVal e As System.EventArgs)
-        SetButtons()
-    End Sub
-
     Private Sub TSView_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TSView.Click
         Dim vw As New view
         Dim tn As TreeNode
         Dim sql As SQLFile
         Dim c As Connect
-        Dim s As String
+        Dim sOut As String
         Dim st As String
+
+        sOut = "{\rtf1\ansi\ansicpg1252\deff0{\fonttbl{\f0\fmodern\fprq1\fcharset0 Courier New;}}{\colortbl ;\red0\green0\blue255;\red255\green0\blue0;}\viewkind4\uc1\pard \tx450\cf1\lang1033\f0\fs22 "
 
         tn = Me.TreeView1.SelectedNode
         If tn Is Nothing Then
             st = FileName
-            s = "File: " & FileName
+            sOut &= "\b File:\b0\tab " & rtfOut(FileName) & "\par "
             If Dir(FileName) = "" Then
-                s &= vbCrLf & "Error: File does not exist!"
+                sOut &= "\b Error:\b0\tab File does not exist!\par "
             End If
         Else
+            st = tn.Tag.ToString
+            sql = Files.Item(st)
             st = tn.Text
-            s = tn.Tag.ToString
-            sql = Files.Item(s)
             If sql Is Nothing Then
-                s = "Object: " & s
-                s &= vbCrLf & "Error: Cannot find object!"
+                sOut &= "\b Object:\b0\tab " & rtfOut(st) & "\par "
+                sOut &= "\b Error:\b0\tab Cannot find object!\par "
             Else
                 Select Case sql.FileType
                     Case "DB"
-                        s = "Database: " & sql.Name
+                        sOut &= "\b Database:\b0\tab " & rtfOut(sql.Name) & "\par "
                         c = Cons.Item(sql.Name)
                         If Not c Is Nothing Then
-                            s &= vbCrLf & "Connect String: " & c.ConnectString
-                            s &= vbCrLf & "Provider: " & c.Provider
+                            sOut &= "\b Connect:\b0\tab " & rtfOut(c.ConnectString) & "\par "
+                            sOut &= "\b Provider:\b0\tab " & rtfOut(c.Provider) & "\par "
                         End If
 
                     Case "SCL"
-                        s = "SCL File: " & sql.Name
+                        sOut &= "\b SCL File:\b0\tab " & rtfOut(sql.Name) & "\par "
 
                     Case "FILE"
-                        s = "SQL File: " & sql.Name
+                        sOut &= "\b SQL File:\b0\tab " & rtfOut(sql.Name) & "\par "
 
                     Case "SQL"
-                        s = "SQL Text: " & sql.File
+                        sOut &= "\b SQL Text:\b0\tab " & rtfOut(sql.File) & "\par "
 
                     Case Else
-                        s = "Unknown Type: " & sql.FileType
-                        s &= vbCrLf & sql.File
+                        sOut &= "\b Unknown Type:\b0\tab " & rtfOut(sql.FileType) & "\par "
+                        sOut &= "\b Name:\b0\tab " & rtfOut(sql.File) & "\par "
 
                 End Select
-                s &= vbCrLf & sql.Results
+                If sql.Results <> "" Then
+                    If sql.State = "E" Then
+                        sOut &= "\b Error"
+                    Else
+                        sOut &= "\b Output"
+                    End If
+                    sOut &= ":\b0\par " & rtfOut(sql.Results) & " \par "
+                End If
             End If
         End If
         vw.Text = sTitle & " " & st
-        vw.Output.Text = s
-        vw.Output.SelectionStart = Len(s)
+        sOut &= " }"
+        vw.Output.Rtf = sOut
+        vw.Output.BackColor = Drawing.Color.White
         vw.Show()
+    End Sub
+
+    Private Sub TSStart_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TSStart.Click
+        Dim bDBOK As Boolean = False
+
+        If hasMissing Then
+            If MsgBox("There are missing files, are you sure you wish to continue?", MsgBoxStyle.Question Or MsgBoxStyle.YesNo) = MsgBoxResult.No Then
+                Exit Sub
+            End If
+        End If
+
+        RunState = 9
+        SetButtons()
+        For Each sql As SQLFile In Files
+            Select Case sql.FileType
+                Case "DB"
+                    If sql.State <> "E" Then
+                        DataBase = sql.Name
+                        bDBOK = True
+                    Else
+                        bDBOK = False
+                    End If
+                Case "SQL"
+                    If bDBOK And sql.State = "U" Then
+                        CompileIt(sql.File)
+                    End If
+                Case "FILE"
+                    If bDBOK And sql.State = "U" Then
+                        sResult = ""
+                        If CompileFile(sql.File) Then
+                            sql.State = "C"
+                        Else
+                            sql.State = "E"
+                        End If
+                        sql.Results = sResult
+                    End If
+            End Select
+            Application.DoEvents()
+        Next
+        RunState = 2
+        SetButtons()
     End Sub
 
     Private Sub TSLicence_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TSLicence.Click
@@ -123,8 +170,10 @@ Public Class SQLCompliler
         s = file.ReadToEnd
         vw.Text = sTitle & " Licencing"
         vw.Output.Text = s
-        vw.Output.ScrollBars = ScrollBars.Vertical
-        vw.Output.SelectionStart = Len(s)
+        vw.Output.BackColor = Drawing.Color.White
+        vw.Output.ScrollBars = RichTextBoxScrollBars.Vertical
+        vw.Width = 400
+        vw.Height = 500
         vw.Show()
     End Sub
 
@@ -225,7 +274,7 @@ Public Class SQLCompliler
             RunState = 1
 
         Catch ex As Exception
-            MsgBox(ex.ToString)
+            AddNodeError(sList, "FILE", sList, ex.Message)
         End Try
 
         Environment.CurrentDirectory = sPWD
@@ -233,6 +282,10 @@ Public Class SQLCompliler
     End Sub
 
     Private Sub AddNode(ByVal File As String, ByVal Type As String, ByVal Source As String)
+        AddNodeError(File, Type, Source, "")
+    End Sub
+
+    Private Sub AddNodeError(ByVal File As String, ByVal Type As String, ByVal Source As String, ByVal sResult As String)
         Dim s As String
         Dim st As String
         Dim sErr As String
@@ -271,56 +324,19 @@ Public Class SQLCompliler
             End If
             sql = Files.Add(s, dbSource, b, st, sErr)
             CurrentNode = sql.Node
-            Sql = Nothing
+            sql = Nothing
             Me.TreeView1.Nodes.Add(CurrentNode)
             CurrentDB = DataBase
         End If
 
-        Sql = Files.Add(File, Type, Source)
-        If Not Sql.Exists Then
+        sql = Files.Add(File, Type, Source)
+        If sResult <> "" Then
+            sql.Results = sResult
+        End If
+        If Not sql.Exists Then
             hasMissing = True
         End If
-        CurrentNode.Nodes.Add(Sql.Node)
-    End Sub
-
-    Private Sub TSStart_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TSStart.Click
-        Dim bDBOK As Boolean = False
-
-        If hasMissing Then
-            If MsgBox("There are missing files, are you sure you wish to continue?", MsgBoxStyle.Question Or MsgBoxStyle.YesNo) = MsgBoxResult.No Then
-                Exit Sub
-            End If
-        End If
-
-        RunState = 9
-        SetButtons()
-        For Each sql As SQLFile In Files
-            Select Case sql.FileType
-                Case "DB"
-                    If sql.State <> "E" Then
-                        DataBase = sql.Name
-                        bDBOK = True
-                    Else
-                        bDBOK = False
-                    End If
-                Case "SQL"
-                    If bDBOK And sql.State = "U" Then
-                        CompileIt(sql.File)
-                    End If
-                Case "FILE"
-                    If bDBOK And sql.State = "U" Then
-                        sResult = ""
-                        If CompileFile(sql.File) Then
-                            sql.State = "C"
-                        Else
-                            sql.State = "E"
-                        End If
-                        sql.Results = sResult
-                    End If
-            End Select
-        Next
-        RunState = 2
-        SetButtons()
+        CurrentNode.Nodes.Add(sql.Node)
     End Sub
 
     Private Function CompileFile(ByVal sFile As String) As Boolean
@@ -517,7 +533,7 @@ Public Class SQLCompliler
     Private Sub psConn_InfoMessage(ByVal sender As Object, _
             ByVal e As System.Data.SqlClient.SqlInfoMessageEventArgs)
         For Each ex As SqlError In e.Errors
-            SaveOutput(ex.Message, "E")
+            SaveOutput(ex.Message, "M")
         Next
     End Sub
 
@@ -552,6 +568,19 @@ Public Class SQLCompliler
         End Select
     End Sub
 
+    Private Function rtfOut(ByVal sIn As String) As String
+        Dim s As String
+        s = Replace(sIn, "\", "\\")
+        s = Replace(s, "{", "\{")
+        s = Replace(s, "}", "\}")
+
+        s = Replace(s, "<error>", "\cf2 ")
+        s = Replace(s, "</error>", "\cf1 ")
+
+        s = Replace(s, vbCrLf, " \par ")
+        Return s
+    End Function
+
     Private Function GetCommandParameter(ByRef sSwitch As String) As String
         Dim sCommand As String
         Dim sParameter As String
@@ -580,8 +609,9 @@ Public Class SQLCompliler
 
     Private Sub SaveOutput(ByVal sMsg As String, ByVal sType As String)
         If sType = "E" Then
-            sResult &= "Error: "
+            sResult &= "<error>" & sMsg & "</error>" & vbCrLf
+        Else
+            sResult &= sMsg & vbCrLf
         End If
-        sResult &= sMsg & vbCrLf
     End Sub
 End Class
