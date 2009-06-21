@@ -43,7 +43,6 @@ Public Class StoredProc
     Inherits ShellObject
 
     Private sDefn As StoredProcDefn
-    Private spParams() As SqlParameter
 
     Public Sub New(ByVal defn As StoredProcDefn)
         sDefn = defn
@@ -65,19 +64,7 @@ Public Class StoredProc
             psConn.Open()
             psAdapt = New SqlDataAdapter(sDefn.ProcName, psConn)
             psAdapt.SelectCommand.CommandType = CommandType.StoredProcedure
-            If spParams Is Nothing Then
-                SqlCommandBuilder.DeriveParameters(psAdapt.SelectCommand)
-                ReDim spParams(psAdapt.SelectCommand.Parameters.Count)
-                i = 0
-                For Each p As SqlParameter In psAdapt.SelectCommand.Parameters
-                    spParams(i) = p
-                    i += 1
-                Next
-            Else
-                For Each p As SqlParameter In spParams
-                    psAdapt.SelectCommand.Parameters.Add(p)
-                Next
-            End If
+            SqlCommandBuilder.DeriveParameters(psAdapt.SelectCommand)
 
             For Each p As SqlParameter In psAdapt.SelectCommand.Parameters
                 If p.Direction = ParameterDirection.Input _
@@ -104,7 +91,7 @@ Public Class StoredProc
                             Me.parms.Item(s).Value = DS.Tables(i)  'place results in output parameters
                         End If
                         i += 1
-                        If DS.Tables.Count >= i Then
+                        If DS.Tables.Count <= i Then
                             Exit For
                         End If
                     Next
@@ -115,7 +102,7 @@ Public Class StoredProc
             For Each p As SqlParameter In psAdapt.SelectCommand.Parameters
                 If p.Direction = ParameterDirection.Output _
                 Or p.Direction = ParameterDirection.InputOutput Then
-                    pm = Me.Parms.Item(Mid(p.ParameterName, 2))
+                    pm = Me.parms.Item(Mid(p.ParameterName, 2))
                     If Not pm Is Nothing Then
                         If pm.Output Then
                             pm.Value = p.Value

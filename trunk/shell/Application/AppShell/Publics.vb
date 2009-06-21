@@ -31,17 +31,12 @@ Module Publics
     Public Function InitialiseApp(ByRef objStartup As MainMenu) As Boolean
         Dim b As Boolean = False
         Dim i As Integer
-        Dim bMDI As Boolean = False
-        Dim dom As New Xml.XmlDocument
-        Dim x As Xml.XmlElement
-        Dim x1 As Xml.XmlElement
+        Dim s As String
         Dim sFile As String
         Dim sDefault As String = ""
         Dim ar As New System.Configuration.AppSettingsReader
 
-        Missing = Image.FromStream(System.Reflection.Assembly.GetExecutingAssembly.GetManifestResourceStream("AppShell.missing.gif"))
         SystemKey = GetCommandParameter("-k")
-        BusinessDate = Today()
 
         Dim names As String() = ConfigurationManager.AppSettings.AllKeys
         Dim appStgs As NameValueCollection = ConfigurationManager.AppSettings
@@ -59,48 +54,9 @@ Module Publics
                     End If
             End Select
         Next
-        dom = GetConfigXML(sSystems)
-        If Not dom Is Nothing Then
-            For Each x In dom.DocumentElement.ChildNodes
-                Select Case x.Name
-                    Case "defaults"
-                        For Each x1 In x.ChildNodes
-                            Select Case x1.Name
-                                Case "default"
-                                    sDefault = GetAttribute(x1.Attributes, "value")
-                                    If LCase(SystemKey) = "default" Then
-                                        SystemKey = sDefault
-                                    End If
-                                Case "imagepath"
-                                    sImagePath = GetAttribute(x1.Attributes, "value")
-                                Case "helppath"
-                                    sHelpPath = GetAttribute(x1.Attributes, "value")
-                            End Select
-                        Next
-                    Case "systems"
-                        For Each x1 In x.ChildNodes
-                            If GetAttribute(x1.Attributes, "name") = sDefault Then
-                                For Each a As Xml.XmlAttribute In x1.Attributes
-                                    Select Case LCase(a.Name)
-                                        Case "imagekey"
-                                            ImageKey = a.InnerText
-                                        Case "imagepath"
-                                            sImagePath = a.InnerText
-                                        Case "helppath"
-                                            sHelpPath = a.InnerText
-                                        Case "mdi"
-                                            If LCase(a.InnerText) = "y" Then
-                                                IsMDI = True
-                                            End If
-                                    End Select
-                                Next
-                            End If
-                        Next
-                End Select
-            Next
-            If SystemKey = "" Then
-                SystemKey = sDefault
-            End If
+
+        If sSystems <> "" Then
+            getSystemFileParms()
         Else
             sDefault = GetString(ar.GetValue("default", SystemKey.GetType))
             If SystemKey = "" Or LCase(SystemKey) = "default" Then
@@ -119,6 +75,13 @@ Module Publics
             Next
         End If
 
+        s = GetCommandParameter("-c")
+        If s <> "" Then ImageKey = s
+        s = GetCommandParameter("-i")
+        If s <> "" Then sImagePath = s
+        s = GetCommandParameter("-h")
+        If s <> "" Then sHelpPath = s
+
         If ImageKey = "" Then
             ImageKey = SystemKey
         End If
@@ -129,13 +92,10 @@ Module Publics
             sHelpPath = "help"
         End If
 
+        Missing = Image.FromStream(System.Reflection.Assembly.GetExecutingAssembly.GetManifestResourceStream("AppShell.missing.gif"))
+        BusinessDate = Today()
         About()
         Application.DoEvents()
-
-        If GetSchema(objStartup) Then
-            b = Init(objStartup)
-        End If
-
         If Publics.ShellIcon Is Nothing Then
             sFile = GetImagePath(ImageKey & ".ico")
             Try
@@ -145,7 +105,70 @@ Module Publics
                 Publics.ShellIcon = Ab.Icon
             End Try
         End If
+
+        If GetSchema(objStartup) Then
+            b = Init(objStartup)
+        End If
         Return b
+    End Function
+
+    Public Function getSystemFileParms() As Boolean
+        Dim dom As New Xml.XmlDocument
+        Dim x As Xml.XmlElement
+        Dim x1 As Xml.XmlElement
+        Dim sDefault As String = ""
+
+        dom = GetConfigXML(sSystems)
+        If dom Is Nothing Then
+            MessageOut("System configuration file, '" & sSystems & "' not found or invalid.", "C")
+            Return False
+        End If
+
+        For Each x In dom.DocumentElement.ChildNodes
+            If x.Name = "defaults" Then
+                For Each x1 In x.ChildNodes
+                    Select Case x1.Name
+                        Case "default"
+                            sDefault = GetAttribute(x1.Attributes, "value")
+                            If SystemKey = "" Or LCase(SystemKey) = "default" Then
+                                SystemKey = sDefault
+                            End If
+                        Case "imagepath"
+                            sImagePath = GetAttribute(x1.Attributes, "value")
+                        Case "helppath"
+                            sHelpPath = GetAttribute(x1.Attributes, "value")
+                    End Select
+                Next
+            End If
+        Next
+        If SystemKey = "" Then
+            MessageOut("System key not defined.", "C")
+            Return False
+        End If
+
+        For Each x In dom.DocumentElement.ChildNodes
+            If x.Name = "systems" Then
+                For Each x1 In x.ChildNodes
+                    If GetAttribute(x1.Attributes, "name") = sDefault Then
+                        For Each a As Xml.XmlAttribute In x1.Attributes
+                            Select Case LCase(a.Name)
+                                Case "imagekey"
+                                    ImageKey = a.InnerText
+                                Case "imagepath"
+                                    sImagePath = a.InnerText
+                                Case "helppath"
+                                    sHelpPath = a.InnerText
+                                Case "mdi"
+                                    If LCase(a.InnerText) = "y" Then
+                                        IsMDI = True
+                                    End If
+                            End Select
+                        Next
+                    End If
+                Next
+            End If
+        Next
+        Return True
     End Function
 
     Private Function GetConfigXML(ByVal sFile As String) As Xml.XmlDocument
@@ -196,9 +219,7 @@ Module Publics
     End Function
 
     Private Function GetSchema(ByRef objStartup As MainMenu) As Boolean
-        Dim psConn As SqlConnection
-        Dim DS As New DataSet
-        Dim psAdapt As SqlDataAdapter
+        Dim dt As DataTable
         Dim dr As DataRow
         Dim objd As ObjectDefn
         Dim Act As ActionDefns
@@ -207,15 +228,35 @@ Module Publics
         Dim vd As ValidationDefn
         Dim i As Integer
         Dim s As String
+        Dim ProcessObject As ShellObject
 
         Try
-            psConn = New SqlConnection(Publics.GetConnectString(SystemKey))
-            psConn.Open()
-            psAdapt = New SqlDataAdapter("shlShellGet", psConn)
-            psAdapt.SelectCommand.CommandType = CommandType.StoredProcedure
-            psAdapt.Fill(DS)
+            Dim xob As New StoredProcDefn("shlShellGet")
+            xob.SetProperty("procname", "shlShellGet")
+            xob.SetProperty("connectkey", SystemKey)
+            xob.SetProperty("mode", "D")
+            xob.SetProperty("dataparameter", "Var||Proc||Obj||Prop||Parm||Act||ActR||Fld||Val||ValR||APR")
+            xob.Parms.Add("Var", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("Proc", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("Obj", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("Prop", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("Parm", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("Act", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("ActR", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("Fld", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("Val", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("ValR", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("APR", Nothing, DbType.Object, False, True, 0)
+            ProcessObject = xob.Create()
+            If Not ProcessObject Is Nothing Then
+                ProcessObject.Update(Nothing)
+                If Not ProcessObject.SuccessFlag Then
+                    Return False
+                End If
+            End If
 
-            For Each dr In DS.Tables(0).Rows        ' Variables
+            dt = CType(ProcessObject.parms.Item("Var").Value, DataTable)
+            For Each dr In dt.Rows        ' Variables
                 s = LCase(GetString(dr("VariableID")))
                 If s = "businessdate" Then
                     BusinessDate = CDate(GetString(dr("VariableValue")))
@@ -225,7 +266,8 @@ Module Publics
             Next
             Application.DoEvents()
 
-            For Each dr In DS.Tables(1).Rows        ' Processes
+            dt = CType(ProcessObject.parms.Item("Proc").Value, DataTable)
+            For Each dr In dt.Rows        ' Processes
                 Processes.Add(GetString(dr.Item("ProcessName")), _
                               GetString(dr.Item("SuccessProcess")), _
                               GetString(dr.Item("FailProcess")), _
@@ -236,7 +278,8 @@ Module Publics
                 Application.DoEvents()
             Next
 
-            For Each dr In DS.Tables(2).Rows        ' Objects
+            dt = CType(ProcessObject.parms.Item("Obj").Value, DataTable)
+            For Each dr In dt.Rows        ' Objects
                 Select Case GetString(dr.Item("ObjectType"))
                     Case "StoredProc"
                         Dim ob As New StoredProcDefn(GetString(dr.Item("ObjectName")))
@@ -285,7 +328,8 @@ Module Publics
                 Application.DoEvents()
             Next
 
-            For Each dr In DS.Tables(3).Rows        ' Properties
+            dt = CType(ProcessObject.parms.Item("Prop").Value, DataTable)
+            For Each dr In dt.Rows        ' Properties
                 objd = CType(Objects.Item(GetString(dr.Item("ObjectName"))), _
                                                                     ObjectDefn)
                 If objd Is Nothing Then
@@ -306,7 +350,8 @@ Module Publics
                 Application.DoEvents()
             Next
 
-            For Each dr In DS.Tables(4).Rows        ' Parameters
+            dt = CType(ProcessObject.parms.Item("Parm").Value, DataTable)
+            For Each dr In dt.Rows        ' Parameters
                 objd = CType(Objects.Item(GetString(dr.Item("ObjectName"))), _
                                                                     ObjectDefn)
                 If objd Is Nothing Then
@@ -336,7 +381,8 @@ Module Publics
                 Application.DoEvents()
             Next
 
-            For Each dr In DS.Tables(7).Rows        ' Fields
+            dt = CType(ProcessObject.parms.Item("Fld").Value, DataTable)
+            For Each dr In dt.Rows        ' Fields
                 objd = CType(Objects.Item(GetString(dr.Item("ObjectName"))), _
                                                                     ObjectDefn)
                 If objd Is Nothing Then
@@ -393,7 +439,8 @@ Module Publics
                 Application.DoEvents()
             Next
 
-            For Each dr In DS.Tables(5).Rows        ' Actions
+            dt = CType(ProcessObject.parms.Item("Act").Value, DataTable)
+            For Each dr In dt.Rows        ' Actions
                 s = GetString(dr.Item("ObjectName"))
                 If (CType(dr.Item("IsKey"), String) = "Y") Then
                     iKeyCode = CType(dr.Item("KeyCode"), Int32)
@@ -436,7 +483,8 @@ Module Publics
                 Application.DoEvents()
             Next
 
-            For Each dr In DS.Tables(6).Rows        ' Action Rules
+            dt = CType(ProcessObject.parms.Item("ActR").Value, DataTable)
+            For Each dr In dt.Rows        ' Action Rules
                 objd = CType(Objects.Item(GetString(dr.Item("ObjectName"))), _
                                                                     ObjectDefn)
 
@@ -495,7 +543,8 @@ Module Publics
                 Application.DoEvents()
             Next
 
-            For Each dr In DS.Tables(10).Rows        ' Action Process Rules
+            dt = CType(ProcessObject.parms.Item("APR").Value, DataTable)
+            For Each dr In dt.Rows        ' Action Process Rules
                 objd = CType(Objects.Item(GetString(dr.Item("ObjectName"))), _
                                                                     ObjectDefn)
 
@@ -523,7 +572,8 @@ Module Publics
                 Application.DoEvents()
             Next
 
-            For Each dr In DS.Tables(8).Rows        ' Validations
+            dt = CType(ProcessObject.parms.Item("Val").Value, DataTable)
+            For Each dr In dt.Rows        ' Validations
                 objd = CType(Objects.Item(GetString(dr.Item("ObjectName"))), _
                                                                     ObjectDefn)
                 If objd Is Nothing Then
@@ -577,7 +627,8 @@ Module Publics
                 Application.DoEvents()
             Next
 
-            For Each dr In DS.Tables(9).Rows        ' ValidationRules
+            dt = CType(ProcessObject.parms.Item("ValR").Value, DataTable)
+            For Each dr In dt.Rows        ' ValidationRules
                 objd = CType(Objects.Item(GetString(dr.Item("ObjectName"))), _
                                                                     ObjectDefn)
                 If objd Is Nothing Then
@@ -606,8 +657,6 @@ Module Publics
 
                 Application.DoEvents()
             Next
-
-            psConn.Close()
             Return True
 
         Catch ex As Exception
