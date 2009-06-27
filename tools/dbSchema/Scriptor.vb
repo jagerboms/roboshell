@@ -1,6 +1,7 @@
 Option Explicit On
 Option Strict On
 
+#Region "copyright Russell Hansen, Tolbeam Pty Limited"
 'dbSchema is free software issued as open source;
 ' you can redistribute it and/or modify it under the terms of the
 ' GNU General Public License version 2 as published by the Free Software Foundation.
@@ -14,6 +15,7 @@ Option Strict On
 '   59 Temple Place,
 '   Suite 330,
 '   Boston, MA 02111-1307 USA. 
+#End Region
 
 Imports System.Data.SqlClient
 Imports System.Configuration
@@ -32,95 +34,110 @@ Module Scriptor
     Dim ConsName As Boolean = True
     Dim sObject As String = ""
     Dim mode As Boolean
+    Dim LogFile As String = ""
+    Dim verbose As Boolean = False
 
     Sub main()
-        Dim i As Integer
         Dim fv As System.Diagnostics.FileVersionInfo
         Dim Database As String = ""
+        Dim s As String
 
         Try
+            LogFile = GetCommandParameter("-g")
+            verbose = GetSwitch("-v")
+            If LogFile <> "" Then
+                LogFile = System.IO.Path.Combine(Environment.CurrentDirectory, LogFile)
+            End If
             fv = System.Diagnostics.FileVersionInfo.GetVersionInfo( _
                         System.Reflection.Assembly.GetExecutingAssembly.Location)
 
-            Console.WriteLine("dbSchema (version " & fv.FileVersion & ")")
-            Console.WriteLine("Copyright 2009 Russell Hansen, Tolbeam Pty Limited")
-            Console.WriteLine("")
-            Console.WriteLine("dbSchema comes with ABSOLUTELY NO WARRANTY;")
-            Console.WriteLine("for details see the -l option.")
-            Console.WriteLine("This is free software, and you are welcome")
-            Console.WriteLine("to redistribute it under certain conditions")
-            Console.WriteLine("described in the GNU General Public License")
-            Console.WriteLine("version 2.")
+            SendMessage("dbSchema (version " & fv.FileVersion & ")", "H")
+            SendMessage("Copyright 2009 Russell Hansen, Tolbeam Pty Limited", "T")
+            SendMessage("", "T")
+            SendMessage("dbSchema comes with ABSOLUTELY NO WARRANTY;", "N")
+            SendMessage("for details see the -l option.", "N")
+            SendMessage("This is free software, and you are welcome", "N")
+            SendMessage("to redistribute it under certain conditions", "N")
+            SendMessage("described in the GNU General Public License", "N")
+            SendMessage("version 2.", "N")
+            SendMessage("", "N")
 
             If GetSwitch("-?") Then
-                Console.WriteLine("")
-                Console.WriteLine("usage: dbSchema [-sServer] [-dDatabase] [-uUserID [-pPassword]] [-tType] [-oObject] [-f] [-c] [-?] [-l]")
-                Console.WriteLine(" where:")
-                Console.WriteLine("   -sServer is the name of the SQL server to access.")
-                Console.WriteLine("     provided the local machine is used.")
-                Console.WriteLine("")
-                Console.WriteLine("   -dDatabase is the name of the database to access.")
-                Console.WriteLine("     If not provided either the master database or for job types")
-                Console.WriteLine("     the msdb database is used.")
-                Console.WriteLine("     Use an asterisk * to extract from all the databases on the")
-                Console.WriteLine("     Server. The data is extracted into a directory with the database")
-                Console.WriteLine("     name. If the directory does not exist it will be created, otherwise")
-                Console.WriteLine("     the contents are moved to a backup directory.")
-                Console.WriteLine("")
-                Console.WriteLine("   -uUserID is the name of the user for database access. If not")
-                Console.WriteLine("     provided a Trusted Connection is made.")
-                Console.WriteLine("")
-                Console.WriteLine("   -pPassword is the user password for database access. This parameter")
-                Console.WriteLine("     is ignored except when a UserID is provided.")
-                Console.WriteLine("")
-                Console.WriteLine("   -tType is the type of object to retrieve. If not provided all")
-                Console.WriteLine("     types except jobs and data are returned. Can be one of:")
-                Console.WriteLine("      P - stored procedure        U - user table")
-                Console.WriteLine("      F - user defined function   V - view")
-                Console.WriteLine("      J - job                     D - data")
-                Console.WriteLine("")
-                Console.WriteLine("   -oObject is the like object name to retrieve. If not provided")
-                Console.WriteLine("     all objects are retrieved. This performs a database 'like'")
-                Console.WriteLine("     operation so wildcard in the name are supported.")
-                Console.WriteLine("     When the type is 'D' the object parameter contains the table")
-                Console.WriteLine("     the data to be scripted.")
-                Console.WriteLine("")
-                Console.WriteLine("   -f full text switch. If provided the scripts are include")
-                Console.WriteLine("     existance checks and table components like indexes are")
-                Console.WriteLine("     created in separate files.")
-                Console.WriteLine("")
-                Console.WriteLine("   -c ignore constraint name switch. If provided")
-                Console.WriteLine("     names are not included in the generated scripts.")
-                Console.WriteLine("")
-                Console.WriteLine("   -w where clause filter for data scripting. eg. -w""Status<>'dl'""")
-                Console.WriteLine("")
-                Console.WriteLine("   -? displays the usage details on the console.")
-                Console.WriteLine("")
-                Console.WriteLine("   -l displays licence details on the console.")
+                SendMessage("usage: dbSchema [-sServer] [-dDatabase] [-uUserID [-pPassword]] [-tType]", "T")
+                SendMessage("                [-oObject] [-f] [-c] [-?] [-l] [-gLogFile] [-v]", "T")
+                SendMessage(" where:", "T")
+                SendMessage("   -sServer is the name of the SQL server to access.", "T")
+                SendMessage("     provided the local machine is used.", "T")
+                SendMessage("", "T")
+                SendMessage("   -dDatabase is the name of the database to access.", "T")
+                SendMessage("     If not provided either the master database or for job types", "T")
+                SendMessage("     the msdb database is used.", "T")
+                SendMessage("     Use an asterisk * to extract from all the databases on the", "T")
+                SendMessage("     Server (except master, model and tempdb). Only job scripts are", "T")
+                SendMessage("     extracted from the msdb database (i.e. no table, procedures etc.).", "T")
+                SendMessage("     The data is extracted into a directory with the database", "T")
+                SendMessage("     name. If the directory does not exist it will be created, otherwise", "T")
+                SendMessage("     the contents are moved to a backup directory.", "T")
+                SendMessage("", "T")
+                SendMessage("   -uUserID is the name of the user for database access. If not", "T")
+                SendMessage("     provided a Trusted Connection is made.", "T")
+                SendMessage("", "T")
+                SendMessage("   -pPassword is the user password for database access. This parameter", "T")
+                SendMessage("     is ignored except when a UserID is provided.", "T")
+                SendMessage("", "T")
+                SendMessage("   -tType is the type of object to retrieve. If not provided all", "T")
+                SendMessage("     types except jobs and data are returned. Can be one of:", "T")
+                SendMessage("      P - stored procedure        U - user table", "T")
+                SendMessage("      F - user defined function   V - view", "T")
+                SendMessage("      J - job                     D - data", "T")
+                SendMessage("", "T")
+                SendMessage("   -oObject is the like object name to retrieve. If not provided", "T")
+                SendMessage("     all objects are retrieved. This performs a database 'like'", "T")
+                SendMessage("     operation so wildcard in the name are supported.", "T")
+                SendMessage("     When the type is 'D' the object parameter contains the table", "T")
+                SendMessage("     the data to be scripted.", "T")
+                SendMessage("", "T")
+                SendMessage("   -f full text switch. If provided the scripts are include", "T")
+                SendMessage("     existance checks and table components like indexes are", "T")
+                SendMessage("     created in separate files.", "T")
+                SendMessage("", "T")
+                SendMessage("   -c ignore constraint name switch. If provided", "T")
+                SendMessage("     names are not included in the generated scripts.", "T")
+                SendMessage("", "T")
+                SendMessage("   -w where clause filter for data scripting. eg. -w""Status<>'dl'""", "T")
+                SendMessage("", "T")
+                SendMessage("   -? displays the usage details on the console.", "T")
+                SendMessage("", "T")
+                SendMessage("   -l displays licence details on the console.", "T")
+                SendMessage("", "T")
+                SendMessage("   -gLogFile defines the file where screen output is saved.", "T")
+                SendMessage("", "T")
+                SendMessage("   -v verbose output switch. If set extended output is produced.", "T")
+                SendMessage("", "T")
                 Return
             End If
 
             If GetSwitch("-l") Then
-                Console.WriteLine("")
-                Console.WriteLine("dbSchema is free software issued as open source;")
-                Console.WriteLine("you can redistribute it and/or modify it under the terms")
-                Console.WriteLine("of the GNU General Public License version 2 as published")
-                Console.WriteLine("by the Free Software Foundation.")
-                Console.WriteLine("dbSchema is distributed in the hope that it will be useful,")
-                Console.WriteLine("but WITHOUT ANY WARRANTY; without even the implied warranty")
-                Console.WriteLine("of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
-                Console.WriteLine("See the GNU General Public License for more details.")
-                Console.WriteLine("You should have received a copy of the GNU General Public")
-                Console.WriteLine("License along with dbSchema; if not, go to the web site:")
-                Console.WriteLine("")
-                Console.WriteLine("   http://www.gnu.org/licenses/gpl-2.0.html")
-                Console.WriteLine("")
-                Console.WriteLine("or write to:")
-                Console.WriteLine("")
-                Console.WriteLine("   The Free Software Foundation, Inc.,")
-                Console.WriteLine("   59 Temple Place,")
-                Console.WriteLine("   Suite 330,")
-                Console.WriteLine("   Boston, MA 02111-1307 USA.")
+                SendMessage("dbSchema is free software issued as open source;", "T")
+                SendMessage("you can redistribute it and/or modify it under the terms", "T")
+                SendMessage("of the GNU General Public License version 2 as published", "T")
+                SendMessage("by the Free Software Foundation.", "T")
+                SendMessage("dbSchema is distributed in the hope that it will be useful,", "T")
+                SendMessage("but WITHOUT ANY WARRANTY; without even the implied warranty", "T")
+                SendMessage("of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.", "T")
+                SendMessage("See the GNU General Public License for more details.", "T")
+                SendMessage("You should have received a copy of the GNU General Public", "T")
+                SendMessage("License along with dbSchema; if not, go to the web site:", "T")
+                SendMessage("", "T")
+                SendMessage("   http://www.gnu.org/licenses/gpl-2.0.html", "T")
+                SendMessage("", "T")
+                SendMessage("or write to:", "T")
+                SendMessage("", "T")
+                SendMessage("   The Free Software Foundation, Inc.,", "T")
+                SendMessage("   59 Temple Place,", "T")
+                SendMessage("   Suite 330,", "T")
+                SendMessage("   Boston, MA 02111-1307 USA.", "T")
+                SendMessage("", "T")
                 Return
             End If
 
@@ -139,6 +156,16 @@ Module Scriptor
                 ConsName = False
             End If
 
+            If LogFile <> "" Then
+                SendMessage("Machine Name : " & Environment.MachineName, "T")
+                SendMessage("Directory    : " & Environment.CurrentDirectory, "T")
+                s = Environment.CommandLine
+                If Password <> "" Then
+                    s = Replace(s, " -p" & Password & " ", " -p?????????? ")
+                End If
+                SendMessage("Command Line : " & s, "T")
+            End If
+
             If Mid(LCase(sType), 1, 1) = "j" Then
                 ProcessJobs(Database)
             ElseIf Mid(LCase(sType), 1, 1) = "d" Then
@@ -151,13 +178,10 @@ Module Scriptor
             End If
 
         Catch ex As Exception
-            i = 1
-            Console.WriteLine(ex.ToString)
+            SendMessage(ex.ToString, "E")
         End Try
-        If i <> 0 Then
-            Console.WriteLine("press enter")
-            Console.Read()
-        End If
+        SendMessage("", "T")
+        SendMessage("", "N")
     End Sub
 
     Sub ProcessJobs(ByVal Database As String)
@@ -168,10 +192,14 @@ Module Scriptor
         Dim dr As DataRow
 
         Try                                 ' Read the config XML into a DataSet
+            SendMessage("", "N")
             If Database = "" Or Database = "*" Then
-                Database = "msdb"
+                Connect = GetConnectString("msdb")
+                SendMessage("Retrieving jobs from 'msdb'.", "T")
+            Else
+                Connect = GetConnectString(Database)
+                SendMessage("Retrieving jobs from '" & Database & "'.", "T")
             End If
-            Connect = GetConnectString(Database)
             psConn = New SqlConnection(Connect)
             AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
             psConn.Open()
@@ -194,7 +222,7 @@ Module Scriptor
             Next
 
         Catch ex As Exception
-            Console.WriteLine(ex.ToString)
+            SendMessage(ex.ToString, "E")
         End Try
     End Sub
 
@@ -230,11 +258,10 @@ Module Scriptor
             s = GetCommandParameter("-w")
             Dim tdefn As New TableColumns(Table, Connect, True)
             sOut = tdefn.DataScript(s)
-            sOut &= vbCrLf & "go" & vbCrLf
             PutFile("data." & Table & ".sql", sOut)
 
         Catch ex As Exception
-            Console.WriteLine(ex.ToString)
+            SendMessage(ex.ToString, "E")
         End Try
     End Sub
 
@@ -255,7 +282,7 @@ Module Scriptor
             AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
             psConn.Open()
 
-            s = "select name from sysdatabases where name not in ('master','tempdb','model','msdb')"
+            s = "select name from sysdatabases where name not in ('master','tempdb','model')"
             psAdapt = New SqlDataAdapter(s, psConn)
             psAdapt.SelectCommand.CommandType = CommandType.Text
             psAdapt.Fill(Details)
@@ -277,12 +304,16 @@ Module Scriptor
                     MkDir(s)
                     Environment.CurrentDirectory = s
                 End If
-                ProcessDB(s)
+                If s = "msdb" Then
+                    ProcessJobs(s)
+                Else
+                    ProcessDB(s)
+                End If
                 Environment.CurrentDirectory = sPWD
             Next
 
         Catch ex As Exception
-            Console.WriteLine(ex.ToString)
+            SendMessage(ex.ToString, "E")
         End Try
     End Sub
 
@@ -294,7 +325,9 @@ Module Scriptor
         Dim Details As New DataSet
         Dim dr As DataRow
 
-        Try                                 ' Read the config XML into a DataSet
+        Try
+            SendMessage("", "N")
+            SendMessage("Retrieving schema for '" & Database & "'.", "T")
             Connect = GetConnectString(Database)
             psConn = New SqlConnection(Connect)
             AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
@@ -341,7 +374,7 @@ Module Scriptor
             Next
 
         Catch ex As Exception
-            Console.WriteLine(ex.ToString)
+            SendMessage(ex.ToString, "E")
         End Try
     End Sub
 
@@ -445,9 +478,6 @@ Module Scriptor
         psAdapt = New SqlDataAdapter(s, psConn)
         psAdapt.SelectCommand.CommandType = CommandType.Text
 
-        'psAdapt = New SqlDataAdapter("dbo.sp_helptext", psConn)
-        'psAdapt.SelectCommand.CommandType = CommandType.StoredProcedure
-        'psAdapt.SelectCommand.Parameters.Add("@objname", SqlDbType.NVarChar, 776).Value = """" & Name & """"
         psAdapt.Fill(Details)
         psConn.Close()
 
@@ -488,7 +518,7 @@ Module Scriptor
 
     Private Sub psConn_InfoMessage(ByVal sender As Object, _
             ByVal e As System.Data.SqlClient.SqlInfoMessageEventArgs)
-        Console.WriteLine(e.Message)
+        SendMessage(e.Message, "N")
     End Sub
 
     Function PutFile(ByVal sName As String, ByVal sContent As String) As Boolean
@@ -502,7 +532,7 @@ Module Scriptor
 
         file.Write(sContent)
         file.Close()
-        Console.WriteLine(sName)
+        SendMessage(sName, "N")
         Return True
     End Function
 
@@ -595,5 +625,18 @@ Module Scriptor
         End If
         Return s
     End Function
+
+    Private Sub SendMessage(ByVal sMessage As String, ByVal sType As String)
+        If Not verbose And sType = "N" Then Return
+        Console.WriteLine(sMessage)
+        If LogFile <> "" Then
+            Dim file As New System.IO.StreamWriter(LogFile, True)
+            If sType = "H" Then
+                file.WriteLine("Run Time: " & Now())
+            End If
+            file.WriteLine(sMessage)
+            file.Close()
+        End If
+    End Sub
 #End Region
 End Module

@@ -3,6 +3,22 @@ Option Strict On
 
 Imports System.Data.SqlClient
 
+#Region "copyright Russell Hansen, Tolbeam Pty Limited"
+'dbSchema is free software issued as open source;
+' you can redistribute it and/or modify it under the terms of the
+' GNU General Public License version 2 as published by the Free Software Foundation.
+'dbSchema is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+' without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+'See the GNU General Public License for more details.
+'You should have received a copy of the GNU General Public License along with dbSchema;
+' if not, go to the web site (http://www.gnu.org/licenses/gpl-2.0.html)
+' or write to:
+'   The Free Software Foundation, Inc.,
+'   59 Temple Place,
+'   Suite 330,
+'   Boston, MA 02111-1307 USA. 
+#End Region
+
 Public Class Job
     Private dtJobs As DataTable
     Private dtServers As DataTable
@@ -310,7 +326,6 @@ Public Class Job
         Dim dr As DataRow = Nothing
         Dim s As String
         Dim i As Integer
-        Dim b As Boolean
         Dim sName As String = ""
 
         If Not dtJobs Is Nothing Then
