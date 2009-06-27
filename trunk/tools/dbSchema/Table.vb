@@ -3,21 +3,121 @@ Option Strict On
 
 Imports System.Data.SqlClient
 
+#Region "copyright Russell Hansen, Tolbeam Pty Limited"
+'dbSchema is free software issued as open source;
+' you can redistribute it and/or modify it under the terms of the
+' GNU General Public License version 2 as published by the Free Software Foundation.
+'dbSchema is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+' without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+'See the GNU General Public License for more details.
+'You should have received a copy of the GNU General Public License along with dbSchema;
+' if not, go to the web site (http://www.gnu.org/licenses/gpl-2.0.html)
+' or write to:
+'   The Free Software Foundation, Inc.,
+'   59 Temple Place,
+'   Suite 330,
+'   Boston, MA 02111-1307 USA. 
+#End Region
+
 Public Class TableColumn
     Public Index As Integer
     Public Name As String
     Public Nullable As String
     Public Type As String
-    Public Length As Integer = 0
-    Public Precision As Integer = 0
-    Public Scale As Integer = 0
     Public DefaultName As String
     Public DefaultValue As String
-    Public TypeText As String
     Public Primary As Boolean = False
     Public Descend As Boolean = False
     Public Identity As Boolean = False
-    Public vbType As String
+
+    Private iLength As Integer = 0
+    Private iPrecision As Integer = 0
+    Private iScale As Integer = 0
+
+    Public Property Length() As Integer
+        Get
+            Dim i As Integer
+            Select Case Type
+                Case "decimal", "numeric", "datetime", "smalldatetime"
+                    i = 0
+                Case "sysname"
+                    i = 128
+                Case Else
+                    i = iLength
+            End Select
+            Length = i
+        End Get
+        Set(ByVal value As Integer)
+            iLength = value
+        End Set
+    End Property
+
+    Public Property Precision() As Integer
+        Get
+            Dim i As Integer
+            Select Case Type
+                Case "char", "varchar", "nvarchar", "datetime", "smalldatetime", "sysname"
+                    i = 0
+                Case Else
+                    i = iPrecision
+            End Select
+            Precision = i
+        End Get
+        Set(ByVal value As Integer)
+            iPrecision = value
+        End Set
+    End Property
+
+    Public Property Scale() As Integer
+        Get
+            Dim i As Integer
+            Select Case Type
+                Case "char", "varchar", "nvarchar", "datetime", "smalldatetime", "sysname"
+                    i = 0
+                Case Else
+                    i = iScale
+            End Select
+            Scale = i
+        End Get
+        Set(ByVal value As Integer)
+            iScale = value
+        End Set
+    End Property
+
+    Public ReadOnly Property vbType() As String
+        Get
+            Dim s As String
+            Select Case Type
+                Case "char", "varchar", "nvarchar", "sysname"
+                    s = "string"
+                Case "decimal", "numeric"
+                    s = "double"
+                Case "datetime"
+                    s = "datetime"
+                Case "smalldatetime"
+                    s = "date"
+                Case "uniqueidentifier"
+                    s = "Guid"
+                Case Else
+                    s = Type
+            End Select
+            vbType = s
+        End Get
+    End Property
+
+    Public ReadOnly Property TypeText() As String
+        Get
+            Dim s As String
+            s = Type
+            Select Case Type
+                Case "char", "varchar", "nvarchar"
+                    s &= "(" & Length & ")"
+                Case "decimal", "numeric"
+                    s &= "(" & Precision & "," & Scale & ")"
+            End Select
+            TypeText = s
+        End Get
+    End Property
 
     Public Function DataFormat(ByVal Value As Object) As String
         Dim s As String
@@ -25,19 +125,18 @@ Public Class TableColumn
             s = "null"
         Else
             Select Case vbType
-                Case "string"
-                    s = "'" & Value.ToString & "'"
+                Case "string", "Guid"
+                    s = "'" & Replace(RTrim(Value.ToString), "'", "''", 1, -1, CompareMethod.Text) & "'"
                 Case "datetime"
-                    s = "'" & Format(Value.ToString, "d-MMM-yyyy hh:mm:ss tt") & "'"
+                    s = "'" & Format(Value, "d-MMM-yyyy hh:mm:ss tt") & "'"
                 Case "date"
-                    s = "'" & Format(Value.ToString, "d-MMM-yyyy") & "'"
+                    s = "'" & Format(Value, "d-MMM-yyyy") & "'"
                 Case Else
                     s = Value.ToString
             End Select
         End If
         Return s
     End Function
-
 End Class
 
 Public Class TableColumns
@@ -160,7 +259,7 @@ Public Class TableColumns
         sName = ""
         For Each dr In dtIndexs.Rows
             s = GetString(dr.Item("name"))
-            If CInt(dr.Item("is_primary_key")) = -1 Then
+            If CInt(dr.Item("is_primary_key")) = 1 Then
                 If Not b Then
                     sPKey = s
                     i = CInt(dr.Item("type"))
@@ -172,7 +271,7 @@ Public Class TableColumns
                     b = True
                 End If
                 sPK = GetString(dr.Item("ColumnName"))
-                If CInt(dr.Item("is_descending_key")) = -1 Then
+                If CInt(dr.Item("is_descending_key")) = 1 Then
                     AddPKey(sPK, True)
                 Else
                     AddPKey(sPK, False)
@@ -267,66 +366,13 @@ Public Class TableColumns
 
         If parm.Type = "int" Then
             parm.Type = "integer"
-            parm.vbType = "integer"
         End If
 
         With parm
             .Index = Values.Count
-            .TypeText = .Type
             .Primary = False
             .Descend = False
         End With
-
-        Select Case parm.Type
-            Case "char"
-                parm.TypeText = parm.Type & "(" & parm.Length & ")"
-                parm.vbType = "string"
-                parm.Precision = 0
-                parm.Scale = 0
-
-            Case "varchar"
-                parm.TypeText = parm.Type & "(" & parm.Length & ")"
-                parm.vbType = "string"
-                parm.Precision = 0
-                parm.Scale = 0
-
-            Case "nvarchar"
-                parm.TypeText = parm.Type & "(" & parm.Length & ")"
-                parm.vbType = "string"
-                parm.Precision = 0
-                parm.Scale = 0
-
-            Case "decimal"
-                parm.TypeText = parm.Type & "(" & parm.Precision & "," & parm.Scale & ")"
-                parm.vbType = "double"
-                parm.Length = 0
-
-            Case "numeric"
-                parm.TypeText = parm.Type & "(" & parm.Precision & "," & parm.Scale & ")"
-                parm.vbType = "double"
-                parm.Length = 0
-
-            Case "datetime"
-                parm.vbType = "datetime"
-                parm.Length = 0
-                parm.Precision = 0
-                parm.Scale = 0
-
-            Case "smalldatetime"
-                parm.vbType = "date"
-                parm.Length = 0
-                parm.Precision = 0
-                parm.Scale = 0
-
-            Case "sysname"
-                parm.vbType = "string"
-                parm.Length = 128
-                parm.Precision = 0
-                parm.Scale = 0
-
-            Case Else
-                parm.vbType = parm.Type
-        End Select
 
         If parm.Index > Keys.GetUpperBound(0) Then
             ReDim Preserve Keys(parm.Index)
@@ -487,7 +533,7 @@ Public Class TableColumns
                             sOut &= "    and     c.column_id = ic.column_id" & vbCrLf
                             sOut &= "    left join" & vbCrLf
                             sOut &= "    (" & vbCrLf
-                            sOut &= "        select  " & GetString(r.Item("index_column_id")) & " keyorder"
+                            sOut &= "        select  " & GetString(r.Item("key_ordinal")) & " keyorder"
                             sOut &= ", '" & GetString(r.Item("ColumnName")) & "' ColumnName, "
                             If CInt(r.Item("is_descending_key")) = 0 Then
                                 sOut &= "0"
@@ -497,7 +543,7 @@ Public Class TableColumns
                             sOut &= " Descending" & vbCrLf
 
                             sRest = "    ) x" & vbCrLf
-                            sRest &= "    on      x.keyorder = ic.index_column_id" & vbCrLf
+                            sRest &= "    on      x.keyorder = ic.key_ordinal" & vbCrLf
                             sRest &= "    and     x.ColumnName = c.name" & vbCrLf
                             sRest &= "    and     x.Descending = ic.is_descending_key" & vbCrLf
                             sRest &= "    where   @t = " & GetString(r.Item("type")) & vbCrLf
@@ -520,7 +566,7 @@ Public Class TableColumns
                             sRest &= " index " & IndexName & " on dbo." & sTable & " ("
                             sRest &= GetString(r.Item("ColumnName"))
                         Else
-                            sOut &= "        union select  " & GetString(r.Item("index_column_id"))
+                            sOut &= "        union select  " & GetString(r.Item("key_ordinal"))
                             sOut &= ", '" & GetString(r.Item("ColumnName")) & "', "
                             If CInt(r.Item("is_descending_key")) = 0 Then
                                 sOut &= "0"
@@ -776,7 +822,7 @@ Public Class TableColumns
         Dim dt As DataTable
         Dim sOut As String = ""
         Dim sHead As String
-        Dim sTail As String
+        Dim sTail As String = ""
         Dim s As String
         Dim cols As String
         Dim i As Integer
@@ -806,21 +852,11 @@ Public Class TableColumns
         sHead &= "from" & vbCrLf
         sHead &= "(" & vbCrLf
 
-        sTail = ") x" & vbCrLf
-        sTail &= "left join dbo." & sTable & " a" & vbCrLf
-        s = "on      a."
-        For Each cols In xPKeys
-            tc = CType(Values.Item(cols), TableColumn)
-            If ss = "" Then ss = tc.Name
-            sTail &= s & tc.Name & " = x." & tc.Name & vbCrLf
-            s = "and     a."
-        Next
-        sTail &= "where   a." & ss & " is null" & vbCrLf
-
         i = 0
         dt = GetTableData(sTable, sFilter)
         For Each r As DataRow In dt.Rows
             If i = 0 Then
+                sOut &= sTail
                 sOut &= sHead
                 s = "    select  "
                 For Each cols In Keys
@@ -828,6 +864,18 @@ Public Class TableColumns
                     sOut &= s & tc.DataFormat(r(tc.Name)) & " " & tc.Name & vbCrLf
                     s = "           ,"
                 Next
+                sTail = ") x" & vbCrLf
+                sTail &= "left join dbo." & sTable & " a" & vbCrLf
+                s = "on      a."
+                For Each cols In xPKeys
+                    tc = CType(Values.Item(cols), TableColumn)
+                    If ss = "" Then ss = tc.Name
+                    sTail &= s & tc.Name & " = x." & tc.Name & vbCrLf
+                    s = "and     a."
+                Next
+                sTail &= "where   a." & ss & " is null" & vbCrLf
+                sTail &= "go" & vbCrLf & vbCrLf
+
                 i += 1
             Else
                 s = "    union select "
@@ -846,6 +894,7 @@ Public Class TableColumns
         If sIdentity <> "" Then
             sOut &= vbCrLf
             sOut &= "set identity_insert dbo." & sTable & " off" & vbCrLf
+            sOut &= "go" & vbCrLf & vbCrLf
         End If
 
         Return sOut
@@ -910,15 +959,35 @@ Public Class TableColumns
         Dim psAdapt As SqlDataAdapter
         Dim TableDetails As New DataSet
 
-        s = "select i.name,ic.index_column_id,c.name ColumnName,ic.is_descending_key,i.type,i.is_primary_key,i.is_unique "
-        s &= "from sys.indexes i "
-        s &= "join sys.index_columns ic "
-        s &= "on ic.object_id = i.object_id "
-        s &= "and ic.index_id = i.index_id "
-        s &= "join sys.columns c "
-        s &= "on c.object_id = i.object_id "
-        s &= "and c.column_id = ic.column_id "
-        s &= "where i.object_id = object_id('" & sTable & "') "
+        's = "select i.name,ic.key_ordinal,c.name ColumnName,ic.is_descending_key,i.type,i.is_primary_key,i.is_unique "
+        's &= "from sys.indexes i "
+        's &= "join sys.index_columns ic "
+        's &= "on ic.object_id = i.object_id "
+        's &= "and ic.index_id = i.index_id "
+        's &= "join sys.columns c "
+        's &= "on c.object_id = i.object_id "
+        's &= "and c.column_id = ic.column_id "
+        's &= "where i.object_id = object_id('" & sTable & "') "
+        's &= "order by 1, 2, 3"
+
+        'SQL 2000 compatible
+        s = "select x.name"
+        s &= ",i.keyno key_ordinal"
+        s &= ",index_col(object_name(x.id), x.indid, i.keyno) ColumnName"
+        s &= ",case indexkey_property(x.id, x.indid, i.colid, 'isdescending') when 1 then 1 else 0 end is_descending_key"
+        s &= ",case when indexproperty(x.id, x.name, 'IsClustered') = 1 then 1 else 2 end type"
+        s &= ",case when s.name is not null then 1 else 0 end is_primary_key"
+        s &= ",case when indexproperty(x.id, x.name, 'IsUnique') = 1 then 1 else 0 end is_unique "
+        s &= "from dbo.sysindexes x "
+        s &= "join dbo.sysindexkeys i "
+        s &= "on i.id = x.id "
+        s &= "and i.indid = x.indid "
+        s &= "left join dbo.sysobjects s "
+        s &= "on s.name = x.name "
+        s &= "and s.parent_obj = x.id "
+        s &= "and s.xtype = 'PK' "
+        s &= "where x.id = object_id('" & sTable & "') "
+        s &= "and x.name not like '_WA_%' "
         s &= "order by 1, 2, 3"
 
         psAdapt = New SqlDataAdapter(s, psConn)
