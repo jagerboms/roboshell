@@ -8,13 +8,14 @@
   </head>
   <body>
 
-usage: dbSchema [-sServer] [-dDatabase] [-uUserID [-pPassword]] [-tType] [-oObject] [-f] [-c] [-?]<br />
+usage: dbSchema [-sServer] [-dDatabase] [-uUserID [-pPassword]] [-tType]
+                [-oObject] [-f] [-c] [-l] [-gLogFile] [-v] [-?]<br />
  where:<br />
 <br />
  -sServer is the name of the SQL server to access. This parameter is optional and the local machine is used if no server is provided.<br />
 <br />
- -dDatabase is the name of the database to extract data from. This parameter is optional and if provided the master database is used.<br />
- Specifying an asterisk (-d*) will use all the non-system databases on the server. The system databases are master, model, tempdb and msdb. Each database has it's extracted data into a new  database named directory. If the directory exists the current contents are moved to a backup directory.<br />
+ -dDatabase is the name of the database to extract data from. This parameter is optional and if not provided the master database is used or for job types the msdb database is used.<br />
+ Specifying an asterisk (-d*) will use all the databases on the server except master, model and tempdb. Each database has it's script files extracted into a new directory named after the database. If the directory exists the current contents are moved to a backup directory. The msdb database directory will be used for job scripts only.<br />
 <br />
  -uUserID is the name of the user for database access. If no user is entered then database connection is made using windows authenication.<br />
 <br />
@@ -24,12 +25,22 @@ usage: dbSchema [-sServer] [-dDatabase] [-uUserID [-pPassword]] [-tType] [-oObje
 <table>
 <tr><td>P - stored procedure</td><td>U - user table</td></tr>
 <tr><td>F - user defined function</td><td>V - view</td></tr>
+<tr><td>J - job</td><td>D - data</td></tr>
 </table><br />
  -oObject allows for a specific object to be retrieved. This is an optional parameter. The object name search uses a 'like' statement so the wildcard characters '%' and '_' can be used to return objects matching a pattern.<br />
+When the type is 'D' the object parameter contains the table the data to be scripted.<br />
 <br />
  -f turns on the full text output option. If this option is used the output scripts include existance checks and individual files are created table, index and foreign key definitions.<br />
 <br />
  -c turns on the constraint name exclusion option. When this option is on, constraint names are not used in default and primary key constraints in generated table scripts.<br />
+<br />
+ -w where clause filter for data scripting. eg. -w&quot;Status&lt;&gt;'dl'&quot;<br />
+<br />
+ -gLogFile defines the file where output is saved.<br />
+<br />
+ -v verbose output switch. If set extended output is produced.<br />
+<br />
+ -l displays licence details on the console.<br />
 <br />
  -? is the help switch and when used causes the usage clause to be printed to the console.<br />
   </body>
