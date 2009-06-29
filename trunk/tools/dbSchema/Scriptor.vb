@@ -267,6 +267,7 @@ Module Scriptor
 
     Sub ProcessAllDBs()
         Dim s As String
+        Dim dbVersion As Integer
         Dim sBack As String
         Dim sDir As String
         Dim psConn As SqlConnection
@@ -282,7 +283,7 @@ Module Scriptor
             AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
             psConn.Open()
 
-            s = "select name from sysdatabases where name not in ('master','tempdb','model')"
+            s = "select name,cmptlevel from master.dbo.sysdatabases where name not in ('master','tempdb','model')"
             psAdapt = New SqlDataAdapter(s, psConn)
             psAdapt.SelectCommand.CommandType = CommandType.Text
             psAdapt.Fill(Details)
@@ -290,6 +291,7 @@ Module Scriptor
 
             For Each dr In Details.Tables(0).Rows
                 s = GetString(dr.Item("name"))
+                dbVersion = CInt(dr("cmptlevel"))
 
                 If System.IO.Directory.Exists(s) Then
                     Environment.CurrentDirectory = s
@@ -304,7 +306,7 @@ Module Scriptor
                     MkDir(s)
                     Environment.CurrentDirectory = s
                 End If
-                If s = "msdb" Then
+                If s = "msdb" And dbVersion > 80 Then
                     ProcessJobs(s)
                 Else
                     ProcessDB(s)
