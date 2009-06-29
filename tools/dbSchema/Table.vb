@@ -561,7 +561,7 @@ Public Class TableColumns
                             sRest &= "if @i is null" & vbCrLf
                             sRest &= "begin" & vbCrLf
                             sRest &= "    print 'creating index ''" & IndexName & "'''" & vbCrLf
-                            sRest &= "    create" & GetString(IIf(CInt(r.Item("is_unique")) = -1, " unique", ""))
+                            sRest &= "    create" & GetString(IIf(CInt(r.Item("is_unique")) = 1, " unique", ""))
                             sRest &= GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
                             sRest &= " index " & IndexName & " on dbo." & sTable & " ("
                             sRest &= GetString(r.Item("ColumnName"))
@@ -607,7 +607,7 @@ Public Class TableColumns
                 If CInt(r.Item("is_primary_key")) = 0 Then
                     If IndexName = GetString(r.Item("name")) Then
                         If i = 0 Then
-                            sOut &= "create" & GetString(IIf(CInt(r.Item("is_unique")) = -1, " unique", ""))
+                            sOut &= "create" & GetString(IIf(CInt(r.Item("is_unique")) = 1, " unique", ""))
                             sOut &= GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
                             sOut &= " index " & IndexName & " on dbo." & sTable & " ("
                             sOut &= GetString(r.Item("ColumnName"))
@@ -1151,7 +1151,7 @@ Public Class TableColumns
                     End Select
             End Select
         Next
-
+        If Mid(s, 1, 1) <> "(" Then s = "(" & s & ")"
         Return s
     End Function
 
