@@ -9,7 +9,6 @@ Public Class CallOutDefn
     Public ClassName As String
     Public MethodName As String
     Public ReturnParamName As String
-    Public ProgressProperty As String
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -28,8 +27,6 @@ Public Class CallOutDefn
                 MethodName = GetString(Value)
             Case "ReturnParamName"
                 ReturnParamName = GetString(Value)
-            Case "ProgressProperty"
-                ProgressProperty = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by CallOut object")
         End Select
@@ -41,8 +38,6 @@ Public Class CallOut
 
     Private sDefn As CallOutDefn
     Private obj As Object
-    Delegate Sub Del(ByVal d As Double)
-    Private dProgress As Double
 
     Public Sub New(ByVal Defn As CallOutDefn)
         sDefn = Defn
@@ -74,8 +69,6 @@ Public Class CallOut
         Dim bAddParameter As Boolean
         Dim objOut As Object
         Dim paParams() As Object = Nothing
-        Dim objType As System.Reflection.EventInfo
-        Dim evtType As System.Type
 
         Try
             obj = CreateObject(sDefn.ClassName)
@@ -123,13 +116,6 @@ Public Class CallOut
             Next
 
             Try
-                dProgress = -1
-                objType = obj.GetType().GetEvent("Progress")
-                If Not objType Is Nothing Then
-                    evtType = objType.EventHandlerType
-                    objType.AddEventHandler(obj, Del.CreateDelegate(evtType, Me, "handler"))
-                End If
-
                 If paParams Is Nothing Then
                     objOut = CallByName(obj, sDefn.MethodName, CallType.Method)
                 Else
@@ -206,20 +192,5 @@ Public Class CallOut
             End If
             Me.OnExitFail()
         End Try
-    End Sub
-
-    Private Sub handler(ByVal d As Double)
-        Dim j As Integer
-
-        If dProgress < 0 Then
-            If d > 0 Then
-                dProgress = d
-            End If
-        Else
-            'scale to 100
-            j = CType(100 * d / dProgress, Integer)
-            Me.OnProgress(j)
-        End If
-        Application.DoEvents()
     End Sub
 End Class

@@ -89,7 +89,6 @@ End Class
 Public MustInherit Class ShellObject
     Public Event ExitOkay()
     Public Event ExitFail()
-    Public Event ProgressChange(ByVal iProgress As Integer)
     Public ObjectType As String
     Public RegKey As String
     Public Messages As New ShellMessages
@@ -135,9 +134,5 @@ Public MustInherit Class ShellObject
 
     Friend Sub OnExitFail()
         RaiseEvent ExitFail()
-    End Sub
-
-    Friend Sub OnProgress(ByVal iProgress As Integer)
-        RaiseEvent ProgressChange(iProgress)
     End Sub
 End Class

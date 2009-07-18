@@ -42,8 +42,6 @@ Public Class CallAsm
 
     Private sDefn As CallAsmDefn
     Private obj As Object
-    Delegate Sub Del(ByVal d As Double)
-    Private dProgress As Double
 
     Public Sub New(ByVal Defn As CallAsmDefn)
         sDefn = Defn
@@ -64,8 +62,6 @@ Public Class CallAsm
             Dim result As Object
             Dim b As Boolean = False
             Dim p As shellParameter
-            Dim objEvnt As System.Reflection.EventInfo
-            Dim evtType As System.Type
 
             If sDefn.ObjectParamName = "" Then
                 b = True
@@ -134,18 +130,8 @@ Public Class CallAsm
                         i += 1
                     End If
                 Next
-                Dim dt As DateTime = Now()
-
-                dProgress = -1
-                objEvnt = oObject.GetType().GetEvent("Progress")
-                If Not objEvnt Is Nothing Then
-                    evtType = objEvnt.EventHandlerType
-                    objEvnt.AddEventHandler(oObject, Del.CreateDelegate(evtType, Me, "handler"))
-                End If
 
                 methInfo = objType.GetMethod(sDefn.MethodName)
-                ''MsgBox(Now() - dt)
-
                 result = methInfo.Invoke(oObject, args)
                 If sDefn.ReturnParamName <> "" Then
                     Parms.Item(sDefn.ReturnParamName).Value = result  'place result in output parameter 
@@ -178,20 +164,5 @@ Public Class CallAsm
             End If
             Me.OnExitFail()
         End Try
-    End Sub
-
-    Private Sub handler(ByVal d As Double)
-        Dim j As Integer
-
-        If dProgress < 0 Then
-            If d > 0 Then
-                dProgress = d
-            End If
-        Else
-            'scale to 100
-            j = CType(100 * d / dProgress, Integer)
-            Me.OnProgress(j)
-        End If
-        Application.DoEvents()
     End Sub
 End Class
