@@ -123,17 +123,5 @@ Public Class ShellProcess
             End If
         End If
     End Sub
-
-    Private Sub ProcessObject_Progress(ByVal iProgress As Integer) _
-                                            Handles ProcessObject.ProgressChange
-        Dim p As ProcessDefn
-        p = Processes.Item(sProcessKey)
-
-        Try
-            Me.oOwner.Progress(iProgress)
-        Catch ex As Exception
-            Publics.MessageOut("Process.ProcessObject_Progress: error" & vbCrLf & ex.ToString)
-        End Try
-    End Sub
 End Class
 
