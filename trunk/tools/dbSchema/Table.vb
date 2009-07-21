@@ -193,6 +193,7 @@ Public Class TableColumns
     Private bConsName As Boolean = True
     Private fixdef As Boolean = False
     Private Connect As String
+    Private Version As Integer
 
     Private xPKeys(0) As String
     Private xFKeys(0) As String
@@ -229,6 +230,7 @@ Public Class TableColumns
         AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
         psConn.Open()
 
+        Version = GetVersion(psConn)
         dt = GetColumns(sTableName, psConn)
         If dt.Rows.Count = 0 Then
             PreLoad = 3
@@ -499,6 +501,7 @@ Public Class TableColumns
         Get
             Dim i As Integer = 0
             Dim sRest As String = ""
+            Dim sInc As String = ""
             Dim sOut As String = ""
 
             If dtIndexs Is Nothing Then
@@ -540,7 +543,13 @@ Public Class TableColumns
                             Else
                                 sOut &= "1"
                             End If
-                            sOut &= " Descending" & vbCrLf
+                            sOut &= " Descending, "
+                            If CInt(r.Item("is_included_column")) = 0 Then
+                                sOut &= "0"
+                            Else
+                                sOut &= "1"
+                            End If
+                            sOut &= " Included" & vbCrLf
 
                             sRest = "    ) x" & vbCrLf
                             sRest &= "    on      x.keyorder = ic.key_ordinal" & vbCrLf
@@ -563,7 +572,8 @@ Public Class TableColumns
                             sRest &= "    print 'creating index ''" & IndexName & "'''" & vbCrLf
                             sRest &= "    create" & GetString(IIf(CInt(r.Item("is_unique")) = 1, " unique", ""))
                             sRest &= GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
-                            sRest &= " index " & IndexName & " on dbo." & sTable & " ("
+                            sRest &= " index " & IndexName & vbCrLf
+                            sRest &= "      on dbo." & sTable & " ("
                             sRest &= GetString(r.Item("ColumnName"))
                         Else
                             sOut &= "        union select  " & GetString(r.Item("key_ordinal"))
@@ -573,9 +583,18 @@ Public Class TableColumns
                             Else
                                 sOut &= "1"
                             End If
+                            If CInt(r.Item("is_included_column")) = 0 Then
+                                sOut &= ", 0"
+                            Else
+                                sOut &= ", 1"
+                            End If
                             sOut &= vbCrLf
 
-                            sRest &= "," & GetString(r.Item("ColumnName"))
+                            If CInt(r.Item("is_included_column")) = 0 Then
+                                sRest &= "," & GetString(r.Item("ColumnName"))
+                            Else
+                                sInc &= "," & GetString(r.Item("ColumnName"))
+                            End If
                         End If
                         i += 1
                     End If
@@ -583,6 +602,9 @@ Public Class TableColumns
             Next
             If sOut <> "" Then
                 sOut &= sRest & ")" & vbCrLf
+                If sInc <> "" Then
+                    sOut &= "      include (" & Mid(sInc, 2) & ")" & vbCrLf
+                End If
                 sOut &= "end" & vbCrLf
                 sOut = sOut.Replace("~~", Str(i))
             End If
@@ -594,6 +616,7 @@ Public Class TableColumns
         Get
             Dim i As Integer = 0
             Dim sOut As String = ""
+            Dim sInc As String = ""
 
             If dtIndexs Is Nothing Then
                 Return ""
@@ -612,14 +635,22 @@ Public Class TableColumns
                             sOut &= " index " & IndexName & " on dbo." & sTable & " ("
                             sOut &= GetString(r.Item("ColumnName"))
                         Else
-                            sOut &= "," & GetString(r.Item("ColumnName"))
+                            If CInt(r.Item("is_included_column")) = 0 Then
+                                sOut &= "," & GetString(r.Item("ColumnName"))
+                            Else
+                                sInc &= "," & GetString(r.Item("ColumnName"))
+                            End If
                         End If
                         i += 1
                     End If
                 End If
             Next
             If sOut <> "" Then
-                sOut &= ")" & vbCrLf
+                sOut &= ")"
+                If sInc <> "" Then
+                    sOut &= " include (" & Mid(sInc, 2) & ")"
+                End If
+                sOut &= vbCrLf
             End If
             Return sOut
         End Get
@@ -920,6 +951,24 @@ Public Class TableColumns
         Console.WriteLine(e.Message)
     End Sub
 
+    Private Function GetVersion(ByVal psConn As SqlConnection) As Integer
+        Dim s As String
+        Dim i As Integer = -1
+        Dim psAdapt As SqlDataAdapter
+        Dim DS As New DataSet
+
+        s = "select cmptlevel from master.dbo.sysdatabases where name = db_name()"
+        psAdapt = New SqlDataAdapter(s, psConn)
+        psAdapt.SelectCommand.CommandType = CommandType.Text
+        psAdapt.Fill(DS)
+
+        s = ""
+        If DS.Tables(0).Rows.Count > 0 Then
+            i = CInt(DS.Tables(0).Rows(0).Item(0))
+        End If
+        Return i
+    End Function
+
     Private Function GetColumns(ByVal sTableName As String, ByVal psConn As SqlConnection) As DataTable
         Dim s As String
         Dim psAdapt As SqlDataAdapter
@@ -959,36 +1008,40 @@ Public Class TableColumns
         Dim psAdapt As SqlDataAdapter
         Dim TableDetails As New DataSet
 
-        's = "select i.name,ic.key_ordinal,c.name ColumnName,ic.is_descending_key,i.type,i.is_primary_key,i.is_unique "
-        's &= "from sys.indexes i "
-        's &= "join sys.index_columns ic "
-        's &= "on ic.object_id = i.object_id "
-        's &= "and ic.index_id = i.index_id "
-        's &= "join sys.columns c "
-        's &= "on c.object_id = i.object_id "
-        's &= "and c.column_id = ic.column_id "
-        's &= "where i.object_id = object_id('" & sTable & "') "
-        's &= "order by 1, 2, 3"
-
-        'SQL 2000 compatible
-        s = "select x.name"
-        s &= ",i.keyno key_ordinal"
-        s &= ",index_col(object_name(x.id), x.indid, i.keyno) ColumnName"
-        s &= ",case indexkey_property(x.id, x.indid, i.colid, 'isdescending') when 1 then 1 else 0 end is_descending_key"
-        s &= ",case when indexproperty(x.id, x.name, 'IsClustered') = 1 then 1 else 2 end type"
-        s &= ",case when s.name is not null then 1 else 0 end is_primary_key"
-        s &= ",case when indexproperty(x.id, x.name, 'IsUnique') = 1 then 1 else 0 end is_unique "
-        s &= "from dbo.sysindexes x "
-        s &= "join dbo.sysindexkeys i "
-        s &= "on i.id = x.id "
-        s &= "and i.indid = x.indid "
-        s &= "left join dbo.sysobjects s "
-        s &= "on s.name = x.name "
-        s &= "and s.parent_obj = x.id "
-        s &= "and s.xtype = 'PK' "
-        s &= "where x.id = object_id('" & sTable & "') "
-        s &= "and x.name not like '_WA_%' "
-        s &= "order by 1, 2, 3"
+        If Version < 90 Then
+            'SQL 2000 compatible
+            s = "select i.keyno key_ordinal"
+            s &= ",x.name"
+            s &= ",index_col(object_name(x.id), x.indid, i.keyno) ColumnName"
+            s &= ",case indexkey_property(x.id, x.indid, i.colid, 'isdescending') when 1 then 1 else 0 end is_descending_key"
+            s &= ",case when indexproperty(x.id, x.name, 'IsClustered') = 1 then 1 else 2 end type"
+            s &= ",case when s.name is not null then 1 else 0 end is_primary_key"
+            s &= ",case when indexproperty(x.id, x.name, 'IsUnique') = 1 then 1 else 0 end is_unique"
+            s &= ",0 is_included_column "
+            s &= "from dbo.sysindexes x "
+            s &= "join dbo.sysindexkeys i "
+            s &= "on i.id = x.id "
+            s &= "and i.indid = x.indid "
+            s &= "left join dbo.sysobjects s "
+            s &= "on s.name = x.name "
+            s &= "and s.parent_obj = x.id "
+            s &= "and s.xtype = 'PK' "
+            s &= "where x.id = object_id('" & sTable & "') "
+            s &= "and x.name not like '_WA_%' "
+            s &= "order by 1, 2, 3"
+        Else
+            s = "select ic.index_column_id key_ordinal,i.name,c.name ColumnName,"
+            s &= "ic.is_descending_key,i.type,i.is_primary_key,i.is_unique,ic.is_included_column "
+            s &= "from sys.indexes i "
+            s &= "join sys.index_columns ic "
+            s &= "on ic.object_id = i.object_id "
+            s &= "and ic.index_id = i.index_id "
+            s &= "join sys.columns c "
+            s &= "on c.object_id = i.object_id "
+            s &= "and c.column_id = ic.column_id "
+            s &= "where i.object_id = object_id('" & sTable & "') "
+            s &= "order by 1, 2, 3"
+        End If
 
         psAdapt = New SqlDataAdapter(s, psConn)
         psAdapt.SelectCommand.CommandType = CommandType.Text
@@ -1071,7 +1124,7 @@ Public Class TableColumns
         Dim s As String = sField
 
         Select Case LCase(sField)
-            Case "group", "percent", "key", "function", "deny", "order", "return"
+            Case "group", "percent", "key", "function", "deny", "order", "return", "rowcount"
                 s = """" & sField & """"
             Case Else
                 If InStr(sField, " ", CompareMethod.Text) > 0 Then
