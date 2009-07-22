@@ -261,7 +261,7 @@ Public Class TableColumns
         sName = ""
         For Each dr In dtIndexs.Rows
             s = GetString(dr.Item("name"))
-            If CInt(dr.Item("is_primary_key")) = 1 Then
+            If CInt(dr.Item("is_primary_key")) <> 0 Then
                 If Not b Then
                     sPKey = s
                     i = CInt(dr.Item("type"))
@@ -1028,10 +1028,12 @@ Public Class TableColumns
             s &= "and s.xtype = 'PK' "
             s &= "where x.id = object_id('" & sTable & "') "
             s &= "and x.name not like '_WA_%' "
-            s &= "order by 1, 2, 3"
+            s &= "order by 2, 1, 3"
         Else
             s = "select ic.index_column_id key_ordinal,i.name,c.name ColumnName,"
-            s &= "ic.is_descending_key,i.type,i.is_primary_key,i.is_unique,ic.is_included_column "
+            s &= "ic.is_descending_key,i.type,"
+            s &= "i.is_primary_key,"
+            s &= "i.is_unique,ic.is_included_column "
             s &= "from sys.indexes i "
             s &= "join sys.index_columns ic "
             s &= "on ic.object_id = i.object_id "
@@ -1040,7 +1042,7 @@ Public Class TableColumns
             s &= "on c.object_id = i.object_id "
             s &= "and c.column_id = ic.column_id "
             s &= "where i.object_id = object_id('" & sTable & "') "
-            s &= "order by 1, 2, 3"
+            s &= "order by 2, 1, 3"
         End If
 
         psAdapt = New SqlDataAdapter(s, psConn)
