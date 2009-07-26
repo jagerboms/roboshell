@@ -10,6 +10,8 @@ Module Scriptor
     Dim SystemName As String = ""
     Dim sConnect As String = ""
 
+    Private sModuleOut As String = ""
+
     ' xml field/parameter overrides
     ' xml data scripts
 
@@ -131,12 +133,12 @@ Module Scriptor
         End If
 
         frag.AppendChild(dom.CreateTextNode(vbNewLine & "    "))
-        node = dom.CreateElement("moduledefn")
-        attr = dom.CreateAttribute("module")
+        node = dom.CreateElement("module")
+        attr = dom.CreateAttribute("id")
         attr.InnerText = sModule
         node.Attributes.Append(attr)
         attr = Nothing
-        attr = dom.CreateAttribute("parent")
+        attr = dom.CreateAttribute("owner")
         attr.InnerText = sParent
         node.Attributes.Append(attr)
         attr = Nothing
@@ -144,8 +146,21 @@ Module Scriptor
         attr.InnerText = sDescription
         node.Attributes.Append(attr)
         attr = Nothing
-        attr = dom.CreateAttribute("maintain")
-        attr.InnerText = "Y"
+        frag.AppendChild(node)
+        node = Nothing
+
+        frag.AppendChild(dom.CreateTextNode(vbNewLine & "    "))
+        node = dom.CreateElement("module")
+        attr = dom.CreateAttribute("id")
+        attr.InnerText = sModule & "maintain"
+        node.Attributes.Append(attr)
+        attr = Nothing
+        attr = dom.CreateAttribute("owner")
+        attr.InnerText = sModule
+        node.Attributes.Append(attr)
+        attr = Nothing
+        attr = dom.CreateAttribute("description")
+        attr.InnerText = "Maintain"
         node.Attributes.Append(attr)
         attr = Nothing
         frag.AppendChild(node)
@@ -529,7 +544,7 @@ Module Scriptor
                             Case "storedprocconfig"
                                 SProcConfig(files)
 
-                            Case "moduledefn"
+                            Case "module"
                                 ModuleDefn(files)
 
                             Case "procget"
@@ -569,9 +584,10 @@ Module Scriptor
                     Next
             End Select
         Next
-            s = System.IO.Path.GetFileNameWithoutExtension(sXML)
-            WriteSCL(s)
-            Return 0
+        s = System.IO.Path.GetFileNameWithoutExtension(sXML)
+        ModuleWrite(s)
+        WriteSCL(s)
+        Return 0
     End Function
 
     Private Function Table(ByVal files As Xml.XmlElement) As Integer
@@ -893,51 +909,42 @@ Module Scriptor
     End Function
 
     Private Function ModuleDefn(ByVal files As Xml.XmlElement) As Integer
-        Dim sModule As String = ""
-        Dim sParent As String = ""
+        Dim sID As String = ""
+        Dim sOwner As String = ""
         Dim sDescription As String = ""
-        Dim bMaintain As Boolean = False
-        Dim sOut As String
-        Dim sName As String
 
         For Each a As Xml.XmlAttribute In files.Attributes
             Select Case a.Name
-                Case "module"
-                    sModule = a.InnerText
-                Case "parent"
-                    sParent = a.InnerText
+                Case "id"
+                    sID = a.InnerText
+                Case "owner"
+                    sOwner = a.InnerText
                 Case "description"
                     sDescription = a.InnerText
-                Case "maintain"
-                    If LCase(Mid(a.InnerText, 1, 1)) = "y" Then
-                        bMaintain = True
-                    End If
             End Select
         Next
 
-        If sModule = "" Then Return -1
+        If sID = "" Then Return -1
+        sID = LCase(sID)
+        sOwner = LCase(sOwner)
 
-        sName = LCase(sModule)
+        sModuleOut &= vbCrLf
+        sModuleOut &= "execute dbo.shlModulesInsert" & vbCrLf
+        sModuleOut &= "    @ModuleID = '" & sID & "'" & vbCrLf
+        sModuleOut &= "   ,@OwnerModule = '" & sOwner & "'" & vbCrLf
+        sModuleOut &= "   ,@Description = '" & sDescription & "'" & vbCrLf
 
-        sOut = Header("")
-        sOut &= vbCrLf
-        sOut &= "execute dbo.shlModulesInsert" & vbCrLf
-        sOut &= "    @ModuleID = '" & sName & "'" & vbCrLf
-        sOut &= "   ,@OwnerModule = '" & sParent & "'" & vbCrLf
-        sOut &= "   ,@Description = '" & sDescription & "'" & vbCrLf
-        If bMaintain Then
-            sOut &= "go" & vbCrLf
-            sOut &= vbCrLf
-            sOut &= "execute dbo.shlModulesInsert" & vbCrLf
-            sOut &= "    @ModuleID = '" & sName & "maintain'" & vbCrLf
-            sOut &= "   ,@OwnerModule = '" & sName & "'" & vbCrLf
-            sOut &= "   ,@Description = 'Maintain'" & vbCrLf
-        End If
-        sOut &= Footer()
-
-        PutFile("mod." & sModule & ".sql", sOut)
         Return 0
     End Function
+
+    Private Sub ModuleWrite(ByVal sModule As String)
+        Dim sOut As String
+
+        If sModuleOut <> "" Then
+            sOut = Header("") & sModuleOut & Footer()
+            PutFile("mod." & sModule & ".sql", sOut)
+        End If
+    End Sub
 
     Private Function TableGet(ByVal files As Xml.XmlElement) As Integer
         Dim sTable As String = ""

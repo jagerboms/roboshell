@@ -570,7 +570,7 @@ Public Class TableColumns
                             sRest &= "if @i is null" & vbCrLf
                             sRest &= "begin" & vbCrLf
                             sRest &= "    print 'creating index ''" & IndexName & "'''" & vbCrLf
-                            sRest &= "    create" & GetString(IIf(CInt(r.Item("is_unique")) = 1, " unique", ""))
+                            sRest &= "    create" & GetString(IIf(CInt(r.Item("is_unique")) <> 0, " unique", ""))
                             sRest &= GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
                             sRest &= " index " & IndexName & vbCrLf
                             sRest &= "      on dbo." & sTable & " ("
@@ -630,7 +630,7 @@ Public Class TableColumns
                 If CInt(r.Item("is_primary_key")) = 0 Then
                     If IndexName = GetString(r.Item("name")) Then
                         If i = 0 Then
-                            sOut &= "create" & GetString(IIf(CInt(r.Item("is_unique")) = 1, " unique", ""))
+                            sOut &= "create" & GetString(IIf(CInt(r.Item("is_unique")) <> 0, " unique", ""))
                             sOut &= GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
                             sOut &= " index " & IndexName & " on dbo." & sTable & " ("
                             sOut &= GetString(r.Item("ColumnName"))
@@ -1030,7 +1030,7 @@ Public Class TableColumns
             s &= "and x.name not like '_WA_%' "
             s &= "order by 2, 1, 3"
         Else
-            s = "select ic.index_column_id key_ordinal,i.name,c.name ColumnName,"
+            s = "select ic.key_ordinal,i.name,c.name ColumnName,"
             s &= "ic.is_descending_key,i.type,"
             s &= "i.is_primary_key,"
             s &= "i.is_unique,ic.is_included_column "
