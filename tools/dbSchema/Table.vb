@@ -1126,7 +1126,31 @@ Public Class TableColumns
         Dim s As String = sField
 
         Select Case LCase(sField)
-            Case "group", "percent", "key", "function", "deny", "order", "return", "rowcount"
+            Case "encryption", "order", "add", "end", "outer", "all", "errlvl", "over", "alter", _
+                 "escape", "percent", "and", "except", "plan", "any", "exec", "precision", "as", _
+                 "execute", "primary", "asc", "exists", "print", "authorization", "exit", "proc", _
+                 "avg", "expression", "procedure", "backup", "fetch", "public", "begin", "file", _
+                 "raiserror", "between", "fillfactor", "read", "break", "for", "readtext", _
+                 "browse", "foreign", "reconfigure", "bulk", "freetext", "references", "by", _
+                 "freetexttable", "replication", "cascade", "from", "restore", "case", "full", _
+                 "restrict", "check", "function", "return", "checkpoint", "goto", "revoke", _
+                 "close", "grant", "right", "clustered", "group", "rollback", "coalesce", _
+                 "having", "rowcount", "collate", "holdlock", "rowguidcol", "column", "identity", _
+                 "rule", "commit", "identity_insert", "save", "compute", "identitycol", "schema", _
+                 "constraint", "if", "select", "contains", "in", "session_user", "containstable", _
+                 "index", "set", "continue", "inner", "setuser", "convert", "insert", "shutdown", _
+                 "count", "intersect", "some", "create", "into", "statistics", "cross", "is", _
+                 "sum", "current", "join", "system_user", "current_date", "key", "table", _
+                 "current_time", "kill", "textsize", "current_timestamp", "left", "then", _
+                 "current_user", "like", "to", "cursor", "lineno", "top", "database", "load", _
+                 "tran", "databasepassword", "max", "transaction", "dateadd", "min", "trigger", _
+                 "datediff", "national", "truncate", "datename", "nocheck", "tsequal", "datepart", _
+                 "nonclustered", "union", "dbcc", "not", "unique", "deallocate", "null", "update", _
+                 "declare", "nullif", "updatetext", "default", "of", "use", "delete", "off", _
+                 "user", "deny", "offsets", "values", "desc", "on", "varying", "disk", "open", _
+                 "view", "distinct", "opendatasource", "waitfor", "distributed", "openquery", _
+                 "when", "double", "openrowset", "where", "drop", "openxml", "while", "dump", _
+                 "option", "with", "else", "or", "writetext"
                 s = """" & sField & """"
             Case Else
                 If InStr(sField, " ", CompareMethod.Text) > 0 Then
