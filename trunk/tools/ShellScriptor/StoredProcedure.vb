@@ -46,44 +46,23 @@ Public Class StoredProcedure
         PreLoad = 0
     End Sub
 
-    Public Sub New(ByVal Name As String, ByVal sConnect As String)
+    Public Sub New(ByVal Name As String, ByVal sqllib As sql)
         Dim s As String = "a"
         Dim sText As String
         Dim b As Boolean = False
         Dim sName As String
         Dim sType As String
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim Details As New DataSet
+        Dim dt As DataTable
         Dim dr As DataRow
 
         PreLoad = 2
-        psConn = New SqlConnection(sConnect)
-        AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-        psConn.Open()
-
-        s = "select SPECIFIC_NAME"
-        s &= ",ORDINAL_POSITION"
-        s &= ",PARAMETER_NAME"
-        s &= ",DATA_TYPE"
-        s &= ",CHARACTER_MAXIMUM_LENGTH"
-        s &= ",NUMERIC_PRECISION"
-        s &= ",NUMERIC_SCALE"
-        s &= ",PARAMETER_MODE "
-        s &= "from INFORMATION_SCHEMA.PARAMETERS "
-        s &= "where SPECIFIC_NAME='" & Name
-        s &= "' order by ORDINAL_POSITION"
-
-        psAdapt = New SqlDataAdapter(s, psConn)
-        psAdapt.SelectCommand.CommandType = CommandType.Text
-        psAdapt.Fill(Details)
-
-        If Details.Tables(0).Rows.Count = 0 Then
+        dt = sqllib.ProcParms(Name)
+        If dt.Rows.Count = 0 Then
             PreLoad = 3
             Return
         End If
 
-        For Each dr In Details.Tables(0).Rows        ' Columns
+        For Each dr In dt.Rows        ' Columns
             If ProcedureName = "" Then
                 ProcedureName = GetString(dr.Item("SPECIFIC_NAME"))
             End If
@@ -94,15 +73,10 @@ Public Class StoredProcedure
                     LCase(GetString(dr.Item("PARAMETER_MODE"))))
         Next
 
-        s = "select text from syscomments "
-        s &= "where id = object_id('" & Name & "') order by number, colid"
-        psAdapt = New SqlDataAdapter(s, psConn)
-        psAdapt.SelectCommand.CommandType = CommandType.Text
-        psAdapt.Fill(Details)
-        psConn.Close()
-
+        dt = Nothing
+        dt = sqllib.ObjectText(Name)
         sText = ""
-        For Each dr In Details.Tables(0).Rows        ' Columns
+        For Each dr In dt.Rows        ' Columns
             s = GetString(dr.Item("text"))
             If Len(s) < 4000 Then s &= vbCrLf
             sText &= s ' & vbCrLf

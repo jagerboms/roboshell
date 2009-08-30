@@ -8,9 +8,7 @@ Imports System.Collections.Specialized
 Module Scriptor
     Dim MainSCL As String = ""
     Dim SystemName As String = ""
-    Dim sConnect As String = ""
-
-    Private sModuleOut As String = ""
+    Dim sqllib As New sql
 
     ' xml field/parameter overrides
     ' xml data scripts
@@ -41,7 +39,7 @@ Module Scriptor
                     sItem = GetCommandParameter("-i")
                     sSeekKey = GetCommandParameter("-s")
                     sKey = GetCommandParameter("-k")
-                    sConnect = GetConnectString(sKey)
+                    sqllib.ConnectString = GetConnectString(sKey)
 
                     i = CreateXML(sTable, sObject, sModule, sParent, sDescription, sItem, sSeekKey, sKey)
                 End If
@@ -95,7 +93,7 @@ Module Scriptor
             Return 1
         End If
 
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
 
         dom.PreserveWhitespace = True
         node = dom.CreateProcessingInstruction("xml", "version='1.0'")
@@ -110,6 +108,59 @@ Module Scriptor
         End If
         dom.AppendChild(root)
         root.AppendChild(dom.CreateTextNode(vbNewLine & "  "))
+
+        ' Modules section
+
+        frag = dom.CreateDocumentFragment
+
+        node0 = dom.CreateElement("module")
+        attr = dom.CreateAttribute("id")
+        attr.InnerText = sModule
+        node0.Attributes.Append(attr)
+        attr = Nothing
+        attr = dom.CreateAttribute("owner")
+        attr.InnerText = sParent
+        node0.Attributes.Append(attr)
+        attr = Nothing
+        attr = dom.CreateAttribute("description")
+        attr.InnerText = sDescription
+        node0.Attributes.Append(attr)
+        attr = Nothing
+        frag.AppendChild(dom.CreateTextNode(vbNewLine & "    "))
+        frag.AppendChild(node0)
+        node0 = Nothing
+
+        node0 = dom.CreateElement("module")
+        attr = dom.CreateAttribute("id")
+        attr.InnerText = sModule & "maintain"
+        node0.Attributes.Append(attr)
+        attr = Nothing
+        attr = dom.CreateAttribute("owner")
+        attr.InnerText = sModule
+        node0.Attributes.Append(attr)
+        attr = Nothing
+        attr = dom.CreateAttribute("description")
+        attr.InnerText = "maintain"
+        node0.Attributes.Append(attr)
+        attr = Nothing
+        frag.AppendChild(dom.CreateTextNode(vbNewLine & "    "))
+        frag.AppendChild(node0)
+        node0 = Nothing
+
+        frag.AppendChild(dom.CreateTextNode(vbNewLine & "  "))
+        node = dom.CreateElement("modules")
+        attr = dom.CreateAttribute("filename")
+        attr.InnerText = "mod." & sObject & ".sql"
+        node.Attributes.Append(attr)
+        attr = Nothing
+        node.AppendChild(frag)
+        frag = Nothing
+        root.AppendChild(node)
+        root.AppendChild(dom.CreateTextNode(vbNewLine))
+        root.AppendChild(dom.CreateTextNode(vbNewLine & "  "))
+        node = Nothing
+
+        ' Tables section
 
         frag = dom.CreateDocumentFragment
         frag.AppendChild(dom.CreateTextNode(vbNewLine & "    "))
@@ -132,40 +183,20 @@ Module Scriptor
             node = Nothing
         End If
 
-        frag.AppendChild(dom.CreateTextNode(vbNewLine & "    "))
-        node = dom.CreateElement("module")
-        attr = dom.CreateAttribute("id")
-        attr.InnerText = sModule
-        node.Attributes.Append(attr)
-        attr = Nothing
-        attr = dom.CreateAttribute("owner")
-        attr.InnerText = sParent
-        node.Attributes.Append(attr)
-        attr = Nothing
-        attr = dom.CreateAttribute("description")
-        attr.InnerText = sDescription
-        node.Attributes.Append(attr)
-        attr = Nothing
-        frag.AppendChild(node)
+        frag.AppendChild(dom.CreateTextNode(vbNewLine & "  "))
+        node = dom.CreateElement("tables")
+        node.AppendChild(frag)
+        frag = Nothing
+        root.AppendChild(node)
+        node = Nothing
+        root.AppendChild(dom.CreateTextNode(vbNewLine))
+        frag = Nothing
+        root.AppendChild(dom.CreateTextNode(vbNewLine & "  "))
         node = Nothing
 
-        frag.AppendChild(dom.CreateTextNode(vbNewLine & "    "))
-        node = dom.CreateElement("module")
-        attr = dom.CreateAttribute("id")
-        attr.InnerText = sModule & "maintain"
-        node.Attributes.Append(attr)
-        attr = Nothing
-        attr = dom.CreateAttribute("owner")
-        attr.InnerText = sModule
-        node.Attributes.Append(attr)
-        attr = Nothing
-        attr = dom.CreateAttribute("description")
-        attr.InnerText = "Maintain"
-        node.Attributes.Append(attr)
-        attr = Nothing
-        frag.AppendChild(node)
-        node = Nothing
+        ' Objects section
 
+        frag = dom.CreateDocumentFragment
         frag.AppendChild(dom.CreateTextNode(vbNewLine & "    "))
         node = dom.CreateElement("procget")
         attr = dom.CreateAttribute("table")
@@ -251,7 +282,7 @@ Module Scriptor
         node.Attributes.Append(attr)
         attr = Nothing
         attr = dom.CreateAttribute("module")
-        attr.InnerText = sModule & "Maintain"
+        attr.InnerText = sModule & "maintain"
         node.Attributes.Append(attr)
         attr = Nothing
         attr = dom.CreateAttribute("item")
@@ -320,7 +351,7 @@ Module Scriptor
             attr = Nothing
         End If
         attr = dom.CreateAttribute("module")
-        attr.InnerText = sModule & "Maintain"
+        attr.InnerText = sModule & "maintain"
         node.Attributes.Append(attr)
         attr = Nothing
         attr = dom.CreateAttribute("item")
@@ -370,7 +401,7 @@ Module Scriptor
             node.Attributes.Append(attr)
             attr = Nothing
             attr = dom.CreateAttribute("module")
-            attr.InnerText = sModule
+            attr.InnerText = sModule & "maintain"
             node.Attributes.Append(attr)
             attr = Nothing
             If sSeekKey <> "" Then
@@ -507,11 +538,13 @@ Module Scriptor
 
     Public Function ProcessXML(ByVal sXML As String) As Integer
         Dim s As String
-
+        Dim sObject As String
+        Dim sOut As String
         Dim dom As New Xml.XmlDocument
         Dim x As Xml.XmlElement
         Dim files As Xml.XmlElement
 
+        sObject = System.IO.Path.GetFileNameWithoutExtension(sXML)
         dom.Load(sXML)
         If dom.DocumentElement.Name <> "roboshell" Then
             Console.WriteLine("Error: XML file format error")
@@ -525,27 +558,17 @@ Module Scriptor
                     s = a.InnerText
             End Select
         Next
-        sConnect = GetConnectString(s)
+        sqllib.ConnectString = GetConnectString(s)
 
         For Each x In dom.DocumentElement.ChildNodes
             Select Case x.Name
                 Case "objects"
                     For Each files In x.ChildNodes
                         Select Case files.Name
-                            Case "tabledefn"
-                                Table(files)
-                            Case "tableauditdefn"
-                                TableAudit(files)
-                            Case "staticdata"
-                                Data(files)
-
                             Case "storedproc"
                                 SProc(files)
                             Case "storedprocconfig"
                                 SProcConfig(files)
-
-                            Case "module"
-                                ModuleDefn(files)
 
                             Case "procget"
                                 TableGet(files)
@@ -582,11 +605,38 @@ Module Scriptor
                                 If s <> "" Then MainSCL &= s & vbCrLf
                         End Select
                     Next
+
+                Case "tables"
+                    For Each files In x.ChildNodes
+                        Select Case files.Name
+                            Case "tabledefn"
+                                Table(files)
+                            Case "tableauditdefn"
+                                TableAudit(files)
+                            Case "staticdata"
+                                Data(files)
+                        End Select
+                    Next
+
+                Case "modules"
+                    sOut = ""
+                    For Each files In x.ChildNodes
+                        If files.Name = "module" Then
+                            sOut &= ModuleDefn(files)
+                        End If
+                    Next
+                    s = sObject
+                    For Each a As Xml.XmlAttribute In x.Attributes
+                        Select Case a.Name
+                            Case "filename"
+                                s = a.InnerText
+                                Exit For
+                        End Select
+                    Next
+                    ModuleWrite(s, sOut)
             End Select
         Next
-        s = System.IO.Path.GetFileNameWithoutExtension(sXML)
-        ModuleWrite(s)
-        WriteSCL(s)
+        WriteSCL(sObject)
         Return 0
     End Function
 
@@ -607,9 +657,9 @@ Module Scriptor
             Return -1
         End If
 
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
 
-        sOut = Header("") & vbCrLf & tDefn.FullTableText & Footer()
+        sOut = Header("") & vbCrLf & tDefn.FullTableText & Footer(True)
         PutFile("table." & tDefn.TableName & ".sql", sOut)
 
         i = TableIndexes(tDefn)
@@ -624,7 +674,7 @@ Module Scriptor
         For Each s In tDefn.IKeys
             sOut = tDefn.IndexText(s)
             If sOut <> "" Then
-                sOut = Header("") & sOut & Footer()
+                sOut = Header("") & sOut & Footer(True)
                 PutFile("index." & tDefn.TableName & "." & s & ".sql", sOut)
             End If
         Next
@@ -637,7 +687,7 @@ Module Scriptor
         For Each s In tDefn.FKeys
             sOut = tDefn.FKeyText(s)
             If sOut <> "" Then
-                sOut = Header("") & sOut & Footer()
+                sOut = Header("") & sOut & Footer(True)
                 PutFile("fkey." & tDefn.TableName & "." & s & ".sql", sOut)
             End If
         Next
@@ -653,7 +703,7 @@ Module Scriptor
             End Select
         Next
 
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
         Dim aDefn As TableColumns
         Dim sName As String
         Dim sOut As String
@@ -664,7 +714,7 @@ Module Scriptor
         End If
 
         sName = tDefn.TableName & "Audit"
-        aDefn = New TableColumns(sName, sConnect, True)
+        aDefn = New TableColumns(sName, sqllib, True)
         If aDefn.State = 3 Then
             aDefn = New TableColumns()
             aDefn.TableName = sName
@@ -685,7 +735,7 @@ Module Scriptor
             aDefn.AddColumn("UserID", "sysname", 0, 0, 0, "N", False, sName & "UserID", "(suser_sname())")
         End If
 
-        sOut = Header("") & vbCrLf & aDefn.FullTableText & Footer()
+        sOut = Header("") & vbCrLf & aDefn.FullTableText & Footer(True)
 
         PutFile("table." & sName & ".sql", sOut)
         Return AuditInsert(aDefn)
@@ -777,7 +827,7 @@ Module Scriptor
         sOut &= vbCrLf
         sOut &= "    return @@error" & vbCrLf
         sOut &= "end" & vbCrLf
-        sOut &= Footer()
+        sOut &= Footer(True)
 
         PutFile("proc." & sName & "Insert.sql", sOut)
         Return 0
@@ -787,13 +837,7 @@ Module Scriptor
         Dim sTable As String = ""
         Dim sFilter As String = ""
         Dim sName As String = ""
-        Dim tc As TableColumn
-        Dim dt As DataTable
         Dim sOut As String
-        Dim sHead As String
-        Dim sTail As String
-        Dim s As String
-        Dim i As Integer
         Dim ss As String = ""
 
         For Each a As Xml.XmlAttribute In files.Attributes
@@ -811,11 +855,11 @@ Module Scriptor
             Return -1
         End If
 
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
 
         sOut = Header("") & vbCrLf
         sOut &= tDefn.DataScript(sFilter)
-        sOut &= Footer()
+        sOut &= Footer(True)
 
         If sName = "" Then
             sName = "data." & tDefn.TableName & ".sql"
@@ -840,12 +884,12 @@ Module Scriptor
             Return -1
         End If
 
-        Dim pDefn As New StoredProcedure(sName, sConnect)
+        Dim pDefn As New StoredProcedure(sName, sqllib)
 
         sOut = Header(sName)
         sOut &= vbCrLf
         sOut &= pDefn.FullText
-        sOut &= Footer()
+        sOut &= Footer(True)
 
         PutFile("proc." & pDefn.ProcedureName & ".sql", sOut)
         Return 0
@@ -886,7 +930,7 @@ Module Scriptor
             Return -1
         End If
 
-        Dim pDefn As New StoredProcedure(ProcedureName, sConnect)
+        Dim pDefn As New StoredProcedure(ProcedureName, sqllib)
 
         If ConfigName = "" Then
             ConfigName = ProcedureName
@@ -902,16 +946,17 @@ Module Scriptor
         sOut = Header("")
         sOut &= vbCrLf
         sOut &= pDefn.ConfigText
-        sOut &= Footer()
+        sOut &= Footer(True)
 
         PutFile("config." & ConfigName & ".sql", sOut)
         Return 0
     End Function
 
-    Private Function ModuleDefn(ByVal files As Xml.XmlElement) As Integer
+    Private Function ModuleDefn(ByVal files As Xml.XmlElement) As String
         Dim sID As String = ""
         Dim sOwner As String = ""
         Dim sDescription As String = ""
+        Dim sOut As String
 
         For Each a As Xml.XmlAttribute In files.Attributes
             Select Case a.Name
@@ -924,25 +969,26 @@ Module Scriptor
             End Select
         Next
 
-        If sID = "" Then Return -1
+        If sID = "" Then Return ""
         sID = LCase(sID)
         sOwner = LCase(sOwner)
 
-        sModuleOut &= vbCrLf
-        sModuleOut &= "execute dbo.shlModulesInsert" & vbCrLf
-        sModuleOut &= "    @ModuleID = '" & sID & "'" & vbCrLf
-        sModuleOut &= "   ,@OwnerModule = '" & sOwner & "'" & vbCrLf
-        sModuleOut &= "   ,@Description = '" & sDescription & "'" & vbCrLf
+        sOut = vbCrLf
+        sOut &= "execute dbo.shlModulesInsert" & vbCrLf
+        sOut &= "    @ModuleID = '" & sID & "'" & vbCrLf
+        sOut &= "   ,@OwnerModule = '" & sOwner & "'" & vbCrLf
+        sOut &= "   ,@Description = '" & sDescription & "'" & vbCrLf
+        sOut &= "go" & vbCrLf
 
-        Return 0
+        Return sOut
     End Function
 
-    Private Sub ModuleWrite(ByVal sModule As String)
+    Private Sub ModuleWrite(ByVal sFileName As String, ByVal sText As String)
         Dim sOut As String
 
-        If sModuleOut <> "" Then
-            sOut = Header("") & sModuleOut & Footer()
-            PutFile("mod." & sModule & ".sql", sOut)
+        If sText <> "" Then
+            sOut = Header("") & sText & Footer(False)
+            PutFile(sFileName, sOut)
         End If
     End Sub
 
@@ -979,7 +1025,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
         If tDefn.State <> 2 Then Return -1
 
         If sProcName = "" Then sProcName = tDefn.TableName & "Get"
@@ -987,7 +1033,7 @@ Module Scriptor
         If sModule = "" Then sModule = sObject
         If sProcess = "" Then sProcess = sObject
 
-        Dim sp As New StoredProcedure(sProcName, sConnect)
+        Dim sp As New StoredProcedure(sProcName, sqllib)
 
         If sp.State <> 2 Then
             sp.ProcedureName = sProcName
@@ -1008,7 +1054,7 @@ Module Scriptor
                 sO &= o & "a." & tc.Name & vbCrLf
                 o = "           ,"
 
-                sp.AddParameter("@p" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "inout")
+                sp.AddParameter("@p" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "in")
             Next
             sOut &= "as" & vbCrLf
             sOut &= "begin" & vbCrLf
@@ -1038,13 +1084,13 @@ Module Scriptor
             sp.ProcedureText = sOut
         End If
 
-        sOut = Header("") & sp.FullText & Footer()
+        sOut = Header("") & sp.FullText & Footer(True)
         PutFile("proc." & sProcName & ".sql", sOut)
 
         sp.ConfigName = sObject
         sp.ModuleName = sModule
         sp.ProcessName = sProcess
-        sOut = Header("") & vbCrLf & sp.ConfigText & Footer()
+        sOut = Header("") & vbCrLf & sp.ConfigText & Footer(True)
         PutFile("config." & sObject & ".sql", sOut)
         Return 0
     End Function
@@ -1080,13 +1126,13 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
         If tDefn.State <> 2 Then Return -1
         If sProcName = "" Then sProcName = sTable & "List"
         If sObject = "" Then sObject = sProcName
         If sProcess = "" Then sProcess = sObject
 
-        Dim sp As New StoredProcedure(sProcName, sConnect)
+        Dim sp As New StoredProcedure(sProcName, sqllib)
 
         If sp.State <> 2 Then
             sp.ProcedureName = sProcName
@@ -1098,7 +1144,7 @@ Module Scriptor
                 If tDefn.hasState Then
                     sOut &= "    @" & tc.Name & " " & tc.TypeText & " = null" & vbCrLf
                     sW = "    where   a.State = 'ac' or a." & tc.Name & " = @" & tc.Name & vbCrLf
-                    sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "inout")
+                    sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "in")
                 End If
             Next
             sOut &= "as" & vbCrLf
@@ -1131,13 +1177,13 @@ Module Scriptor
             sp.ProcedureText = sOut
         End If
 
-        sOut = Header("") & sp.FullText & Footer()
+        sOut = Header("") & sp.FullText & Footer(True)
         PutFile("proc." & sProcName & ".sql", sOut)
 
         sp.ConfigName = sObject
         sp.ModuleName = sModule
         sp.ProcessName = sProcess
-        sOut = Header("") & vbCrLf & sp.ConfigText & Footer()
+        sOut = Header("") & vbCrLf & sp.ConfigText & Footer(True)
         PutFile("config." & sObject & ".sql", sOut)
         Return 0
     End Function
@@ -1171,7 +1217,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
         If tDefn.State <> 2 Then Return -1
         If Not tDefn.hasAudit Then
             Return -1
@@ -1180,7 +1226,7 @@ Module Scriptor
         If sObject = "" Then sObject = sProcName
         If sProcess = "" Then sProcess = sObject
 
-        Dim sp As New StoredProcedure(sProcName, sConnect)
+        Dim sp As New StoredProcedure(sProcName, sqllib)
 
         If sp.State <> 2 Then
             sp.ProcedureName = sProcName
@@ -1197,7 +1243,7 @@ Module Scriptor
                 sW &= w & "a." & tc.Name & " = @" & tc.Name & vbCrLf
                 w = "    and     "
 
-                sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "inout")
+                sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "in")
             Next
             sOut &= "as" & vbCrLf
             sOut &= "begin" & vbCrLf
@@ -1237,13 +1283,13 @@ Module Scriptor
             sp.ProcedureText = sOut
         End If
 
-        sOut = Header("") & sp.FullText & Footer()
+        sOut = Header("") & sp.FullText & Footer(True)
         PutFile("proc." & sProcName & ".sql", sOut)
 
         sp.ConfigName = sObject
         sp.ModuleName = sModule
         sp.ProcessName = sProcess
-        sOut = Header("") & vbCrLf & sp.ConfigText & Footer()
+        sOut = Header("") & vbCrLf & sp.ConfigText & Footer(True)
         PutFile("config." & sObject & ".sql", sOut)
         Return 0
     End Function
@@ -1284,7 +1330,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
         If tDefn.State <> 2 Then Return -1
 
         If sProcName = "" Then sProcName = sTable & "Insert"
@@ -1294,7 +1340,7 @@ Module Scriptor
         If sSuccess = "" Then sSuccess = sTable & "Get"
         If ssItem = "" Then ssItem = sObject
 
-        Dim sp As New StoredProcedure(sProcName, sConnect)
+        Dim sp As New StoredProcedure(sProcName, sqllib)
         sp.ConfigName = sObject
         sp.ModuleName = sModule
         sp.ProcessName = sProcess
@@ -1309,7 +1355,7 @@ Module Scriptor
             End If
         End If
 
-        sOut = Header("") & sp.FullText & Footer()
+        sOut = Header("") & sp.FullText & Footer(True)
         PutFile("proc." & sProcName & ".sql", sOut)
 
         If sMode = "all" Then
@@ -1327,7 +1373,7 @@ Module Scriptor
             End If
         End If
 
-        sOut = Header("") & vbCrLf & sp.ConfigText & Footer()
+        sOut = Header("") & vbCrLf & sp.ConfigText & Footer(True)
         PutFile("config." & sObject & ".sql", sOut)
         Return ConfigTableAdd(tDefn, sFormObject, sObject, ssItem, sMode, Fields, sModule, sSuccess)
     End Function
@@ -1355,7 +1401,7 @@ Module Scriptor
                 sOut &= vbCrLf
                 Comma = ","
 
-                sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "inout")
+                sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "in")
             End If
         Next
         sOut &= "as" & vbCrLf
@@ -1618,7 +1664,7 @@ Module Scriptor
                 sOut &= vbCrLf
                 Comma = ","
 
-                sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "inout")
+                sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "in")
             End If
         Next
         sOut &= "as" & vbCrLf
@@ -1871,7 +1917,7 @@ Module Scriptor
         sOut &= "   ,@ImageFile = 'cancel.gif'" & vbCrLf
         sOut &= "   ,@ToolTip = 'Exit without saving changes'" & vbCrLf
         sOut &= "   ,@KeyCode = 27" & vbCrLf
-        sOut &= Footer()
+        sOut &= Footer(True)
 
         PutFile("config." & sObject & ".sql", sOut)
         Return 0
@@ -1915,7 +1961,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
         If tDefn.State <> 2 Then Return -1
         If sProcName = "" Then sProcName = tDefn.TableName & "Update"
         If sFormObject = "" Then sFormObject = sTable & "Edit"
@@ -1924,7 +1970,7 @@ Module Scriptor
         If sSeekKey = "" Then sSeekKey = sObject
         If ssItem = "" Then ssItem = sObject
 
-        Dim sp As New StoredProcedure(sProcName, sConnect)
+        Dim sp As New StoredProcedure(sProcName, sqllib)
         sp.ConfigName = sObject
         sp.ModuleName = sModule
         sp.ProcessName = sProcess
@@ -1942,12 +1988,12 @@ Module Scriptor
                     End If
                     sOut &= vbCrLf
                     Comma = ","
-                    sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "inout")
+                    sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "in")
                 End If
             Next
             If tDefn.hasAudit Then
                 sOut &= "   ,@AuditID integer" & vbCrLf
-                sp.AddParameter("@AuditID", "integer", 4, 0, 0, "inout")
+                sp.AddParameter("@AuditID", "integer", 4, 0, 0, "in")
             End If
             sOut &= "as" & vbCrLf
             sOut &= "begin" & vbCrLf
@@ -2092,13 +2138,13 @@ Module Scriptor
             sp.ProcedureText = sOut
         End If
 
-        sOut = Header("") & sp.FullText & Footer()
+        sOut = Header("") & sp.FullText & Footer(True)
         PutFile("proc." & sProcName & ".sql", sOut)
         sp.Mode = "P"
         sp.SeekKey = sSeekKey
         sp.AddResult("@StateName", "varchar", 50, 0, 0)
         sp.AddResult("@State", "varchar", 2, 0, 0)
-        sOut = Header("") & vbCrLf & sp.ConfigText & Footer()
+        sOut = Header("") & vbCrLf & sp.ConfigText & Footer(True)
         PutFile("config." & sObject & ".sql", sOut)
 
         Return ConfigTableEdit(tDefn, sFormObject, sObject, ssItem, Fields, sModule)
@@ -2247,7 +2293,7 @@ Module Scriptor
         sOut &= "   ,@ImageFile = 'cancel.gif'" & vbCrLf
         sOut &= "   ,@ToolTip = 'Exit without saving changes'" & vbCrLf
         sOut &= "   ,@KeyCode = 27" & vbCrLf
-        sOut &= Footer()
+        sOut &= Footer(True)
 
         PutFile("config." & sObject & ".sql", sOut)
         Return 0
@@ -2287,7 +2333,7 @@ Module Scriptor
             End Select
         Next
         If sTable = "" Then Return -1
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
         If tDefn.State <> 2 Then Return -1
         If Not tDefn.hasState Then Return -1
 
@@ -2297,7 +2343,7 @@ Module Scriptor
         If ssItem = "" Then ssItem = sObject
         If sSeekKey = "" Then sSeekKey = sObject
 
-        Dim sp As New StoredProcedure(sProcName, sConnect)
+        Dim sp As New StoredProcedure(sProcName, sqllib)
         sp.ConfigName = sObject
         sp.ModuleName = sModule
         sp.ProcessName = sProcess
@@ -2316,12 +2362,12 @@ Module Scriptor
                     End If
                     sOut &= vbCrLf
                     Comma = ","
-                    sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "inout")
+                    sp.AddParameter("@" & tc.Name, tc.Type, tc.Length, tc.Precision, tc.Scale, "in")
                 End If
             Next
             If tDefn.hasAudit Then
                 sOut &= "   ,@AuditID integer" & vbCrLf
-                sp.AddParameter("@AuditID", "integer", 4, 0, 0, "inout")
+                sp.AddParameter("@AuditID", "integer", 4, 0, 0, "in")
             End If
             sOut &= "as" & vbCrLf
             sOut &= "begin" & vbCrLf
@@ -2444,7 +2490,7 @@ Module Scriptor
             sp.ProcedureText = sOut
         End If
 
-        sOut = Header("") & sp.FullText & Footer()
+        sOut = Header("") & sp.FullText & Footer(True)
         PutFile("proc." & sProcName & ".sql", sOut)
 
         sp.Mode = "P"
@@ -2452,7 +2498,7 @@ Module Scriptor
         sp.SeekKey = sSeekKey
         sp.AddResult("@StateName", "varchar", 50, 0, 0)
         sp.AddResult("@State", "varchar", 2, 0, 0)
-        sOut = Header("") & vbCrLf & sp.ConfigText & Footer()
+        sOut = Header("") & vbCrLf & sp.ConfigText & Footer(True)
         PutFile("config." & sObject & ".sql", sOut)
 
         Return 0
@@ -2487,7 +2533,7 @@ Module Scriptor
         If sProcess = "" Then sProcess = sObject & "Get"
         If ssItem = "" Then ssItem = sObject
 
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
         If Not tDefn.hasAudit Then
             Return 0
         End If
@@ -2634,7 +2680,7 @@ Module Scriptor
         sOut &= "   ,@ImageFile = 'refresh.gif'" & vbCrLf
         sOut &= "   ,@ToolTip = 'Refresh data'" & vbCrLf
         sOut &= "   ,@KeyCode = 120" & vbCrLf
-        sOut &= Footer()
+        sOut &= Footer(True)
 
         PutFile("config." & sObject & ".sql", sOut)
         Return 0
@@ -2678,7 +2724,7 @@ Module Scriptor
         If sSeekKey = "" Then sSeekKey = sObject
         If ssItem = "" Then ssItem = sObject
 
-        Dim tDefn As New TableColumns(sTable, sConnect, True)
+        Dim tDefn As New TableColumns(sTable, sqllib, True)
 
         sOut = Header("")
         sOut &= vbCrLf
@@ -2887,7 +2933,7 @@ Module Scriptor
             sOut &= "   ,@ImageFile = 'history.gif'" & vbCrLf
             sOut &= "   ,@ToolTip = 'Change history'" & vbCrLf
         End If
-        sOut &= Footer()
+        sOut &= Footer(True)
 
         PutFile("config." & sObject & ".sql", sOut)
         Return 0
@@ -2944,8 +2990,10 @@ Module Scriptor
         i = InStr(1, sCommand, sSwitch, CompareMethod.Text)
         sParameter = ""
         If i > 0 Then
-            sParameter = Mid(sCommand, i + 2)
-            If Mid(sParameter, 1, 1) = """" Then
+            sParameter = LTrim(Mid(sCommand, i + 2))
+            If Mid(sParameter, 1, 1) = "-" Then
+                sParameter = ""
+            ElseIf Mid(sParameter, 1, 1) = """" Then
                 sParameter = Mid(sParameter, 2)
                 i = InStr(1, sParameter, """", CompareMethod.Text)
                 If i > 0 Then
@@ -2961,26 +3009,12 @@ Module Scriptor
         GetCommandParameter = sParameter
     End Function
 
-    Private Function GetString(ByVal objValue As Object) As String
-        If IsDBNull(objValue) Then
-            Return ""
-        ElseIf objValue Is Nothing Then
-            Return ""
-        Else
-            Try
-                Return CType(objValue, String).TrimEnd
-            Catch ex As Exception
-                Return objValue.ToString
-            End Try
-        End If
-    End Function
-
     Private Function Header(ByVal sName As String) As String
         Dim s As String
         Dim sh As String
 
         If SystemName = "" Then
-            GetSystemName()
+            SystemName = sqllib.ShellName()
         End If
         sh = Mid("------------------------------------------------------------------", 1, Len(SystemName) + 6)
 
@@ -3000,40 +3034,18 @@ Module Scriptor
         Return s
     End Function
 
-    Private Function Footer() As String
-        Dim sOut As String
+    Private Function Footer(ByVal bGo As Boolean) As String
+        Dim sOut As String = ""
 
-        sOut = "go" & vbCrLf
+        If bGo Then
+            sOut = "go" & vbCrLf
+        End If
         sOut &= vbCrLf
         sOut &= "print '.oOo.'" & vbCrLf
         sOut &= "go" & vbCrLf
 
         Return sOut
     End Function
-
-    Private Sub GetSystemName()
-        Dim s As String = ""
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim TableDetails As New DataSet
-
-        psConn = New SqlConnection(sConnect)
-        AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-        psConn.Open()
-
-        s = "select dbo.shlVariableGet('SystemName'), dbo.shlVariableGet('Copyright')"
-
-        psAdapt = New SqlDataAdapter(s, psConn)
-        psAdapt.SelectCommand.CommandType = CommandType.Text
-        psAdapt.Fill(TableDetails)
-
-        SystemName = GetString(TableDetails.Tables(0).Rows(0).Item(0))
-    End Sub
-
-    Private Sub psConn_InfoMessage(ByVal sender As Object, _
-        ByVal e As System.Data.SqlClient.SqlInfoMessageEventArgs)
-        Console.WriteLine(e.Message)
-    End Sub
 
     Private Function GetConnectString(ByVal key As String) As String
         Try
