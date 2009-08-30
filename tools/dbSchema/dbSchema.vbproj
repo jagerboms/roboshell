@@ -104,6 +104,7 @@
     <Compile Include="Scriptor.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="sql.vb" />
     <Compile Include="Table.vb" />
   </ItemGroup>
   <ItemGroup>

@@ -22,14 +22,9 @@ Imports System.Configuration
 Imports System.Collections.Specialized
 
 Module Scriptor
-    Dim Connect As String
     Dim fixdef As Boolean = False
     Dim UniCode As Boolean = False
 
-    Dim Server As String
-    Dim UserID As String
-    Dim Password As String
-    Dim Network As String = ""
     Dim sType As String = ""
     Dim ConsName As Boolean = True
     Dim sObject As String = ""
@@ -37,7 +32,9 @@ Module Scriptor
     Dim LogFile As String = ""
     Dim verbose As Boolean = False
 
-    Sub main()
+    Dim sqllib As New sql
+
+    Public Sub main()
         Dim fv As System.Diagnostics.FileVersionInfo
         Dim Database As String = ""
         Dim s As String
@@ -62,7 +59,7 @@ Module Scriptor
             SendMessage("version 2.", "N")
             SendMessage("", "N")
 
-            If GetSwitch("-?") Then
+            If GetSwitch("-?") Or Trim(Microsoft.VisualBasic.Command()) = "" Then
                 SendMessage("usage: dbSchema [-sServer] [-dDatabase] [-uUserID [-pPassword]] [-tType]", "T")
                 SendMessage("                [-oObject] [-f] [-c] [-?] [-l] [-gLogFile] [-v]", "T")
                 SendMessage(" where:", "T")
@@ -144,12 +141,13 @@ Module Scriptor
                 Return
             End If
 
-            Server = GetCommandParameter("-s")
-            If Server = "" Then Server = System.Environment.MachineName
+            s = GetCommandParameter("-s")
+            If s = "" Then s = System.Environment.MachineName
+            sqllib.Server = s
             Database = GetCommandParameter("-d")
-            UserID = GetCommandParameter("-u")
-            Password = GetCommandParameter("-p")
-            Network = GetCommandParameter("-n")
+            sqllib.UserID = GetCommandParameter("-u")
+            sqllib.Password = GetCommandParameter("-p")
+            sqllib.Network = GetCommandParameter("-n")
             mode = GetSwitch("-f")
             fixdef = GetSwitch("-z")
             UniCode = GetSwitch("-y")
@@ -163,8 +161,8 @@ Module Scriptor
                 SendMessage("Machine Name : " & Environment.MachineName, "T")
                 SendMessage("Directory    : " & Environment.CurrentDirectory, "T")
                 s = Environment.CommandLine
-                If Password <> "" Then
-                    s = Replace(s, " -p" & Password & " ", " -p?????????? ")
+                If sqllib.Password <> "" Then
+                    s = Replace(s, " -p" & sqllib.Password & " ", " -p?????????? ")
                 End If
                 SendMessage("Command Line : " & s, "T")
             End If
@@ -189,41 +187,25 @@ Module Scriptor
         SendMessage("", "N")
     End Sub
 
-    Sub ProcessJobs(ByVal Database As String)
+    Private Sub ProcessJobs(ByVal Database As String)
         Dim s As String
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim Details As New DataSet
+        Dim dt As DataTable
         Dim dr As DataRow
 
         Try                                 ' Read the config XML into a DataSet
             SendMessage("", "N")
             If Database = "" Or Database = "*" Then
-                Connect = GetConnectString("msdb")
+                sqllib.Database = "msdb"
                 SendMessage("Retrieving jobs from 'msdb'.", "T")
             Else
-                Connect = GetConnectString(Database)
+                sqllib.Database = Database
                 SendMessage("Retrieving jobs from '" & Database & "'.", "T")
             End If
-            psConn = New SqlConnection(Connect)
-            AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-            psConn.Open()
 
-            s = "select job_id"
-            s &= " from dbo.sysjobs"
-            If sObject <> "" Then
-                s &= " where name like '" & sObject & "'"
-            End If
-            s &= " order by name"
-
-            psAdapt = New SqlDataAdapter(s, psConn)
-            psAdapt.SelectCommand.CommandType = CommandType.Text
-            psAdapt.Fill(Details)
-            psConn.Close()
-
-            For Each dr In Details.Tables(0).Rows
-                s = GetString(dr.Item("job_id"))
-                GetJob(s, Connect, mode)
+            dt = sqllib.JobList(sObject)
+            For Each dr In dt.Rows
+                s = sqllib.GetString(dr.Item("job_id"))
+                GetJob(s, mode)
             Next
 
         Catch ex As Exception
@@ -231,113 +213,39 @@ Module Scriptor
         End Try
     End Sub
 
-    Private Function GetJob(ByVal sJobID As String, ByVal sConnect As String, ByVal mode As Boolean) As Integer
-        Dim js As New Job(sJobID, sConnect)
-        Dim sOut As String = ""
-        Dim s As String
-
-        s = js.JobName
-        If s = "" Then Return -1
-
-        s = Replace(s, ":", "_")
-        s = Replace(s, "\", "_")
-        s = Replace(s, "/", "_")
-        If mode Then
-            sOut = js.FullText
-        Else
-            sOut = js.CommonText
-        End If
-        sOut &= "go" & vbCrLf
-        sOut &= vbCrLf
-
-        PutFile("job." & s & ".sql", sOut)
-        Return 0
-    End Function
-
-    Sub ProcessPermissions(ByVal User As String)
+    Private Sub ProcessPermissions(ByVal User As String)
+        Dim sDB As String
         Dim s As String
         Dim sOut As String = ""
-        Dim sUser As String = ""
-        Dim b As Boolean
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim Details As New DataSet
+        Dim sUser As String
+        Dim dd As DataTable
         Dim dr As DataRow
 
         Try
-            Connect = GetConnectString("master")
-            psConn = New SqlConnection(Connect)
-            AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-            psConn.Open()
-
-            s = "select name from master.dbo.sysdatabases where name not in ('master','tempdb','model')"
-            s &= " select l.sid,u.name from sys.syslogins l left join sys.sysusers u on u.sid = l.sid where l.name = '" & User & "'"
-            psAdapt = New SqlDataAdapter(s, psConn)
-            psAdapt.SelectCommand.CommandType = CommandType.Text
-            psAdapt.Fill(Details)
-            psConn.Close()
-
-            If Details.Tables.Count > 1 Then
-                If Details.Tables(1).Rows.Count > 0 Then
-                    dr = Details.Tables(1).Rows(0)
-                    sUser = GetString(dr("name"))
-                End If
-                b = False
-            Else
-                b = True
-            End If
+            sqllib.Database = "master"
+            dd = sqllib.DatabaseList()
+            sUser = sqllib.UserCreate(User)
 
             sOut = "use master" & vbCrLf
-            If b Or sUser = "" Then
-                sOut &= "create user " & User & " for login " & User & vbCrLf
-                sUser = User
-            End If
-
-            sOut &= "grant select on dbo.sysdatabases to " & sUser & vbCrLf
-            sOut &= "grant select on sys.servers to " & sUser & vbCrLf
-            sOut &= "grant select on INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS to " & sUser & vbCrLf
-            sOut &= "grant select on INFORMATION_SCHEMA.KEY_COLUMN_USAGE to " & sUser & vbCrLf
-            sOut &= "grant select on INFORMATION_SCHEMA.COLUMNS to " & sUser & vbCrLf
+            sOut &= sUser & vbCrLf
             sOut &= "go" & vbCrLf
-            sOut &= vbCrLf
-            sOut &= "use msdb" & vbCrLf
-            If Not b Then
-                sUser = GetUID("msdb", User)
-            End If
-            If b Or sUser = "" Then
-                sOut &= "create user " & User & " for login " & User & vbCrLf
-                sUser = User
-            End If
-            sOut &= "grant select on dbo.sysjobs to " & sUser & vbCrLf
-            sOut &= "grant select on dbo.syscategories to " & sUser & vbCrLf
-            sOut &= "grant select on dbo.sysoperators to " & sUser & vbCrLf
-            sOut &= "grant select on dbo.sysjobservers to " & sUser & vbCrLf
-            sOut &= "grant select on dbo.sysjobsteps to " & sUser & vbCrLf
-            sOut &= "grant select on dbo.sysproxies to " & sUser & vbCrLf
-            sOut &= "grant select on dbo.sysjobschedules to " & sUser & vbCrLf
-            sOut &= "grant select on dbo.sysschedules to " & sUser & vbCrLf
-            sOut &= "go" & vbCrLf
-
-            For Each dr In Details.Tables(0).Rows
-                s = GetString(dr.Item("name"))
-
-                sOut &= vbCrLf
-                sOut &= "use " & s & vbCrLf
-                If Not b Then
-                    sUser = GetUID(s, User)
-                End If
-                If b Or sUser = "" Then
-                    sOut &= "create user " & User & " for login " & User & vbCrLf
-                    sUser = User
-                End If
-                sOut &= "grant select on dbo.syscolumns to " & sUser & vbCrLf
-                sOut &= "grant select on dbo.sysobjects to " & sUser & vbCrLf
-                sOut &= "grant select on dbo.syscomments to " & sUser & vbCrLf
-                sOut &= "grant select on sys.indexes to " & sUser & vbCrLf
-                sOut &= "grant select on sys.index_columns to " & sUser & vbCrLf
-                sOut &= "grant select on sys.columns to " & sUser & vbCrLf
-                sOut &= "grant select on sys.sql_modules to " & sUser & vbCrLf
+            s = sqllib.UserGrant("master", User)
+            If s <> "" Then
+                sOut &= s & vbCrLf
                 sOut &= "go" & vbCrLf
+            End If
+
+            For Each dr In dd.Rows
+                sDB = sqllib.GetString(dr.Item("name"))
+                sOut &= vbCrLf
+                sOut &= "use " & sDB & vbCrLf
+                sOut &= sUser & vbCrLf
+                sOut &= "go" & vbCrLf
+                s = sqllib.UserGrant(sDB, User)
+                If s <> "" Then
+                    sOut &= s & vbCrLf
+                    sOut &= "go" & vbCrLf
+                End If
             Next
             PutFile("script.dbSchema-Permission.sql", sOut)
 
@@ -346,41 +254,14 @@ Module Scriptor
         End Try
     End Sub
 
-    Private Function GetUID(ByVal sDatabase As String, ByVal User As String) As String
-        Dim sUser As String = ""
-        Dim s As String
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim Details As New DataSet
-
-        Connect = GetConnectString(sDatabase)
-        psConn = New SqlConnection(Connect)
-        AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-        psConn.Open()
-
-        s = " select u.name from sys.syslogins l join sys.sysusers u on u.sid = l.sid where l.name = '" & User & "'"
-        psAdapt = New SqlDataAdapter(s, psConn)
-        psAdapt.SelectCommand.CommandType = CommandType.Text
-        psAdapt.Fill(Details)
-        psConn.Close()
-
-        If Details.Tables.Count > 0 Then
-            If Details.Tables(0).Rows.Count > 0 Then
-                sUser = GetString(Details.Tables(0).Rows(0)("name"))
-            End If
-        End If
-
-        Return sUser
-    End Function
-
-    Sub ProcessData(ByVal Database As String, ByVal Table As String)
+    Private Sub ProcessData(ByVal Database As String, ByVal Table As String)
         Dim sOut As String = ""
         Dim s As String
 
         Try
-            Connect = GetConnectString(Database)
+            sqllib.Database = Database
             s = GetCommandParameter("-w")
-            Dim tdefn As New TableColumns(Table, Connect, True)
+            Dim tdefn As New TableColumns(Table, sqllib, True)
             sOut = tdefn.DataScript(s)
             PutFile("data." & Table & ".sql", sOut)
 
@@ -389,32 +270,22 @@ Module Scriptor
         End Try
     End Sub
 
-    Sub ProcessAllDBs()
+    Private Sub ProcessAllDBs()
         Dim s As String
         Dim dbVersion As Integer
         Dim sBack As String
         Dim sDir As String
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim Details As New DataSet
+        Dim dt As DataTable
         Dim dr As DataRow
         Dim sPWD As String
 
         sPWD = Environment.CurrentDirectory
         Try                                 ' Read the config XML into a DataSet
-            Connect = GetConnectString("master")
-            psConn = New SqlConnection(Connect)
-            AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-            psConn.Open()
+            sqllib.Database = "master"
+            dt = sqllib.DatabaseList()
 
-            s = "select name,cmptlevel from master.dbo.sysdatabases where name not in ('master','tempdb','model')"
-            psAdapt = New SqlDataAdapter(s, psConn)
-            psAdapt.SelectCommand.CommandType = CommandType.Text
-            psAdapt.Fill(Details)
-            psConn.Close()
-
-            For Each dr In Details.Tables(0).Rows
-                s = GetString(dr.Item("name"))
+            For Each dr In dt.Rows
+                s = sqllib.GetString(dr.Item("name"))
                 dbVersion = CInt(dr("cmptlevel"))
 
                 If System.IO.Directory.Exists(s) Then
@@ -443,56 +314,26 @@ Module Scriptor
         End Try
     End Sub
 
-    Sub ProcessDB(ByVal Database As String)
+    Private Sub ProcessDB(ByVal Database As String)
         Dim s As String
         Dim st As String
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim Details As New DataSet
+        Dim dt As DataTable
         Dim dr As DataRow
 
         Try
             SendMessage("", "N")
             SendMessage("Retrieving schema for '" & Database & "'.", "T")
-            Connect = GetConnectString(Database)
-            psConn = New SqlConnection(Connect)
-            AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-            psConn.Open()
+            sqllib.Database = Database
+            dt = sqllib.DatabaseObject(sObject, sType)
 
-            s = "select type, name "
-            s &= "from dbo.sysobjects "
-            Select Case sType
-                Case "P", "U", "V"
-                    s &= "where type = '" & sType & "' "
-                Case "F"
-                    s &= "where type in ('FN', 'TF') "
-                Case Else
-                    s &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
-            End Select
-            If sObject <> "" Then
-                s &= "and name like '" & sObject & "' "
-            End If
-            s &= "and uid = 1 "
-            s &= "and name not like 'dt_%' "
-            s &= "and name not in ('syssegments','sysconstraints',"
-            s &= "'sp_alterdiagram','sp_creatediagram',"
-            s &= "'sp_dropdiagram','sp_helpdiagramdefinition','sp_helpdiagrams',"
-            s &= "'sp_renamediagram','sp_upgraddiagrams','sysdiagrams','fn_diagramobjects') "
-            s &= "order by type, name"
-
-            psAdapt = New SqlDataAdapter(s, psConn)
-            psAdapt.SelectCommand.CommandType = CommandType.Text
-            psAdapt.Fill(Details)
-            psConn.Close()
-
-            For Each dr In Details.Tables(0).Rows
-                s = GetString(dr.Item("name"))
-                st = GetString(dr.Item("type"))
-                If GetString(dr.Item("type")) = "U" Then
+            For Each dr In dt.Rows
+                s = sqllib.GetString(dr.Item("name"))
+                st = sqllib.GetString(dr.Item("type"))
+                If sqllib.GetString(dr.Item("type")) = "U" Then
                     If mode Then
-                        GetTableFull(s, Connect, ConsName)
+                        GetTableFull(s, ConsName)
                     Else
-                        GetTable(s, Connect, ConsName)
+                        GetTable(s, ConsName)
                     End If
                 Else
                     GetText(s, st)
@@ -504,8 +345,9 @@ Module Scriptor
         End Try
     End Sub
 
-    Private Function GetTable(ByVal sTable As String, ByVal sConnect As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableColumns(sTable, sConnect, fixdef)
+#Region "common functions"
+    Private Function GetTable(ByVal sTable As String, ByVal ConsName As Boolean) As Integer
+        Dim ts As New TableColumns(sTable, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
 
@@ -534,8 +376,8 @@ Module Scriptor
         Return 0
     End Function
 
-    Private Function GetTableFull(ByVal sTable As String, ByVal sConnect As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableColumns(sTable, sConnect, fixdef)
+    Private Function GetTableFull(ByVal sTable As String, ByVal ConsName As Boolean) As Integer
+        Dim ts As New TableColumns(sTable, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
 
@@ -607,35 +449,21 @@ Module Scriptor
         Return 0
     End Function
 
-#Region "common functions"
     Private Function GetdbText(ByVal Name As String, ByVal Type As String) As String
         Dim s As String
         Dim sText As String
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim Details As New DataSet
         Dim dr As DataRow
         Dim b As Boolean = True
+        Dim dt As New DataTable
 
-        psConn = New SqlConnection(Connect)
-        AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-        psConn.Open()
-
-        s = "select text from syscomments "
-        s &= "where id = object_id('" & Name & "') order by number, colid"
-
-        psAdapt = New SqlDataAdapter(s, psConn)
-        psAdapt.SelectCommand.CommandType = CommandType.Text
-
-        psAdapt.Fill(Details)
-        psConn.Close()
+        dt = sqllib.ObjectText(Name)
 
         sText = ""
         If Type <> "P" And Type <> "FN" And Type <> "TF" Then
             b = False
         End If
 
-        For Each dr In Details.Tables(0).Rows        ' Columns
+        For Each dr In dt.Rows        ' Columns
             s = CType(dr.Item("Text"), String)
             If Len(s) < 4000 Then s &= vbCrLf
             sText &= s ' & vbCrLf
@@ -668,32 +496,19 @@ Module Scriptor
     Private Function GetSetings(ByVal Name As String) As String
         Dim s As String
         Dim sText As String = ""
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim Details As New DataSet
+        Dim dt As DataTable
         Dim dr As DataRow
 
-        psConn = New SqlConnection(Connect)
-        AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-        psConn.Open()
+        dt = sqllib.ObjectSettings(Name)
 
-        s = "select uses_ansi_nulls,uses_quoted_identifier from sys.sql_modules "
-        s &= "where object_id=object_id('" & Name & "')"
+        If Not dt Is Nothing Then
+            If dt.Rows.Count > 0 Then
+                dr = dt.Rows(0)
 
-        psAdapt = New SqlDataAdapter(s, psConn)
-        psAdapt.SelectCommand.CommandType = CommandType.Text
-
-        psAdapt.Fill(Details)
-        psConn.Close()
-
-        If Details.Tables.Count > 0 Then
-            If Details.Tables(0).Rows.Count > 0 Then
-                dr = Details.Tables(0).Rows(0)
-
-                If CInt(dr("uses_ansi_nulls")) = 0 Then
+                If CInt(dr("nulls")) = 0 Then
                     sText &= "set ansi_nulls off" & vbCrLf
                 End If
-                If CInt(dr("uses_quoted_identifier")) = 0 Then
+                If CInt(dr("quoted")) = 0 Then
                     sText &= "set quoted_identifier off" & vbCrLf
                 End If
 
@@ -706,12 +521,30 @@ Module Scriptor
         Return sText
     End Function
 
-    Private Sub psConn_InfoMessage(ByVal sender As Object, _
-            ByVal e As System.Data.SqlClient.SqlInfoMessageEventArgs)
-        SendMessage(e.Message, "N")
-    End Sub
+    Private Function GetJob(ByVal sJobID As String, ByVal mode As Boolean) As Integer
+        Dim js As New Job(sJobID, sqllib)
+        Dim sOut As String = ""
+        Dim s As String
 
-    Function PutFile(ByVal sName As String, ByVal sContent As String) As Boolean
+        s = js.JobName
+        If s = "" Then Return -1
+
+        s = Replace(s, ":", "_")
+        s = Replace(s, "\", "_")
+        s = Replace(s, "/", "_")
+        If mode Then
+            sOut = js.FullText
+        Else
+            sOut = js.CommonText
+        End If
+        sOut &= "go" & vbCrLf
+        sOut &= vbCrLf
+
+        PutFile("job." & s & ".sql", sOut)
+        Return 0
+    End Function
+
+    Private Function PutFile(ByVal sName As String, ByVal sContent As String) As Boolean
         Dim file As System.IO.StreamWriter
 
         If UniCode Then
@@ -746,8 +579,10 @@ Module Scriptor
         i = InStr(1, sCommand, sSwitch, CompareMethod.Text)
         sParameter = ""
         If i > 0 Then
-            sParameter = Mid(sCommand, i + 2)
-            If Mid(sParameter, 1, 1) = """" Then
+            sParameter = LTrim(Mid(sCommand, i + 2))
+            If Mid(sParameter, 1, 1) = "-" Then
+                sParameter = ""
+            ElseIf Mid(sParameter, 1, 1) = """" Then
                 sParameter = Mid(sParameter, 2)
                 i = InStr(1, sParameter, """", CompareMethod.Text)
                 If i > 0 Then
@@ -760,60 +595,7 @@ Module Scriptor
                 End If
             End If
         End If
-        GetCommandParameter = sParameter
-    End Function
-
-    Public Function GetString(ByVal objValue As Object) As String
-        If IsDBNull(objValue) Then
-            Return ""
-        ElseIf objValue Is Nothing Then
-            Return ""
-        Else
-            Try
-                Return CType(objValue, String).TrimEnd
-            Catch ex As Exception
-                Return objValue.ToString
-            End Try
-        End If
-    End Function
-
-    Private Function GetTriggers(ByVal sTableName As String) As DataTable
-        Dim s As String
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim TableDetails As New DataSet
-
-        psConn = New SqlConnection(Connect)
-        AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-        psConn.Open()
-
-        s = "select o.name TriggerName "
-        s &= "from dbo.sysobjects o "
-        s &= "where o.type = 'TR' "
-        s &= "and o.parent_obj = object_id('" & sTableName & "')"
-
-        psAdapt = New SqlDataAdapter(s, psConn)
-        psAdapt.SelectCommand.CommandType = CommandType.Text
-        psAdapt.Fill(TableDetails)
-        psConn.Close()
-
-        Return TableDetails.Tables(0)
-    End Function
-
-    Private Function GetConnectString(ByVal sDatabase As String) As String
-        Dim s As String
-
-        s = "server=" & Server & ";database=" & sDatabase
-        If Network <> "" Then s &= ";Network=" & Network
-        If UserID <> "" Then
-            s &= ";User ID=" & UserID
-            If Password <> "" Then
-                s &= ";pwd=" & Password
-            End If
-        Else
-            s &= ";Integrated Security=SSPI"
-        End If
-        Return s
+        Return sParameter
     End Function
 
     Private Sub SendMessage(ByVal sMessage As String, ByVal sType As String)
