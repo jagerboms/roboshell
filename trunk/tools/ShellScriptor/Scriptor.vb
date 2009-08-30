@@ -1638,7 +1638,6 @@ Module Scriptor
         End If
         sOut &= "    return @e" & vbCrLf
         sOut &= "end" & vbCrLf
-        sOut &= "go" & vbCrLf
 
         sp.ProcedureText = sOut
         Return 0
@@ -1779,7 +1778,6 @@ Module Scriptor
         sOut &= "    end" & vbCrLf
         sOut &= "    return @e" & vbCrLf
         sOut &= "end" & vbCrLf
-        sOut &= "go" & vbCrLf
 
         sp.ProcedureText = sOut
         Return 0
@@ -2133,7 +2131,6 @@ Module Scriptor
             sOut &= "    end" & vbCrLf
             sOut &= "    return @e" & vbCrLf
             sOut &= "end" & vbCrLf
-            sOut &= "go" & vbCrLf
 
             sp.ProcedureText = sOut
         End If
