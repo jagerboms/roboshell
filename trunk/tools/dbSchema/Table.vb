@@ -478,6 +478,28 @@ Public Class TableColumns
         End Get
     End Property
 
+    Public ReadOnly Property LinkedTable(ByVal sFKeyName As String) As String
+        Get
+            Dim sFTable As String = ""
+
+            If dtFKeys Is Nothing Then
+                Return ""
+            End If
+
+            If dtFKeys.Rows.Count = 0 Then
+                Return ""
+            End If
+
+            For Each r As DataRow In dtFKeys.Rows
+                If sFKeyName = slib.GetString(r.Item("ConstraintName")) Then
+                    sFTable = slib.GetString(r.Item("LinkedTable"))
+                    Return sFTable
+                End If
+            Next
+            Return sFTable
+        End Get
+    End Property
+
     Public ReadOnly Property FKeyText(ByVal sFKeyName As String) As String
         Get
             Dim i As Integer = 0
