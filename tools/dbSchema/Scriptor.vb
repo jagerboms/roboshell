@@ -28,7 +28,7 @@ Module Scriptor
     Dim sType As String = ""
     Dim ConsName As Boolean = True
     Dim sObject As String = ""
-    Dim mode As Boolean
+    Dim mode As String = "S"
     Dim LogFile As String = ""
     Dim verbose As Boolean = False
 
@@ -97,9 +97,10 @@ Module Scriptor
                 SendMessage("     When the type is 'S' the object parameter contains the user", "T")
                 SendMessage("     the permissions are to be scripted.", "T")
                 SendMessage("", "T")
-                SendMessage("   -f full text switch. If provided the scripts are include", "T")
-                SendMessage("     existance checks and table components like indexes are", "T")
-                SendMessage("     created in separate files.", "T")
+                SendMessage("   -fType determines the type of script to be generated. Can bw one of:", "T")
+                SendMessage("      F - full includes existance checks and separate component files", "T")
+                SendMessage("      I - intermediate has no existance checks but separate component files", "T")
+                SendMessage("      S - summary has no existance checks and all components are in a single file.", "T")
                 SendMessage("", "T")
                 SendMessage("   -c ignore constraint name switch. If provided", "T")
                 SendMessage("     names are not included in the generated scripts.", "T")
@@ -148,7 +149,13 @@ Module Scriptor
             sqllib.UserID = GetCommandParameter("-u")
             sqllib.Password = GetCommandParameter("-p")
             sqllib.Network = GetCommandParameter("-n")
-            mode = GetSwitch("-f")
+            s = GetCommandParameter("-f")
+            Select Case UCase(Mid(s, 1, 1))
+                Case "F"
+                    mode = "F"
+                Case "I"
+                    mode = "I"
+            End Select
             fixdef = GetSwitch("-z")
             UniCode = GetSwitch("-y")
             sType = GetCommandParameter("-t")
@@ -330,11 +337,14 @@ Module Scriptor
                 s = sqllib.GetString(dr.Item("name"))
                 st = sqllib.GetString(dr.Item("type"))
                 If sqllib.GetString(dr.Item("type")) = "U" Then
-                    If mode Then
-                        GetTableFull(s, ConsName)
-                    Else
-                        GetTable(s, ConsName)
-                    End If
+                    Select Case mode
+                        Case "F"
+                            GetTableFull(s, ConsName)
+                        Case "I"
+                            GetTableIntermediate(s, ConsName)
+                        Case Else
+                            GetTable(s, ConsName)
+                    End Select
                 Else
                     GetText(s, st)
                 End If
@@ -376,6 +386,35 @@ Module Scriptor
         Return 0
     End Function
 
+    Private Function GetTableIntermediate(ByVal sTable As String, ByVal ConsName As Boolean) As Integer
+        Dim ts As New TableColumns(sTable, sqllib, fixdef)
+        Dim sOut As String
+        Dim s As String
+
+        If Not ConsName Then ts.ScriptConstraints = False
+        sOut = ts.TableText
+        sOut &= "go" & vbCrLf
+        PutFile("table." & sTable & ".sql", sOut)
+
+        For Each s In ts.IKeys
+            If s <> "" Then
+                sOut = ts.IndexShort(s)
+                sOut &= "go" & vbCrLf
+                PutFile("index." & sTable & "." & s & ".sql", sOut)
+            End If
+        Next
+
+        For Each s In ts.FKeys
+            If s <> "" Then
+                sOut = ts.FKeyShort(s)
+                sOut &= "go" & vbCrLf
+                PutFile("fkey." & sTable & "." & ts.LinkedTable(s) & "." & s & ".sql", sOut)
+            End If
+        Next
+
+        Return 0
+    End Function
+
     Private Function GetTableFull(ByVal sTable As String, ByVal ConsName As Boolean) As Integer
         Dim ts As New TableColumns(sTable, sqllib, fixdef)
         Dim sOut As String
@@ -398,7 +437,7 @@ Module Scriptor
             If s <> "" Then
                 sOut = ts.FKeyText(s)
                 sOut &= "go" & vbCrLf
-                PutFile("fkey." & sTable & "." & s & ".sql", sOut)
+                PutFile("fkey." & sTable & "." & ts.LinkedTable(s) & "." & s & ".sql", sOut)
             End If
         Next
 
@@ -421,7 +460,7 @@ Module Scriptor
             Case "P"
                 Pre = "proc."
                 sHead &= "procedure"
-                If mode Then
+                If mode = "F" Then
                     Settings = GetSetings(Name)
                 End If
             Case "V"
@@ -430,7 +469,7 @@ Module Scriptor
             Case "FN", "TF"
                 Pre = "udf."
                 sHead &= "function"
-                If mode Then
+                If mode = "F" Then
                     Settings = GetSetings(Name)
                 End If
         End Select
@@ -440,7 +479,7 @@ Module Scriptor
         sHead &= "go" & vbCrLf
         sHead &= Settings
 
-        If mode Then
+        If mode = "F" Then
             sText = sHead & sText
             sText &= "go" & vbCrLf
         End If
@@ -494,7 +533,6 @@ Module Scriptor
     End Function
 
     Private Function GetSetings(ByVal Name As String) As String
-        Dim s As String
         Dim sText As String = ""
         Dim dt As DataTable
         Dim dr As DataRow
@@ -521,7 +559,7 @@ Module Scriptor
         Return sText
     End Function
 
-    Private Function GetJob(ByVal sJobID As String, ByVal mode As Boolean) As Integer
+    Private Function GetJob(ByVal sJobID As String, ByVal mode As String) As Integer
         Dim js As New Job(sJobID, sqllib)
         Dim sOut As String = ""
         Dim s As String
@@ -532,7 +570,7 @@ Module Scriptor
         s = Replace(s, ":", "_")
         s = Replace(s, "\", "_")
         s = Replace(s, "/", "_")
-        If mode Then
+        If mode = "F" Then
             sOut = js.FullText
         Else
             sOut = js.CommonText
