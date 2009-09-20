@@ -102,7 +102,7 @@ Public Class ProcessDefns
             .LoadVariables = LoadVariables
         End With
         Me.Add(parm)
-        Return CType(Values.Item(sName), ProcessDefn)
+        Return parm
     End Function
 
     Public ReadOnly Property Item(ByVal index As Object) As ProcessDefn

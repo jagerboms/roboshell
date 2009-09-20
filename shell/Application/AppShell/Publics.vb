@@ -220,6 +220,8 @@ Module Publics
 
     Private Function GetSchema(ByRef objStartup As MainMenu) As Boolean
         Dim dt As DataTable
+        Dim Version As Double = 1
+        Dim f As Field
         Dim dr As DataRow
         Dim objd As ObjectDefn
         Dim Act As ActionDefns
@@ -235,7 +237,7 @@ Module Publics
             xob.SetProperty("procname", "shlShellGet")
             xob.SetProperty("connectkey", SystemKey)
             xob.SetProperty("mode", "D")
-            xob.SetProperty("dataparameter", "Var||Proc||Obj||Prop||Parm||Act||ActR||Fld||Val||ValR||APR")
+            xob.SetProperty("dataparameter", "Var||Proc||Obj||Prop||Parm||Act||ActR||Fld||Val||ValR||APR||Ver")
             xob.Parms.Add("Var", Nothing, DbType.Object, False, True, 0)
             xob.Parms.Add("Proc", Nothing, DbType.Object, False, True, 0)
             xob.Parms.Add("Obj", Nothing, DbType.Object, False, True, 0)
@@ -247,11 +249,30 @@ Module Publics
             xob.Parms.Add("Val", Nothing, DbType.Object, False, True, 0)
             xob.Parms.Add("ValR", Nothing, DbType.Object, False, True, 0)
             xob.Parms.Add("APR", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("Ver", Nothing, DbType.Object, False, True, 0)
             ProcessObject = xob.Create()
             If Not ProcessObject Is Nothing Then
                 ProcessObject.Update(Nothing)
                 If Not ProcessObject.SuccessFlag Then
                     Return False
+                End If
+
+                s = ""
+                For Each ms As ShellMessage In ProcessObject.Messages
+                    If ms.Type = "E" Then
+                        s &= ms.Message & vbCrLf
+                    End If
+                Next
+                If s <> "" Then
+                    MessageOut(s)
+                    Return False
+                End If
+            End If
+
+            dt = CType(ProcessObject.parms.Item("Ver").Value, DataTable)
+            If Not dt Is Nothing Then
+                If dt.Rows.Count > 0 Then
+                    Version = CDbl(dt.Rows(0)(0))
                 End If
             End If
 
@@ -399,7 +420,7 @@ Module Publics
                         i = 1
                     End Try
 
-                    objd.Fields.Add(GetString(dr.Item("FieldName")), _
+                    f = objd.Fields.Add(GetString(dr.Item("FieldName")), _
                                     GetString(dr.Item("Label")), _
                                     CType(dr.Item("DisplayType"), String), _
                                     CType(dr.Item("DisplayWidth"), Int32), _
@@ -420,8 +441,6 @@ Module Publics
                         Or CType(dr.Item("DisplayType"), String) = "R" _
                         Or CType(dr.Item("DisplayType"), String) = "C" _
                         Or CType(dr.Item("DisplayType"), String) = "S" Then
-                        Dim f As Field
-                        f = objd.Fields.Item(GetString(dr.Item("FieldName")))
                         f.FillProcess = GetString(dr.Item("FillProcess"))
                         f.TextField = GetString(dr.Item("TextField"))
                         f.ValueField = GetString(dr.Item("ValueField"))
@@ -434,8 +453,10 @@ Module Publics
                         Catch ex As Exception
                         End Try
                     End If
+                    If Version > 1.0 Then
+                        f.Container = GetString(dr.Item("Container"))
+                    End If
                 End If
-
                 Application.DoEvents()
             Next
 

@@ -75,7 +75,7 @@ Public Class shellProperties
             .Value = PropertyValue
         End With
         Me.Add(parm)
-        Return CType(Values.Item(PropertyName), ShellProperty)
+        Return parm
     End Function
 
     Public ReadOnly Property Item(ByVal Name As String, ByVal Type As String) As ShellProperty

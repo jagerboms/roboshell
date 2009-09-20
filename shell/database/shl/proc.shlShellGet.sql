@@ -273,6 +273,7 @@ begin
                ,f.LabelWidth
                ,coalesce(f.Decimals, -1) "Decimal"
                ,NullText
+               ,Container
         from    dbo.shlFields f
         join    @temp t
         on      t.ObjectName = f.ObjectName
@@ -335,6 +336,8 @@ begin
         order by 1
                ,r.ActionName
                ,r.Value
+
+        select  1.1 ShellVersion
         break
     end
     return @e

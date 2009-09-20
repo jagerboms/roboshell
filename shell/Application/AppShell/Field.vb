@@ -27,6 +27,7 @@ Public Class Field
     Public LabelWidth As Integer
     Public Decimals As Integer = -1
     Public NullText As String = ""
+    Public Container As String = ""
     'Public Value As Object
     'Public eValidationType As colValidationType
     'Public lHelpContext As Long
@@ -154,7 +155,7 @@ Public Class Fields
             .HelpText = HelpText
         End With
         Me.Add(parm)
-        Return CType(Values.Item(Name), Field)
+        Return parm
     End Function
 
     Public ReadOnly Property Item(ByVal index As Object) As Field

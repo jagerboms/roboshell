@@ -140,7 +140,7 @@ Public Class ActionDefns
             .ParamValue = ParamValue
         End With
         Me.Add(parm)
-        Return CType(Values.Item(Name), ActionDefn)
+        Return parm
     End Function
 
     Public ReadOnly Property Item(ByVal index As Object) As ActionDefn
@@ -335,7 +335,7 @@ Public Class ActionRuleDefns
             .Value = Value
         End With
         parm.Rules.Add(ID, FieldName, Type, Value)
-        Return CType(Values.Item(Name), ActionRuleDefn)
+        Return parm
     End Function
 
     Public ReadOnly Property count() As Integer
@@ -402,7 +402,7 @@ Public Class ActionProcessRuleDefns
         parm.Value = Value
         Values.Add(parm, parm.Value.ToString)
 
-        Return CType(Values.Item(Value), ActionProcessRuleDefn)
+        Return parm
     End Function
 
     Public ReadOnly Property count() As Integer

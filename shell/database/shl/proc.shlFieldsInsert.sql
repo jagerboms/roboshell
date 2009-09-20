@@ -35,6 +35,7 @@ create procedure dbo.shlFieldsInsert
    ,@LabelWidth integer = 100          -- width of field label (dialog)
    ,@Decimals integer = -1             -- Number of decimal places to display
    ,@NullText varchar(200) = null      -- Text to display when raw data is null value
+   ,@Container varchar(32) = null      -- 
 as
 begin
     set nocount on
@@ -91,7 +92,7 @@ begin
             IsPrimary, Justify, Enabled, Required,
             Locate, ValueType, HelpText, LabelWidth,
             Decimals, NullText,
-            LinkColumn, LinkField
+            LinkColumn, LinkField, Container
         )
         values
         (
@@ -101,7 +102,7 @@ begin
             @IsPrimary, @Justify, @Enabled, @Required,
             @Locate, @ValueType, @HelpText, @LabelWidth,
             @Decimals, @NullText,
-            @LinkColumn, @LinkField
+            @LinkColumn, @LinkField, @Container
         )
         set @e = @@error
         break

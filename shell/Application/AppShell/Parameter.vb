@@ -109,7 +109,7 @@ Public Class ShellParameters
             End If
         End With
         Me.Add(parm)
-        Return CType(Values.Item(sName), shellParameter)
+        Return parm
     End Function
 
     Public ReadOnly Property Item(ByVal index As String) As shellParameter

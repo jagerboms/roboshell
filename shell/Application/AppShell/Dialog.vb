@@ -468,6 +468,20 @@ Public Class Dialog
     End Sub
 
     Private Function InitialiseDialog() As Boolean
+        Dim bRet As Boolean = True
+
+        Try
+            bLoading = True
+            LoadContainer("")
+        Catch ex As Exception
+            Publics.MessageOut(ex.Message)
+            bRet = False
+        End Try
+        bLoading = False
+        Return bRet
+    End Function
+
+    Private Function LoadContainer(ByVal Container As String) As Boolean
         Dim l As Label
         Dim i As Integer = 0
         Dim iH As Integer
@@ -483,121 +497,72 @@ Public Class Dialog
 
         Dim fw As Integer = 100
         Dim ft As Integer = 30
-        Dim bRet As Boolean = True
 
         Dim ci As Integer = -1
         Dim d As DialogField
 
-        Try
-            bLoading = True
-            For Each f As Field In sDefn.Fields
-                d = dlogf.Item(f.Name)
-                If d.Field.DisplayType <> "H" And d.Field.DisplayType <> "R" Then ' do nothing for hidden fields
-                    Select Case d.Field.Locate
-                        Case "G"
-                            gl = 5
-                            gt = ft
-                            gw = 0
-                            ct = gt
-                            ch = 0
-                        Case "C"
-                            gl += gw + 5
-                            gw = 0
-                            ct = gt
-                            ch = 0
-                    End Select
+        For Each f As Field In sDefn.Fields
+            d = dlogf.Item(f.Name)
+            If d.Field.DisplayType <> "H" And d.Field.DisplayType <> "R" Then ' do nothing for hidden fields
+                Select Case d.Field.Locate
+                    Case "G"
+                        gl = 5
+                        gt = ft
+                        gw = 0
+                        ct = gt
+                        ch = 0
+                    Case "C"
+                        gl += gw + 5
+                        gw = 0
+                        ct = gt
+                        ch = 0
+                End Select
 
-                    If d.Field.Locate <> "P" Or i = 0 Then
-                        ct += ch + 5
-                        cl = gl
-                        cw = d.Field.LabelWidth
-                        l = New Label
-                        With l
-                            .Text = d.Field.Label
-                            .Top = ct - 1
-                            Select Case d.Field.Justify
-                                Case "L"
-                                    .TextAlign = ContentAlignment.MiddleLeft
-                                Case "C"
-                                    .TextAlign = ContentAlignment.MiddleCenter
-                                Case Else
-                                    .TextAlign = ContentAlignment.MiddleRight
-                            End Select
-                            .Left = cl
-                            .Width = cw
-                            .ForeColor = System.Drawing.Color.Blue
-                            .Visible = True
-                        End With
-                        cw += 5
-                        fForm.Controls.Add(l)
-                        d.LabelIndex = fForm.Controls.IndexOf(l)
-                        ci = d.LabelIndex
-                        ch = l.Height
-                    Else
-                        'ct = gt
-                        cw += 2
-                        d.LabelIndex = ci
-                    End If
+                If d.Field.Locate <> "P" Or i = 0 Then
+                    ct += ch + 5
+                    cl = gl
+                    cw = d.Field.LabelWidth
+                    l = New Label
+                    With l
+                        .Text = d.Field.Label
+                        .Top = ct - 1
+                        Select Case d.Field.Justify
+                            Case "L"
+                                .TextAlign = ContentAlignment.MiddleLeft
+                            Case "C"
+                                .TextAlign = ContentAlignment.MiddleCenter
+                            Case Else
+                                .TextAlign = ContentAlignment.MiddleRight
+                        End Select
+                        .Left = cl
+                        .Width = cw
+                        .ForeColor = System.Drawing.Color.Blue
+                        .Visible = True
+                    End With
+                    cw += 5
+                    fForm.Controls.Add(l)
+                    d.LabelIndex = fForm.Controls.IndexOf(l)
+                    ci = d.LabelIndex
+                    ch = l.Height
+                Else
+                    'ct = gt
+                    cw += 2
+                    d.LabelIndex = ci
+                End If
 
-                    Select Case d.Field.DisplayType
-                        Case "L", "B"       ' Label
+                Select Case d.Field.DisplayType
+                    Case "L", "B"       ' Label
 
-                            If d.Field.DisplayHeight > 1 Then
-                                Dim t As New TextBox
-                                With t
-                                    .Multiline = True
-                                    .ReadOnly = True
-                                    .ScrollBars = System.Windows.Forms.ScrollBars.None
-                                    .Cursor = System.Windows.Forms.Cursors.Default
-                                    .TabStop = False
-                                    .WordWrap = True
-                                    .BackColor = Publics.GetBackColour
-                                    Select Case d.Field.Justify
-                                        Case "R"
-                                            .TextAlign = HorizontalAlignment.Right
-                                        Case "C"
-                                            .TextAlign = HorizontalAlignment.Center
-                                        Case Else
-                                            .TextAlign = HorizontalAlignment.Left
-                                    End Select
-                                    If d.Field.DisplayType = "B" Then
-                                        .BorderStyle = BorderStyle.FixedSingle
-                                    Else
-                                        .BorderStyle = BorderStyle.None
-                                    End If
-                                End With
-                                TxtHeight = t.Height
-                                iH = TxtHeight * d.Field.DisplayHeight
-                                AddControl(d, CType(t, Control), ct - 1, _
-                                        cl + cw, d.Field.DisplayWidth, iH)
-                                iH = t.Height + 3
-
-                            Else
-                                l = New Label
-                                With l
-                                    Select Case d.Field.Justify
-                                        Case "R"
-                                            .TextAlign = ContentAlignment.MiddleRight
-                                        Case "C"
-                                            .TextAlign = ContentAlignment.MiddleCenter
-                                        Case Else
-                                            .TextAlign = ContentAlignment.MiddleLeft
-                                    End Select
-                                    If d.Field.DisplayType = "B" Then
-                                        .BorderStyle = BorderStyle.Fixed3D
-                                    End If
-                                End With
-                                iH = -1
-                                AddControl(d, CType(l, Control), ct - 1, _
-                                        cl + cw, d.Field.DisplayWidth, iH)
-                                iH = l.Height
-                            End If
-                            cw += d.Field.DisplayWidth
-                            If iH > ch Then ch = iH
-
-                        Case "T"            'Textbox
+                        If d.Field.DisplayHeight > 1 Then
                             Dim t As New TextBox
                             With t
+                                .Multiline = True
+                                .ReadOnly = True
+                                .ScrollBars = System.Windows.Forms.ScrollBars.None
+                                .Cursor = System.Windows.Forms.Cursors.Default
+                                .TabStop = False
+                                .WordWrap = True
+                                .BackColor = Publics.GetBackColour
                                 Select Case d.Field.Justify
                                     Case "R"
                                         .TextAlign = HorizontalAlignment.Right
@@ -606,159 +571,176 @@ Public Class Dialog
                                     Case Else
                                         .TextAlign = HorizontalAlignment.Left
                                 End Select
-                                If d.Field.Enabled Then
-                                    If d.Field.Required Then
-                                        .BackColor = Color.FromArgb(255, 255, 100)
-                                    End If
+                                If d.Field.DisplayType = "B" Then
+                                    .BorderStyle = BorderStyle.FixedSingle
                                 Else
-                                    .ReadOnly = True
+                                    .BorderStyle = BorderStyle.None
                                 End If
-                                If d.Field.DisplayHeight > 1 Then
-                                    .Multiline = True
-                                    iH = t.Height * d.Field.DisplayHeight
-                                Else
-                                    iH = -1
-                                End If
-                                .BorderStyle = BorderStyle.FixedSingle
                             End With
-                            AddControl(d, CType(t, Control), ct, _
+                            TxtHeight = t.Height
+                            iH = TxtHeight * d.Field.DisplayHeight
+                            AddControl(d, CType(t, Control), ct - 1, _
                                     cl + cw, d.Field.DisplayWidth, iH)
-                            cw += d.Field.DisplayWidth
-                            iH = t.Height
-                            If d.Field.DisplayHeight > 1 Then
-                                iH += 3
-                            End If
-                            If iH > ch Then ch = iH
+                            iH = t.Height + 3
 
-                        Case "P"            'DatePicker
-                            Dim t As New DateTimePicker
-                            With t
-                                If d.Field.Format <> "" Then
-                                    t.Format = DateTimePickerFormat.Custom
-                                    t.CustomFormat = d.Field.Format
-                                Else
-                                    t.Format = DateTimePickerFormat.Short
+                        Else
+                            l = New Label
+                            With l
+                                Select Case d.Field.Justify
+                                    Case "R"
+                                        .TextAlign = ContentAlignment.MiddleRight
+                                    Case "C"
+                                        .TextAlign = ContentAlignment.MiddleCenter
+                                    Case Else
+                                        .TextAlign = ContentAlignment.MiddleLeft
+                                End Select
+                                If d.Field.DisplayType = "B" Then
+                                    .BorderStyle = BorderStyle.Fixed3D
                                 End If
-                                If d.Field.Enabled Then
-                                    If d.Field.Required Then
-                                        .BackColor = Color.FromArgb(255, 255, 100)
-                                    End If
-                                Else
-                                    .Enabled = False
-                                End If
-                                iH = -1
                             End With
-                            AddControl(d, CType(t, Control), ct, _
+                            iH = -1
+                            AddControl(d, CType(l, Control), ct - 1, _
                                     cl + cw, d.Field.DisplayWidth, iH)
-                            cw += d.Field.DisplayWidth
-                            iH = t.Height
-                            If d.Field.DisplayHeight > 1 Then
-                                iH += 3
-                            End If
-                            If iH > ch Then ch = iH
+                            iH = l.Height
+                        End If
+                        cw += d.Field.DisplayWidth
+                        If iH > ch Then ch = iH
 
-                        Case "D"        'Dropdownlist
-                            Dim cbox As New ComboBox
-                            With cbox
-                                'd.Sorted = True
+                    Case "T"            'Textbox
+                        Dim t As New TextBox
+                        With t
+                            Select Case d.Field.Justify
+                                Case "R"
+                                    .TextAlign = HorizontalAlignment.Right
+                                Case "C"
+                                    .TextAlign = HorizontalAlignment.Center
+                                Case Else
+                                    .TextAlign = HorizontalAlignment.Left
+                            End Select
+                            If d.Field.Enabled Then
                                 If d.Field.Required Then
                                     .BackColor = Color.FromArgb(255, 255, 100)
                                 End If
-                                .DropDownStyle = ComboBoxStyle.DropDown
-                                AddHandler .KeyUp, AddressOf Combo_KeyUp
-                                If d.Field.FillProcess <> "" Then
-                                    Dim p As New ShellProcess(d.Field.FillProcess, _
-                                                                    Me, Me.parms)
-                                    .DisplayMember = d.Field.TextField
-                                    .ValueMember = d.Field.ValueField
-                                    .DataSource = CType( _
-                                        Me.parms.Item(d.Field.FillProcess).Value, DataTable)
-                                Else
-                                    Dim ds As New ArrayList
-                                    Dim s As String
-                                    If d.Field.ValueField = "" Then
-                                        s = "Y||Yes||N||No"
-                                    Else
-                                        s = d.Field.ValueField
-                                    End If
-                                    Dim a() As String = Split(s, "||")
-                                    For j As Integer = 0 To a.GetUpperBound(0) Step 2
-                                        ds.Add(New ComboSource(a(j), a(j + 1)))
-                                    Next
-                                    .DataSource = ds
-                                    .DisplayMember = "Text"
-                                    .ValueMember = "Value"
-                                End If
-                            End With
-                            AddControl(d, CType(cbox, Control), ct, _
-                                  cl + cw, d.Field.DisplayWidth, -1)
-                            cw += d.Field.DisplayWidth
-                            AddHandler cbox.SelectedIndexChanged, AddressOf Field_Change
-                            If cbox.Height > ch Then ch = cbox.Height
-
-                        Case "S"            'Listbox
-                            Dim lbox As New ListBox
-                            With lbox
-                                If d.Field.Required Then
-                                    .BackColor = Color.FromArgb(255, 255, 100)
-                                End If
-                                If d.Field.FillProcess <> "" Then
-                                    Dim p As New ShellProcess(d.Field.FillProcess, _
-                                                                    Me, Me.parms)
-                                    .DisplayMember = d.Field.TextField
-                                    .ValueMember = d.Field.ValueField
-                                    .DataSource = CType( _
-                                        Me.parms.Item(d.Field.FillProcess).Value, DataTable)
-                                Else
-                                    Dim ds As New ArrayList
-                                    Dim s As String
-                                    If d.Field.ValueField = "" Then
-                                        s = "Y||Yes||N||No"
-                                    Else
-                                        s = d.Field.ValueField
-                                    End If
-                                    Dim a() As String = Split(s, "||")
-                                    For j As Integer = 0 To a.GetUpperBound(0) Step 2
-                                        ds.Add(New ComboSource(a(j), a(j + 1)))
-                                    Next
-                                    .DataSource = ds
-                                    .DisplayMember = "Text"
-                                    .ValueMember = "Value"
-                                End If
-                            End With
-                            If d.Field.DisplayHeight > 1 Then
-                                iH = 17 + 13 * d.Field.DisplayHeight
                             Else
-                                iH = 17
+                                .ReadOnly = True
                             End If
-                            AddControl(d, CType(lbox, Control), ct, _
-                                  cl + cw, d.Field.DisplayWidth, iH)
-                            cw += d.Field.DisplayWidth
-                            AddHandler lbox.SelectedIndexChanged, AddressOf Field_Change
-                            If lbox.Height > ch Then ch = lbox.Height
+                            If d.Field.DisplayHeight > 1 Then
+                                .Multiline = True
+                                iH = t.Height * d.Field.DisplayHeight
+                            Else
+                                iH = -1
+                            End If
+                            .BorderStyle = BorderStyle.FixedSingle
+                        End With
+                        AddControl(d, CType(t, Control), ct, _
+                                cl + cw, d.Field.DisplayWidth, iH)
+                        cw += d.Field.DisplayWidth
+                        iH = t.Height
+                        If d.Field.DisplayHeight > 1 Then
+                            iH += 3
+                        End If
+                        If iH > ch Then ch = iH
 
-                        Case "C"            'Checkbox
-                            Dim cb As New CheckBox
-                            AddControl(d, CType(cb, Control), ct - 2, _
-                                              cl + cw, 15, -1)
-                            cw += 15
-                            AddHandler cb.CheckedChanged, AddressOf Field_Change
-                            If ch = 0 Then ch = 23
-                    End Select
-                    If ct + ch > ft Then ft = ct + ch
-                    If cw > gw Then gw = cw
-                    If cl + cw > fw Then fw = cl + cw
-                    i += 1
-                End If
-            Next
-            fForm.Height = ft + 70
-            fForm.Width = fw + 35
-        Catch ex As Exception
-            Publics.MessageOut(ex.Message)
-            bRet = False
-        End Try
-        bLoading = False
-        Return bRet
+                    Case "P"            'DatePicker
+                        Dim t As New DateTimePicker
+                        With t
+                            If d.Field.Format <> "" Then
+                                t.Format = DateTimePickerFormat.Custom
+                                t.CustomFormat = d.Field.Format
+                            Else
+                                t.Format = DateTimePickerFormat.Short
+                            End If
+                            If d.Field.Enabled Then
+                                If d.Field.Required Then
+                                    .BackColor = Color.FromArgb(255, 255, 100)
+                                End If
+                            Else
+                                .Enabled = False
+                            End If
+                            iH = -1
+                        End With
+                        AddControl(d, CType(t, Control), ct, _
+                                cl + cw, d.Field.DisplayWidth, iH)
+                        cw += d.Field.DisplayWidth
+                        iH = t.Height
+                        If d.Field.DisplayHeight > 1 Then
+                            iH += 3
+                        End If
+                        If iH > ch Then ch = iH
+
+                    Case "D"        'Dropdownlist
+                        Dim cbox As New ComboBox
+                        With cbox
+                            'd.Sorted = True
+                            If d.Field.Required Then
+                                .BackColor = Color.FromArgb(255, 255, 100)
+                            End If
+                            .DropDownStyle = ComboBoxStyle.DropDown
+                            AddHandler .KeyUp, AddressOf Combo_KeyUp
+                            If d.Field.FillProcess <> "" Then
+                                Dim p As New ShellProcess(d.Field.FillProcess, _
+                                                                Me, Me.parms)
+                                .DisplayMember = d.Field.TextField
+                                .ValueMember = d.Field.ValueField
+                                .DataSource = CType( _
+                                    Me.parms.Item(d.Field.FillProcess).Value, DataTable)
+                            Else
+                                Dim ds As New ArrayList
+                                Dim s As String
+                                If d.Field.ValueField = "" Then
+                                    s = "Y||Yes||N||No"
+                                Else
+                                    s = d.Field.ValueField
+                                End If
+                                Dim a() As String = Split(s, "||")
+                                For j As Integer = 0 To a.GetUpperBound(0) Step 2
+                                    ds.Add(New ComboSource(a(j), a(j + 1)))
+                                Next
+                                .DataSource = ds
+                                .DisplayMember = "Text"
+                                .ValueMember = "Value"
+                            End If
+                        End With
+                        AddControl(d, CType(cbox, Control), ct, _
+                              cl + cw, d.Field.DisplayWidth, -1)
+                        cw += d.Field.DisplayWidth
+                        AddHandler cbox.SelectedIndexChanged, AddressOf Field_Change
+                        If cbox.Height > ch Then ch = cbox.Height
+
+                    Case "S"            'Listbox
+                        Dim lbox As New ListBox
+                        With lbox
+                            If d.Field.Required Then
+                                .BackColor = Color.FromArgb(255, 255, 100)
+                            End If
+                        End With
+                        If d.Field.DisplayHeight > 1 Then
+                            iH = 17 + 13 * d.Field.DisplayHeight
+                        Else
+                            iH = 17
+                        End If
+                        AddControl(d, CType(lbox, Control), ct, _
+                              cl + cw, d.Field.DisplayWidth, iH)
+                        cw += d.Field.DisplayWidth
+                        AddHandler lbox.SelectedIndexChanged, AddressOf Field_Change
+                        If lbox.Height > ch Then ch = lbox.Height
+
+                    Case "C"            'Checkbox
+                        Dim cb As New CheckBox
+                        AddControl(d, CType(cb, Control), ct - 2, _
+                                          cl + cw, 15, -1)
+                        cw += 15
+                        AddHandler cb.CheckedChanged, AddressOf Field_Change
+                        If ch = 0 Then ch = 23
+                End Select
+                If ct + ch > ft Then ft = ct + ch
+                If cw > gw Then gw = cw
+                If cl + cw > fw Then fw = cl + cw
+                i += 1
+            End If
+        Next
+        fForm.Height = ft + 70
+        fForm.Width = fw + 35
     End Function
 
     Private Sub AddControl(ByRef d As DialogField, ByRef ctl As Control, _
@@ -1154,10 +1136,10 @@ Public Class Dialog
             c = dlogf.Item(Field)
             Select Case c.Field.DisplayType
                 Case "H"            'Hidden field return parameter value if it exists
-                    If MyBase.Parms.Item(Field) Is Nothing Then
+                    If MyBase.parms.Item(Field) Is Nothing Then
                         Return Nothing
                     Else
-                        Return MyBase.Parms.Item(Field).Value
+                        Return MyBase.parms.Item(Field).Value
                     End If
 
                 Case "R"    'dRopdown column
@@ -1228,14 +1210,14 @@ Public Class Dialog
                             d.Value = cb.SelectedValue
                         End If
 
-                    Case "S"            'Listbox
-                        Dim lb As ListBox = CType(fForm.Controls.Item( _
-                                                      d.ControlIndex), ListBox)
-                        If lb.SelectedIndex = -1 Then
-                            d.Value = Nothing
-                        Else
-                            d.Value = lb.SelectedValue
-                        End If
+                        'Case "S"            'Listbox
+                        '    Dim lb As ListBox = CType(fForm.Controls.Item( _
+                        '                                  d.ControlIndex), ListBox)
+                        '    If lb.SelectedIndex = -1 Then
+                        '        d.Value = Nothing
+                        '    Else
+                        '        d.Value = lb.SelectedValue
+                        '    End If
 
                     Case "C"            'Checkbox
                         If Len(d.Field.ValueField) > 1 Then
@@ -1682,12 +1664,8 @@ Public Class Dialog
                     End If
 
                 Case "S"            'Listbox
-                    If GetString(Value) = "" Then
-                        CType(cc, ListBox).SelectedIndex = -1
-                        d.Value = Nothing
-                    Else
-                        CType(cc, ListBox).SelectedValue = GetString(Value)
-                    End If
+                    CType(cc, ListBox).DataSource = Value
+                    d.Value = Value
 
                 Case "C"            'Checkbox
                     Dim so As String = "YN"

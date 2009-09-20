@@ -5,10 +5,9 @@ Public Class TableWriteDefn
     Inherits ObjectDefn
 
     Public DataParameter As String
-    Public TableWritePreProcess As String = ""
-    Public RowWriteProcess As String
-    Public TableWritePostProcess As String = ""
-    Public ErrorProcess As String = ""
+    Public PreWriteProcess As String = ""
+    Public WriteProcess As String
+    Public PostWriteProcess As String = ""
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -22,14 +21,12 @@ Public Class TableWriteDefn
         Select Case Name
             Case "DataParameter"
                 DataParameter = GetString(Value)
-            Case "TableWritePreProcess"
-                TableWritePreProcess = GetString(Value)
-            Case "RowWriteProcess"
-                RowWriteProcess = GetString(Value)
-            Case "TableWritePostProcess"
-                TableWritePostProcess = GetString(Value)
-            Case "ErrorProcess"
-                ErrorProcess = GetString(Value)
+            Case "PreWriteProcess"
+                PreWriteProcess = GetString(Value)
+            Case "WriteProcess"
+                WriteProcess = GetString(Value)
+            Case "PostWriteProcess"
+                PostWriteProcess = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by TableWrite object")
         End Select
@@ -54,11 +51,10 @@ Public Class TableWrite
             If Not bUpdateParameters Then
                 Dim p As ShellProcess
 
-                If sDefn.TableWritePreProcess <> "" Then
+                If sDefn.PreWriteProcess <> "" Then
                     bUpdateParameters = True
-                    p = New ShellProcess(sDefn.TableWritePreProcess, Me, Me.Parms)
+                    p = New ShellProcess(sDefn.PreWriteProcess, Me, Me.parms)
                     If Me.Messages.count > 0 Then
-                        ErrorFixUp()
                         Me.OnExitFail()
                         Exit Sub
                     End If
@@ -67,36 +63,29 @@ Public Class TableWrite
 
                 Dim parm As shellParameter
                 Dim dtData As DataTable = CType(Parms.Item(sDefn.DataParameter).Value, DataTable)
-                'Add a row counter to the parameters list
-                Me.Parms.Add("RowNumber", Nothing, DbType.Int32, False, True)
 
-                Dim iRow As Integer = 1
                 For Each dr As DataRow In dtData.Rows
-                    Me.Parms.Item("RowNumber").Value = iRow
 
                     'Populate required fields with row data
                     For Each dc As DataColumn In dtData.Columns
-                        parm = Me.Parms.Item(dc.ColumnName)
+                        parm = Me.parms.Item(dc.ColumnName)
                         If Not parm Is Nothing Then
                             parm.Value = dr.Item(dc.ColumnName)
                         End If
                     Next
 
-                    p = New ShellProcess(sDefn.RowWriteProcess, Me, Me.Parms)
+                    p = New ShellProcess(sDefn.WriteProcess, Me, Me.parms)
 
                     If Me.Messages.count > 0 Then
-                        ErrorFixUp()
                         Me.OnExitFail()
                         Exit Sub
                     End If
-                    iRow += 1
                 Next
 
-                If sDefn.TableWritePostProcess <> "" Then
-                    p = New ShellProcess(sDefn.TableWritePostProcess, Me, Me.Parms)
+                If sDefn.PostWriteProcess <> "" Then
+                    p = New ShellProcess(sDefn.PostWriteProcess, Me, Me.parms)
 
                     If Me.Messages.count > 0 Then
-                        ErrorFixUp()
                         Me.OnExitFail()
                         Exit Sub
                     End If
@@ -117,11 +106,5 @@ Public Class TableWrite
             End If
             Me.OnExitFail()
         End Try
-    End Sub
-
-    Private Sub ErrorFixUp()
-        If sDefn.ErrorProcess <> "" Then
-            Dim p As New ShellProcess(sDefn.ErrorProcess, Me, Me.Parms)
-        End If
     End Sub
 End Class
