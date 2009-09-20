@@ -141,10 +141,10 @@ Public Class StoredProc
 
         Catch ex As SqlException
             For i = 0 To ex.Errors.Count - 1
-                If ex.Number = 50999 Then
-                    Me.Messages.Add("U", ex.Message)
+                If ex.Errors(i).Number = 50999 Then
+                    Me.Messages.Add("U", ex.Errors(i).Message)
                 Else
-                    Me.Messages.Add("E", ex.Message & " [" & ex.Number & "]")
+                    Me.Messages.Add("E", ex.Errors(i).Message & " [" & ex.Errors(i).Number & "]")
                 End If
             Next i
             Me.OnExitFail()

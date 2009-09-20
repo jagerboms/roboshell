@@ -104,7 +104,7 @@ Public Class ValidationDefns
             .ReturnParameter = RetParameter
         End With
         Me.Add(parm)
-        Return CType(Values.Item(Name), ValidationDefn)
+        Return parm
     End Function
 
     Public ReadOnly Property Item(ByVal index As Object) As ValidationDefn

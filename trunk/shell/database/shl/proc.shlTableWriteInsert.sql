@@ -14,10 +14,9 @@ go
 create procedure dbo.shlTableWriteInsert
     @ObjectName varchar(32)
    ,@DataParameter varchar(32) = 'data'
-   ,@TableWritePreProcess varchar(32) = null
-   ,@RowWriteProcess varchar(32)
-   ,@TableWritePostProcess varchar(32) = null
-   ,@ErrorProcess varchar(32) = null
+   ,@PreWriteProcess varchar(32) = null
+   ,@WriteProcess varchar(32)
+   ,@PostWriteProcess varchar(32) = null
 as
 begin
     set nocount on
@@ -27,7 +26,7 @@ begin
     set @e = 0
     while @e = 0
     begin
-        if @RowWriteProcess is null
+        if @WriteProcess is null
         begin
             set @e = 60600
             set @m = 'Error row write process must be provided...'
@@ -40,43 +39,43 @@ begin
             (
                 select  'a'
                 from    dbo.shlProcesses p
-                where   p.ProcessName = @RowWriteProcess
+                where   p.ProcessName = @WriteProcess
             )
             begin
                 set @e = 60600
-                set @m = 'Error row write process ' + @RowWriteProcess + ' does not exist...'
+                set @m = 'Error row write process ' + @WriteProcess + ' does not exist...'
                 raiserror @e @m
                 break
             end
         end
 
-        if @TableWritePreProcess is not null
+        if @PreWriteProcess is not null
         begin
             if not exists
             (
                 select  'a'
                 from    dbo.shlProcesses p
-                where   p.ProcessName = @TableWritePreProcess
+                where   p.ProcessName = @PreWriteProcess
             )
             begin
                 set @e = 60600
-                set @m = 'Error table write pre-process ' + @TableWritePreProcess + ' does not exist...'
+                set @m = 'Error write pre-process ' + @PreWriteProcess + ' does not exist...'
                 raiserror @e @m
                 break
             end
         end
 
-        if @TableWritePostProcess is not null
+        if @PostWriteProcess is not null
         begin
             if not exists
             (
                 select  'a'
                 from    dbo.shlProcesses p
-                where   p.ProcessName = @TableWritePostProcess
+                where   p.ProcessName = @PostWriteProcess
             )
             begin
                 set @e = 60600
-                set @m = 'Error table write post-process ' + @TableWritePostProcess + ' does not exist...'
+                set @m = 'Error table write post-process ' + @PostWriteProcess + ' does not exist...'
                 raiserror @e @m
                 break
             end
@@ -101,12 +100,12 @@ begin
             break
         end
 
-        if @TableWritePreProcess is not null
+        if @PreWriteProcess is not null
         begin
             execute @e = dbo.shlPropertiesInsert
                 @ObjectName = @ObjectName
-               ,@PropertyName = 'TableWritePreProcess'
-               ,@Value = @TableWritePreProcess
+               ,@PropertyName = 'PreWriteProcess'
+               ,@Value = @PreWriteProcess
             if @e <> 0
             begin
                 break
@@ -115,31 +114,19 @@ begin
 
         execute @e = dbo.shlPropertiesInsert
             @ObjectName = @ObjectName
-           ,@PropertyName = 'RowWriteProcess'
-           ,@Value = @RowWriteProcess
+           ,@PropertyName = 'WriteProcess'
+           ,@Value = @WriteProcess
         if @e <> 0
         begin
             break
         end
 
-        if @TableWritePostProcess is not null
+        if @PostWriteProcess is not null
         begin
             execute @e = dbo.shlPropertiesInsert
                 @ObjectName = @ObjectName
-               ,@PropertyName = 'TableWritePostProcess'
-               ,@Value = @TableWritePostProcess
-            if @e <> 0
-            begin
-                break
-            end
-        end
-
-        if @ErrorProcess is not null
-        begin
-            execute @e = dbo.shlPropertiesInsert
-                @ObjectName = @ObjectName
-               ,@PropertyName = 'ErrorProcess'
-               ,@Value = @ErrorProcess
+               ,@PropertyName = 'PostWriteProcess'
+               ,@Value = @PostWriteProcess
             if @e <> 0
             begin
                 break

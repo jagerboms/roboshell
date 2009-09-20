@@ -33,12 +33,27 @@ begin
        ,DisplayHeight integer null
        ,LinkColumn varchar(32) null
        ,LinkField varchar(32) null
+       ,Container varchar(32) null
        ,constraint shlFieldsPK primary key clustered
        (
             ObjectName
            ,FieldName
        )
     )
+end
+go
+
+if not exists
+(
+    select  'a'
+    from INFORMATION_SCHEMA.Columns c
+    where   c.TABLE_NAME = 'shlFields'
+    and     c.TABLE_SCHEMA = 'dbo'
+    and     c.COLUMN_NAME = 'Container'
+)
+begin
+    alter table dbo.shlFields add
+        Container varchar(32) null
 end
 go
 
