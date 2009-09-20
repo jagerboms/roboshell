@@ -8,10 +8,10 @@ table.helpObjects.sql
 table.helpObjectsAudit.sql
 table.helpSystems.sql
 table.helpSystemsAudit.sql
-fkey.helpActions.helpActionsFK.sql
-fkey.helpColours.helpColoursFK.sql
-fkey.helpFields.helpFieldsFK.sql
-fkey.helpObjects.helpObjectsFK.sql
+fkey.helpActions.helpObjects.helpActionsFK.sql
+fkey.helpColours.helpObjects.helpColoursFK.sql
+fkey.helpFields.helpObjects.helpFieldsFK.sql
+fkey.helpObjects.helpSystems.helpObjectsFK.sql
 proc.helpActionsAuditInsert.sql
 proc.helpColoursAuditInsert.sql
 proc.helpFieldsAuditInsert.sql
