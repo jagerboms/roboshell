@@ -29,6 +29,7 @@ Public Class sql
     Private sUserID As String = ""
     Private sPassword As String = ""
     Private sNetwork As String = ""
+    Private sConnect As String = ""
 
 #Region "Properties"
     Public Property Server() As String
@@ -86,6 +87,23 @@ Public Class sql
         Set(ByVal value As String)
             If sNetwork <> value Then
                 sNetwork = value
+                CloseConnect()
+            End If
+        End Set
+    End Property
+
+    Public Property ConnectString() As String
+        Get
+            ConnectString = getConnectString()
+        End Get
+        Set(ByVal value As String)
+            If value <> getConnectString() Then
+                sConnect = value
+                sServer = ""
+                sDatabase = ""
+                sUserID = ""
+                sPassword = ""
+                sNetwork = ""
                 CloseConnect()
             End If
         End Set
@@ -288,6 +306,25 @@ Public Class sql
         Return GetTable(sql)
     End Function
 
+    Public Function ProcParms(ByVal Name As String) As DataTable
+        Dim sql As String
+
+        openConnect()
+        sql = "select SPECIFIC_NAME"
+        sql &= ",ORDINAL_POSITION"
+        sql &= ",PARAMETER_NAME"
+        sql &= ",DATA_TYPE"
+        sql &= ",CHARACTER_MAXIMUM_LENGTH"
+        sql &= ",NUMERIC_PRECISION"
+        sql &= ",NUMERIC_SCALE"
+        sql &= ",PARAMETER_MODE "
+        sql &= "from INFORMATION_SCHEMA.PARAMETERS "
+        sql &= "where SPECIFIC_NAME='" & Name
+        sql &= "' order by ORDINAL_POSITION"
+
+        Return GetTable(sql)
+    End Function
+
     Public Function JobList(ByVal Name As String) As DataTable
         Dim sql As String
 
@@ -390,7 +427,10 @@ Public Class sql
         Select Case Database
             Case "master"
                 If Version < 90 Then            'SQL 2000 compatible
-                    sql = ""
+                    sql = "grant select on sysobjects to " & Logon & vbCrLf
+                    sql &= "grant select on syscomments to " & Logon & vbCrLf
+                    sql &= "grant select on syscolumns to " & Logon & vbCrLf
+                    sql &= "grant select on systypes to " & Logon & vbCrLf
                 Else
                     sql = "grant view any definition to " & Logon
                 End If
@@ -414,6 +454,19 @@ Public Class sql
 
         End Select
         Return sql
+    End Function
+
+    Public Function ShellName() As String
+        Dim sql As String
+        Dim s As String = ""
+        Dim dr As DataRow
+
+        sql = "select dbo.shlVariableGet('SystemName')"
+        dr = GetRow(sql)
+        If Not dr Is Nothing Then
+            s = GetString(dr.Item(0))
+        End If
+        Return s
     End Function
 
     Public Function GetString(ByVal objValue As Object) As String
@@ -476,8 +529,12 @@ Public Class sql
 
 #Region "Private functions"
 
-    Private Function ConnectString() As String
+    Private Function getConnectString() As String
         Dim con As String
+
+        If sConnect <> "" Then
+            Return sConnect
+        End If
 
         con = "server=" & sServer & ";database=" & sDatabase
         If sNetwork <> "" Then con &= ";Network=" & sNetwork
@@ -529,7 +586,7 @@ Public Class sql
             Return
         End If
 
-        psConn = New SqlConnection(ConnectString())
+        psConn = New SqlConnection(getConnectString())
         psConn.Open()
         Connected = True
 
