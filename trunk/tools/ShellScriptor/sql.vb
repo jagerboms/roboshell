@@ -164,6 +164,10 @@ Public Class sql
         Dim sql As String
 
         openConnect()
+        If Version < 90 Then            'SQL 2000 compatible
+            Return Nothing
+        End If
+
         sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted from sys.sql_modules"
         sql &= " where object_id=object_id('" & Name & "')"
 
@@ -406,7 +410,11 @@ Public Class sql
         sql &= "    where   name = '" & Logon & "'" & vbCrLf
         sql &= ")" & vbCrLf
         sql &= "begin" & vbCrLf
-        sql &= "    create User " & Logon & " for login " & Logon & vbCrLf
+        If Version < 90 Then            'SQL 2000 compatible
+            sql &= "    execute dbo.sp_grantdbaccess @loginame='" & Logon & "',  @name_in_db = '" & Logon & "'" & vbCrLf
+        Else
+            sql &= "    create User " & Logon & " for login " & Logon & vbCrLf
+        End If
         sql &= "end"
 
         Return sql
@@ -419,7 +427,10 @@ Public Class sql
         Select Case Database
             Case "master"
                 If Version < 90 Then            'SQL 2000 compatible
-                    sql = ""
+                    sql = "grant select on sysobjects to " & Logon & vbCrLf
+                    sql &= "grant select on syscomments to " & Logon & vbCrLf
+                    sql &= "grant select on syscolumns to " & Logon & vbCrLf
+                    sql &= "grant select on systypes to " & Logon & vbCrLf
                 Else
                     sql = "grant view any definition to " & Logon
                 End If
