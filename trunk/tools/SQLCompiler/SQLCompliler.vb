@@ -54,68 +54,7 @@ Public Class SQLCompliler
     End Sub
 
     Private Sub TSView_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TSView.Click
-        Dim vw As New view
-        Dim tn As TreeNode
-        Dim sql As SQLFile
-        Dim c As Connect
-        Dim sOut As String
-        Dim st As String
-
-        sOut = "{\rtf1\ansi\ansicpg1252\deff0{\fonttbl{\f0\fmodern\fprq1\fcharset0 Courier New;}}{\colortbl ;\red0\green0\blue255;\red255\green0\blue0;}\viewkind4\uc1\pard \tx450\cf1\lang1033\f0\fs22 "
-
-        tn = Me.TreeView1.SelectedNode
-        If tn Is Nothing Then
-            st = FileName
-            sOut &= "\b File:\b0\tab " & rtfOut(FileName) & "\par "
-            If Dir(FileName) = "" Then
-                sOut &= "\b Error:\b0\tab File does not exist!\par "
-            End If
-        Else
-            st = tn.Tag.ToString
-            sql = Files.Item(st)
-            st = tn.Text
-            If sql Is Nothing Then
-                sOut &= "\b Object:\b0\tab " & rtfOut(st) & "\par "
-                sOut &= "\b Error:\b0\tab Cannot find object!\par "
-            Else
-                Select Case sql.FileType
-                    Case "DB"
-                        sOut &= "\b Database:\b0\tab " & rtfOut(sql.Name) & "\par "
-                        c = Cons.Item(sql.Name)
-                        If Not c Is Nothing Then
-                            sOut &= "\b Connect:\b0\tab " & rtfOut(c.ConnectString) & "\par "
-                            sOut &= "\b Provider:\b0\tab " & rtfOut(c.Provider) & "\par "
-                        End If
-
-                    Case "SCL"
-                        sOut &= "\b SCL File:\b0\tab " & rtfOut(sql.Name) & "\par "
-
-                    Case "FILE"
-                        sOut &= "\b SQL File:\b0\tab " & rtfOut(sql.Name) & "\par "
-
-                    Case "SQL"
-                        sOut &= "\b SQL Text:\b0\tab " & rtfOut(sql.File) & "\par "
-
-                    Case Else
-                        sOut &= "\b Unknown Type:\b0\tab " & rtfOut(sql.FileType) & "\par "
-                        sOut &= "\b Name:\b0\tab " & rtfOut(sql.File) & "\par "
-
-                End Select
-                If sql.Results <> "" Then
-                    If sql.State = "E" Then
-                        sOut &= "\b Error"
-                    Else
-                        sOut &= "\b Output"
-                    End If
-                    sOut &= ":\b0\par " & rtfOut(sql.Results) & " \par "
-                End If
-            End If
-        End If
-        vw.Text = sTitle & " " & st
-        sOut &= " }"
-        vw.Output.Rtf = sOut
-        vw.Output.BackColor = Drawing.Color.White
-        vw.Show()
+        View()
     End Sub
 
     Private Sub TSStart_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TSStart.Click
@@ -175,6 +114,10 @@ Public Class SQLCompliler
         vw.Width = 400
         vw.Height = 500
         vw.Show()
+    End Sub
+
+    Private Sub TreeView1_DoubleClick(ByVal sender As Object, ByVal e As System.EventArgs) Handles TreeView1.DoubleClick
+        View()
     End Sub
 
     Private Sub LoadDatabases()
@@ -337,6 +280,71 @@ Public Class SQLCompliler
             hasMissing = True
         End If
         CurrentNode.Nodes.Add(sql.Node)
+    End Sub
+
+    Private Sub View()
+        Dim vw As New view
+        Dim tn As TreeNode
+        Dim sql As SQLFile
+        Dim c As Connect
+        Dim sOut As String
+        Dim st As String
+
+        sOut = "{\rtf1\ansi\ansicpg1252\deff0{\fonttbl{\f0\fmodern\fprq1\fcharset0 Courier New;}}{\colortbl ;\red0\green0\blue255;\red255\green0\blue0;}\viewkind4\uc1\pard \tx450\cf1\lang1033\f0\fs22 "
+
+        tn = Me.TreeView1.SelectedNode
+        If tn Is Nothing Then
+            st = FileName
+            sOut &= "\b File:\b0\tab " & rtfOut(FileName) & "\par "
+            If Dir(FileName) = "" Then
+                sOut &= "\b Error:\b0\tab File does not exist!\par "
+            End If
+        Else
+            st = tn.Tag.ToString
+            sql = Files.Item(st)
+            st = tn.Text
+            If sql Is Nothing Then
+                sOut &= "\b Object:\b0\tab " & rtfOut(st) & "\par "
+                sOut &= "\b Error:\b0\tab Cannot find object!\par "
+            Else
+                Select Case sql.FileType
+                    Case "DB"
+                        sOut &= "\b Database:\b0\tab " & rtfOut(sql.Name) & "\par "
+                        c = Cons.Item(sql.Name)
+                        If Not c Is Nothing Then
+                            sOut &= "\b Connect:\b0\tab " & rtfOut(c.ConnectString) & "\par "
+                            sOut &= "\b Provider:\b0\tab " & rtfOut(c.Provider) & "\par "
+                        End If
+
+                    Case "SCL"
+                        sOut &= "\b SCL File:\b0\tab " & rtfOut(sql.Name) & "\par "
+
+                    Case "FILE"
+                        sOut &= "\b SQL File:\b0\tab " & rtfOut(sql.Name) & "\par "
+
+                    Case "SQL"
+                        sOut &= "\b SQL Text:\b0\tab " & rtfOut(sql.File) & "\par "
+
+                    Case Else
+                        sOut &= "\b Unknown Type:\b0\tab " & rtfOut(sql.FileType) & "\par "
+                        sOut &= "\b Name:\b0\tab " & rtfOut(sql.File) & "\par "
+
+                End Select
+                If sql.Results <> "" Then
+                    If sql.State = "E" Then
+                        sOut &= "\b Error"
+                    Else
+                        sOut &= "\b Output"
+                    End If
+                    sOut &= ":\b0\par " & rtfOut(sql.Results) & " \par "
+                End If
+            End If
+        End If
+        vw.Text = sTitle & " " & st
+        sOut &= " }"
+        vw.Output.Rtf = sOut
+        vw.Output.BackColor = Drawing.Color.White
+        vw.Show()
     End Sub
 
     Private Function CompileFile(ByVal sFile As String) As Boolean
@@ -590,8 +598,10 @@ Public Class SQLCompliler
         i = InStr(1, sCommand, sSwitch, CompareMethod.Text)
         sParameter = ""
         If i > 0 Then
-            sParameter = Mid(sCommand, i + 2)
-            If Mid(sParameter, 1, 1) = """" Then
+            sParameter = LTrim(Mid(sCommand, i + 2))
+            If Mid(sParameter, 1, 1) = "-" Then
+                sParameter = ""
+            ElseIf Mid(sParameter, 1, 1) = """" Then
                 sParameter = Mid(sParameter, 2)
                 i = InStr(1, sParameter, """", CompareMethod.Text)
                 If i > 0 Then
@@ -604,7 +614,7 @@ Public Class SQLCompliler
                 End If
             End If
         End If
-        GetCommandParameter = sParameter
+        Return sParameter
     End Function
 
     Private Sub SaveOutput(ByVal sMsg As String, ByVal sType As String)
