@@ -42,6 +42,12 @@ Public Class TableColumn
         End Get
     End Property
 
+    Public ReadOnly Property QuotedDefaultName() As String
+        Get
+            QuotedDefaultName = sqllib.QuoteIdentifier(DefaultName)
+        End Get
+    End Property
+
     Public Property Length() As Integer
         Get
             Dim i As Integer
@@ -195,6 +201,7 @@ Public Class TableColumns
 
     Private PreLoad As Integer = -1
     Private sTable As String
+    Private qTable As String
     Private sPKey As String = ""
     Private bPKClust As Boolean = True
     Private sIdentity As String = ""
@@ -221,6 +228,7 @@ Public Class TableColumns
         Set(ByVal value As String)
             If PreLoad = 0 Then
                 sTable = value
+                qTable = slib.QuoteIdentifier(sTable)
             End If
         End Set
     End Property
@@ -300,7 +308,7 @@ Public Class TableColumns
     Public ReadOnly Property Column(ByVal index As String) As TableColumn
         Get
             Try
-                Return CType(Values.Item(index), TableColumn)
+                Return DirectCast(Values.Item(index), TableColumn)
             Catch
                 Return Nothing
             End Try
@@ -325,6 +333,7 @@ Public Class TableColumns
             Dim sRest As String = ""
             Dim sInc As String = ""
             Dim sOut As String = ""
+            Dim qName As String = slib.QuoteIdentifier(IndexName)
 
             If dtIndexs Is Nothing Then
                 Return ""
@@ -384,7 +393,7 @@ Public Class TableColumns
                             sRest &= "    if @c1 <> @c2 or @c1 <> ~~" & vbCrLf
                             sRest &= "    begin" & vbCrLf
                             sRest &= "        print 'changing index ''" & IndexName & "'''" & vbCrLf
-                            sRest &= "        drop index dbo." & sTable & "." & IndexName & vbCrLf
+                            sRest &= "        drop index dbo." & qTable & "." & qName & vbCrLf
                             sRest &= "        set @i = null" & vbCrLf
                             sRest &= "    end" & vbCrLf
                             sRest &= "end" & vbCrLf
@@ -394,9 +403,9 @@ Public Class TableColumns
                             sRest &= "    print 'creating index ''" & IndexName & "'''" & vbCrLf
                             sRest &= "    create" & slib.GetString(IIf(CInt(r.Item("is_unique")) <> 0, " unique", ""))
                             sRest &= slib.GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
-                            sRest &= " index " & IndexName & vbCrLf
-                            sRest &= "      on dbo." & sTable & " ("
-                            sRest &= slib.GetString(r.Item("ColumnName"))
+                            sRest &= " index " & qName & vbCrLf
+                            sRest &= "      on dbo." & qTable & " ("
+                            sRest &= slib.QuoteIdentifier(r.Item("ColumnName"))
                         Else
                             sOut &= "        union select  " & slib.GetString(r.Item("key_ordinal"))
                             sOut &= ", '" & slib.GetString(r.Item("ColumnName")) & "', "
@@ -413,9 +422,9 @@ Public Class TableColumns
                             sOut &= vbCrLf
 
                             If CInt(r.Item("is_included_column")) = 0 Then
-                                sRest &= "," & slib.GetString(r.Item("ColumnName"))
+                                sRest &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
                             Else
-                                sInc &= "," & slib.GetString(r.Item("ColumnName"))
+                                sInc &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
                             End If
                         End If
                         i += 1
@@ -454,13 +463,13 @@ Public Class TableColumns
                         If i = 0 Then
                             sOut &= "create" & slib.GetString(IIf(CInt(r.Item("is_unique")) <> 0, " unique", ""))
                             sOut &= slib.GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
-                            sOut &= " index " & IndexName & " on dbo." & sTable & " ("
-                            sOut &= slib.GetString(r.Item("ColumnName"))
+                            sOut &= " index " & slib.QuoteIdentifier(IndexName) & " on dbo." & qTable & " ("
+                            sOut &= slib.QuoteIdentifier(r.Item("ColumnName"))
                         Else
                             If CInt(r.Item("is_included_column")) = 0 Then
-                                sOut &= "," & slib.GetString(r.Item("ColumnName"))
+                                sOut &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
                             Else
-                                sInc &= "," & slib.GetString(r.Item("ColumnName"))
+                                sInc &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
                             End If
                         End If
                         i += 1
@@ -507,6 +516,7 @@ Public Class TableColumns
             Dim sOut As String = ""
             Dim sRest As String = ""
             Dim sFTable As String = ""
+            Dim qName As String = slib.QuoteIdentifier(sFKeyName)
 
             If dtFKeys Is Nothing Then
                 Return ""
@@ -553,21 +563,21 @@ Public Class TableColumns
                         sRest &= "    if @c1 <> @c2 or @c1 <> ~~" & vbCrLf
                         sRest &= "    begin" & vbCrLf
                         sRest &= "        print 'changing foreign key ''" & sFKeyName & "'''" & vbCrLf
-                        sRest &= "        alter table dbo." & sTable & " drop constraint " & sFKeyName & vbCrLf
+                        sRest &= "        alter table dbo." & qTable & " drop constraint " & qName & vbCrLf
                         sRest &= "    end" & vbCrLf
                         sRest &= "end" & vbCrLf
                         sRest &= vbCrLf
                         sRest &= "if object_id('" & sFKeyName & "') is null" & vbCrLf
                         sRest &= "begin" & vbCrLf
                         sRest &= "    print 'creating foreign key ''" & sFKeyName & "'''" & vbCrLf
-                        sRest &= "    alter table dbo." & sTable & " add constraint " & sFKeyName & vbCrLf
-                        sRest &= "    foreign key (" & slib.GetString(r.Item("ColumnName"))
-                        ss = ") references dbo." & slib.GetString(r.Item("LinkedTable")) & "(" & slib.GetString(r.Item("LinkedColumn"))
+                        sRest &= "    alter table dbo." & qTable & " add constraint " & qName & vbCrLf
+                        sRest &= "    foreign key (" & slib.QuoteIdentifier(r.Item("ColumnName"))
+                        ss = ") references dbo." & slib.QuoteIdentifier(r.Item("LinkedTable")) & "(" & slib.QuoteIdentifier(r.Item("LinkedColumn"))
                     Else
                         sOut &= "        union select  " & CInt(r.Item("Sequence")) & ", '" & slib.GetString(r.Item("ColumnName"))
-                        sOut &= "', '" & slib.GetString(r.Item("LinkedColumn")) & "'" & vbCrLf
-                        sRest &= "," & slib.GetString(r.Item("ColumnName"))
-                        ss &= "," & slib.GetString(r.Item("LinkedColumn"))
+                        sOut &= "', '" & slib.QuoteIdentifier(r.Item("LinkedColumn")) & "'" & vbCrLf
+                        sRest &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
+                        ss &= "," & slib.QuoteIdentifier(r.Item("LinkedColumn"))
                     End If
                     i += 1
                 End If
@@ -598,13 +608,13 @@ Public Class TableColumns
             For Each r As DataRow In dtFKeys.Rows
                 If sFKeyName = slib.GetString(r.Item("ConstraintName")) Then
                     If i = 0 Then
-                        sOut &= "alter table dbo." & sTable & " add constraint " & sFKeyName & vbCrLf
-                        sOut &= "foreign key (" & slib.GetString(r.Item("ColumnName"))
+                        sOut &= "alter table dbo." & qTable & " add constraint " & slib.QuoteIdentifier(sFKeyName) & vbCrLf
+                        sOut &= "foreign key (" & slib.QuoteIdentifier(r.Item("ColumnName"))
 
-                        ss = ") references dbo." & slib.GetString(r.Item("LinkedTable")) & "(" & slib.GetString(r.Item("LinkedColumn"))
+                        ss = ") references dbo." & slib.QuoteIdentifier(r.Item("LinkedTable")) & "(" & slib.QuoteIdentifier(r.Item("LinkedColumn"))
                     Else
-                        sOut &= "," & slib.GetString(r.Item("ColumnName"))
-                        ss &= "," & slib.GetString(r.Item("LinkedColumn"))
+                        sOut &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
+                        ss &= "," & slib.QuoteIdentifier(r.Item("LinkedColumn"))
                     End If
                     i += 1
                 End If
@@ -631,7 +641,7 @@ Public Class TableColumns
         Dim sPK As String
         Dim sType As String
         Dim sNull As String
-        Dim sIdentity As String = ""
+        'Dim sIdentity As String = ""
         Dim dt As DataTable
         Dim dr As DataRow
         Dim i As Integer
@@ -647,6 +657,7 @@ Public Class TableColumns
         End If
 
         sTable = sqllib.GetString(dt.Rows(0).Item("TableName"))
+        qTable = sqllib.QuoteIdentifier(sTable)
         sIdentity = slib.TableIdentity(sTable)
 
         For Each dr In dt.Rows        ' Columns
@@ -790,7 +801,7 @@ Public Class TableColumns
             i += 1
             ReDim Preserve xPKeys(i)
         End If
-        tc = CType(Values.Item(sKey), TableColumn)
+        tc = DirectCast(Values.Item(sKey), TableColumn)
         tc.Primary = True
         tc.Descend = bDescend
         xPKeys(i) = sKey
@@ -820,7 +831,7 @@ Public Class TableColumns
         sHead &= "(" & vbCrLf
         s = "    "
         For Each cols In Keys
-            tc = CType(Values.Item(cols), TableColumn)
+            tc = DirectCast(Values.Item(cols), TableColumn)
             sHead &= s & tc.QuotedName
             s = ", "
         Next
@@ -828,7 +839,7 @@ Public Class TableColumns
         sHead &= ")" & vbCrLf
         s = "select  x."
         For Each cols In Keys
-            tc = CType(Values.Item(cols), TableColumn)
+            tc = DirectCast(Values.Item(cols), TableColumn)
             sHead &= s & tc.QuotedName & vbCrLf
             s = "       ,x."
         Next
@@ -843,7 +854,7 @@ Public Class TableColumns
                 sOut &= sHead
                 s = "    select  "
                 For Each cols In Keys
-                    tc = CType(Values.Item(cols), TableColumn)
+                    tc = DirectCast(Values.Item(cols), TableColumn)
                     sOut &= s & tc.DataFormat(r(tc.Name)) & " " & tc.QuotedName & vbCrLf
                     s = "           ,"
                 Next
@@ -851,7 +862,7 @@ Public Class TableColumns
                 sTail &= "left join dbo." & sTable & " a" & vbCrLf
                 s = "on      a."
                 For Each cols In xPKeys
-                    tc = CType(Values.Item(cols), TableColumn)
+                    tc = DirectCast(Values.Item(cols), TableColumn)
                     If ss = "" Then ss = tc.QuotedName
                     sTail &= s & tc.QuotedName & " = x." & tc.QuotedName & vbCrLf
                     s = "and     a."
@@ -863,7 +874,7 @@ Public Class TableColumns
             Else
                 s = "    union select "
                 For Each cols In Keys
-                    tc = CType(Values.Item(cols), TableColumn)
+                    tc = DirectCast(Values.Item(cols), TableColumn)
                     sOut &= s & tc.DataFormat(r(tc.Name))
                     s = ", "
                 Next
@@ -901,12 +912,12 @@ Public Class TableColumns
             sTab = ""
         End If
 
-        sOut &= sTab & "create table dbo." & sTable & vbCrLf
+        sOut &= sTab & "create table dbo." & slib.QuoteIdentifier(sTable) & vbCrLf
         sOut &= sTab & "(" & vbCrLf
         Comma = " "
 
         For Each s In Keys
-            tc = CType(Values.Item(s), TableColumn)
+            tc = DirectCast(Values.Item(s), TableColumn)
             sOut &= sTab & "   " & Comma & tc.QuotedName & " " & tc.TypeText
             If tc.Identity Then
                 sOut &= " identity(1, 1)"
@@ -918,7 +929,7 @@ Public Class TableColumns
 
             If tc.DefaultName <> "" Then
                 If bConsName Then
-                    sOut &= " constraint " & tc.DefaultName
+                    sOut &= " constraint " & tc.QuotedDefaultName
                 End If
                 sOut &= " default " & tc.DefaultValue
             End If
@@ -931,7 +942,7 @@ Public Class TableColumns
             Comma = " "
             sOut &= sTab & "   ,"
             If bConsName Then
-                sOut &= "constraint " & sPKey & " primary key"
+                sOut &= "constraint " & slib.QuoteIdentifier(sPKey) & " primary key"
             Else
                 sOut &= "primary key"
             End If
@@ -943,7 +954,7 @@ Public Class TableColumns
             sOut &= vbCrLf
             sOut &= sTab & "    (" & vbCrLf
             For Each s In xPKeys
-                tc = CType(Values.Item(s), TableColumn)
+                tc = DirectCast(Values.Item(s), TableColumn)
                 sOut &= sTab & "       " & Comma & tc.QuotedName
                 If tc.Descend Then
                     sOut &= " desc"
