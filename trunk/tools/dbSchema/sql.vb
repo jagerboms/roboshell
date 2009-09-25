@@ -286,7 +286,7 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select * from dbo." & Name
+        sql = "select * from dbo." & Me.QuoteIdentifier(Name)
         If Filter <> "" Then
             sql &= " where " & Filter
         End If
@@ -427,10 +427,7 @@ Public Class sql
         Select Case Database
             Case "master"
                 If Version < 90 Then            'SQL 2000 compatible
-                    sql = "grant select on sysobjects to " & Logon & vbCrLf
-                    sql &= "grant select on syscomments to " & Logon & vbCrLf
-                    sql &= "grant select on syscolumns to " & Logon & vbCrLf
-                    sql &= "grant select on systypes to " & Logon & vbCrLf
+                    sql = ""
                 Else
                     sql = "grant view any definition to " & Logon
                 End If
@@ -450,7 +447,12 @@ Public Class sql
                 End If
 
             Case Else
-                sql = ""
+                If Version < 90 Then            'SQL 2000 compatible
+                    sql = "grant select on sysobjects to " & Logon & vbCrLf
+                    sql &= "grant select on syscomments to " & Logon & vbCrLf
+                    sql &= "grant select on syscolumns to " & Logon & vbCrLf
+                    sql &= "grant select on systypes to " & Logon & vbCrLf
+                End If
 
         End Select
         Return sql
