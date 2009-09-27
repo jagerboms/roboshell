@@ -14,7 +14,7 @@ begin
        ,Sequence integer not null
        ,Label varchar(100) null
        ,Width integer not null
-       ,DisplayType char(1) not null -- (T)ext, (L)abel, (D)ropdown list, (C)heck, (H)idden ...
+       ,DisplayType varchar(3) not null -- (T)ext, (L)abel, (D)ropdown list, (C)heck, (H)idden ...
        ,FillProcess varchar(32) null
        ,TextField varchar(32) null
        ,ValueField varchar(200) null
@@ -52,8 +52,11 @@ if not exists
     and     c.COLUMN_NAME = 'Container'
 )
 begin
-    alter table dbo.shlFields add
-        Container varchar(32) null
+    alter table dbo.shlFields
+        add Container varchar(32) null
+
+    alter table dbo.shlFields
+        alter column DisplayType varchar(3) not null
 end
 go
 

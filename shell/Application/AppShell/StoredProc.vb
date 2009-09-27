@@ -10,6 +10,7 @@ Public Class StoredProcDefn
     Public Mode As String
     Public DataParameter() As String
     Public Messages As Boolean = True
+    Public TimeOut As Integer = 0
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -29,10 +30,11 @@ Public Class StoredProcDefn
             Case "mode"
                 Mode = GetString(Value)
             Case "dataparameter"
-                ''DataParameter = GetString(Value)
                 DataParameter = Split(GetString(Value), "||")
             Case "messages"
                 Messages = (GetString(Value) = "Y")
+            Case "timeout"
+                TimeOut = CInt(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by Stored Procedure object")
         End Select
@@ -64,6 +66,9 @@ Public Class StoredProc
             psConn.Open()
             psAdapt = New SqlDataAdapter(sDefn.ProcName, psConn)
             psAdapt.SelectCommand.CommandType = CommandType.StoredProcedure
+            If sDefn.TimeOut > 0 Then
+                psAdapt.SelectCommand.CommandTimeout = sDefn.TimeOut
+            End If
             SqlCommandBuilder.DeriveParameters(psAdapt.SelectCommand)
 
             For Each p As SqlParameter In psAdapt.SelectCommand.Parameters
