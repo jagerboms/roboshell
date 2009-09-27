@@ -17,6 +17,7 @@ create procedure dbo.shlStoredProcInsert
    ,@dataparameter varchar(32) = null
    ,@mode char(1) = 'D'  -- Data/eXecute only/output to Parameters
    ,@messages char(1) = null
+   ,@timeout integer = null
 as
 begin
     set nocount on
@@ -120,6 +121,19 @@ begin
                 @ObjectName = @objectname
                ,@PropertyName = 'messages'
                ,@Value = @messages
+            if @e <> 0
+            begin
+                break
+            end
+        end
+
+        if @timeout is not null
+        begin
+            set @m = cast(@timeout as varchar)
+            execute @e = dbo.shlPropertiesInsert
+                @ObjectName = @objectname
+               ,@PropertyName = 'timeout'
+               ,@Value = @m
             if @e <> 0
             begin
                 break

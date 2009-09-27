@@ -188,6 +188,7 @@ Public Class Dialog
     Private FirstField As String
     Private LocalParms As New ShellParameters
     Private dlogf As New DialogFields
+    Private cCon As New Containers
     Private bCloseState As Boolean = False
     Private sTitle As String
     Private TxtHeight As Integer
@@ -469,10 +470,14 @@ Public Class Dialog
 
     Private Function InitialiseDialog() As Boolean
         Dim bRet As Boolean = True
+        Dim c As Container
 
         Try
             bLoading = True
-            LoadContainer("")
+            c = cCon.Add("")
+            LoadContainer(c)
+            fForm.Height = c.Height
+            fForm.Width = c.Width
         Catch ex As Exception
             Publics.MessageOut(ex.Message)
             bRet = False
@@ -481,7 +486,7 @@ Public Class Dialog
         Return bRet
     End Function
 
-    Private Function LoadContainer(ByVal Container As String) As Boolean
+    Private Function LoadContainer(ByVal Cont As Container) As Boolean
         Dim l As Label
         Dim i As Integer = 0
         Dim iH As Integer
@@ -503,7 +508,7 @@ Public Class Dialog
 
         For Each f As Field In sDefn.Fields
             d = dlogf.Item(f.Name)
-            If d.Field.DisplayType <> "H" And d.Field.DisplayType <> "R" Then ' do nothing for hidden fields
+            If d.Field.DisplayType <> "H" And d.Field.DisplayType <> "R" And d.Field.Container = Cont.Name Then ' do nothing for hidden fields
                 Select Case d.Field.Locate
                     Case "G"
                         gl = 5
@@ -550,7 +555,7 @@ Public Class Dialog
                     d.LabelIndex = ci
                 End If
 
-                Select Case d.Field.DisplayType
+                Select Case UCase(d.Field.DisplayType)
                     Case "L", "B"       ' Label
 
                         If d.Field.DisplayHeight > 1 Then
@@ -732,6 +737,29 @@ Public Class Dialog
                         cw += 15
                         AddHandler cb.CheckedChanged, AddressOf Field_Change
                         If ch = 0 Then ch = 23
+
+                    Case "TAB"
+                        Dim t As New TabControl
+                        Dim co As Container
+
+                        t.Appearance = TabAppearance.Normal
+                        t.Top = ct - 2
+                        t.Left = cl + cw
+                        If d.Field.DisplayHeight > 1 Then
+                            iH = 17 + 13 * d.Field.DisplayHeight
+                        Else
+                            iH = 17
+                        End If
+                        t.Height = iH
+                        t.Width = d.Field.DisplayWidth
+                        co = cCon.Add(d.Field.Name)
+                        LoadContainer(co)
+
+                        cw += d.Field.DisplayWidth
+                        ch = iH
+
+                        'Case "TBP"
+
                 End Select
                 If ct + ch > ft Then ft = ct + ch
                 If cw > gw Then gw = cw
@@ -739,8 +767,8 @@ Public Class Dialog
                 i += 1
             End If
         Next
-        fForm.Height = ft + 70
-        fForm.Width = fw + 35
+        Cont.Height = ft + 70
+        Cont.Width = fw + 35
     End Function
 
     Private Sub AddControl(ByRef d As DialogField, ByRef ctl As Control, _

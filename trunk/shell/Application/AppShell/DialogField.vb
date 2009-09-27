@@ -283,3 +283,40 @@ Public Class FieldErrors
         End Get
     End Property
 End Class
+
+Public Class Container
+    Private sName As String
+    Public Height As Integer = 0
+    Public Width As Integer = 0
+    Public Index As Integer = 0
+
+    Public Sub New(ByVal Name As String)
+        sName = Name
+    End Sub
+
+    Public ReadOnly Property Name() As String
+        Get
+            Name = sName
+        End Get
+    End Property
+End Class
+
+Public Class Containers
+    Public Values As New Hashtable
+
+    Public Function Add(ByVal Name As String) As Container
+        Dim parm As New Container(Name)
+        Values.Add(Name, parm)
+        Return parm
+    End Function
+
+    Public ReadOnly Property Item(ByVal index As String) As Container
+        Get
+            Try
+                Return CType(Values.Item(index), Container)
+            Catch
+                Return Nothing
+            End Try
+        End Get
+    End Property
+End Class

@@ -149,7 +149,7 @@ Module Publics
         For Each x In dom.DocumentElement.ChildNodes
             If x.Name = "systems" Then
                 For Each x1 In x.ChildNodes
-                    If GetAttribute(x1.Attributes, "name") = sDefault Then
+                    If GetAttribute(x1.Attributes, "name") = SystemKey Then
                         For Each a As Xml.XmlAttribute In x1.Attributes
                             Select Case LCase(a.Name)
                                 Case "imagekey"
