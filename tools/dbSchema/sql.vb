@@ -1,3 +1,4 @@
+'mssqlsystemresource
 Option Explicit On
 Option Strict On
 
@@ -126,26 +127,48 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select type, name "
-        sql &= "from dbo.sysobjects "
-        Select Case Type
-            Case "P", "U", "V"
-                sql &= "where type = '" & Type & "' "
-            Case "F"
-                sql &= "where type in ('FN', 'TF') "
-            Case Else
-                sql &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
-        End Select
-        If Name <> "" Then
-            sql &= "and name like '" & Name & "' "
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select type, name "
+            sql &= "from dbo.sysobjects "
+            Select Case Type
+                Case "P", "U", "V"
+                    sql &= "where type = '" & Type & "' "
+                Case "F"
+                    sql &= "where type in ('FN', 'TF') "
+                Case Else
+                    sql &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
+            End Select
+            If Name <> "" Then
+                sql &= "and name like '" & Name & "' "
+            End If
+            sql &= "and uid = 1 "
+            sql &= "and name not like 'dt_%' "
+            sql &= "and name not in ('syssegments','sysconstraints','sysdiagrams',"
+            sql &= "'sp_alterdiagram','sp_creatediagram',"
+            sql &= "'sp_dropdiagram','sp_helpdiagramdefinition','sp_helpdiagrams',"
+            sql &= "'sp_renamediagram','sp_upgraddiagrams','fn_diagramobjects') "
+            sql &= "order by type, name"
+        Else
+            sql = "select type, name "
+            sql &= "from sys.objects "
+            Select Case Type
+                Case "P", "U", "V"
+                    sql &= "where type = '" & Type & "' "
+                Case "F"
+                    sql &= "where type in ('FN', 'TF') "
+                Case Else
+                    sql &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
+            End Select
+            If Name <> "" Then
+                sql &= "and name like '" & Name & "' "
+            End If
+            sql &= "and name not like 'dt_%' "
+            sql &= "and name not in ('syssegments','sysconstraints','sysdiagrams',"
+            sql &= "'sp_alterdiagram','sp_creatediagram',"
+            sql &= "'sp_dropdiagram','sp_helpdiagramdefinition','sp_helpdiagrams',"
+            sql &= "'sp_renamediagram','sp_upgraddiagrams','fn_diagramobjects') "
+            sql &= "order by type, name"
         End If
-        sql &= "and uid = 1 "
-        sql &= "and name not like 'dt_%' "
-        sql &= "and name not in ('syssegments','sysconstraints','sysdiagrams',"
-        sql &= "'sp_alterdiagram','sp_creatediagram',"
-        sql &= "'sp_dropdiagram','sp_helpdiagramdefinition','sp_helpdiagrams',"
-        sql &= "'sp_renamediagram','sp_upgraddiagrams','fn_diagramobjects') "
-        sql &= "order by type, name"
 
         Return GetTable(sql)
     End Function
@@ -154,8 +177,13 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select text from syscomments"
-        sql &= " where id = object_id('" & Name & "') order by number, colid"
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select text from syscomments "
+            sql &= "where id = object_id('" & Name & "') order by number, colid"
+        Else
+            sql = "select text from sys.syscomments "
+            sql &= "where id = object_id('" & Name & "') order by number, colid"
+        End If
 
         Return GetTable(sql)
     End Function
@@ -183,7 +211,7 @@ Public Class sql
             sql = "select object_name(c.id) TableName"
             sql &= ",c.name COLUMN_NAME"
             sql &= ",t.name DATA_TYPE"
-            sql &= ",c.length CHARACTER_MAXIMUM_LENGTH"
+            sql &= ",c.prec CHARACTER_MAXIMUM_LENGTH"
             sql &= ",case c.isnullable when 0 then 'NO' else 'YES' end IS_NULLABLE"
             sql &= ",c.xprec NUMERIC_PRECISION"
             sql &= ",c.xscale NUMERIC_SCALE"
@@ -211,11 +239,11 @@ Public Class sql
             sql &= ",s.name DEFAULT_NAME"
             sql &= ",i.COLUMN_DEFAULT DEFAULT_TEXT "
             sql &= "from INFORMATION_SCHEMA.COLUMNS i "
-            sql &= "join dbo.syscolumns c "
-            sql &= "on c.id = object_id('" & Name & "') "
+            sql &= "join sys.columns c "
+            sql &= "on c.object_id = object_id('" & Name & "') "
             sql &= "and c.name = i.COLUMN_NAME "
-            sql &= "left join dbo.sysobjects s "
-            sql &= "on s.id = c.cdefault "
+            sql &= "left join sys.objects s "
+            sql &= "on s.object_id = c.default_object_id "
             sql &= "where TABLE_NAME = '" & Name & "' "
             sql &= "and TABLE_SCHEMA = 'dbo' "
             sql &= "order by ORDINAL_POSITION"
@@ -229,7 +257,12 @@ Public Class sql
         Dim dr As DataRow
 
         openConnect()
-        sql = "select name from syscolumns where id = object_id('" & Name & "') and colstat & 1 = 1"
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select name from syscolumns where id = object_id('" & Name & "') and colstat & 1 = 1"
+
+        Else
+            sql = "select name from sys.columns where object_id = object_id('" & Name & "') and is_identity = 1"
+        End If
         dr = GetRow(sql)
         If Not dr Is Nothing Then
             Return GetString(dr.Item("name"))
@@ -488,7 +521,11 @@ Public Class sql
                     sql &= "grant select on syscomments to " & Logon & vbCrLf
                     sql &= "grant select on syscolumns to " & Logon & vbCrLf
                     sql &= "grant select on systypes to " & Logon & vbCrLf
+                    sql &= "grant select on sysindexes to " & Logon & vbCrLf
+                    sql &= "grant select on sysindexkeys to " & Logon & vbCrLf
                     sql &= "grant select on sysforeignkeys to " & Logon
+                Else
+                    sql &= "grant select on sys.syscomments to " & Logon
                 End If
 
         End Select

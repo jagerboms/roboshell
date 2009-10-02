@@ -1,3 +1,4 @@
+'mssqlsystemresource
 Option Explicit On
 Option Strict On
 
@@ -126,26 +127,48 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select type, name "
-        sql &= "from dbo.sysobjects "
-        Select Case Type
-            Case "P", "U", "V"
-                sql &= "where type = '" & Type & "' "
-            Case "F"
-                sql &= "where type in ('FN', 'TF') "
-            Case Else
-                sql &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
-        End Select
-        If Name <> "" Then
-            sql &= "and name like '" & Name & "' "
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select type, name "
+            sql &= "from dbo.sysobjects "
+            Select Case Type
+                Case "P", "U", "V"
+                    sql &= "where type = '" & Type & "' "
+                Case "F"
+                    sql &= "where type in ('FN', 'TF') "
+                Case Else
+                    sql &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
+            End Select
+            If Name <> "" Then
+                sql &= "and name like '" & Name & "' "
+            End If
+            sql &= "and uid = 1 "
+            sql &= "and name not like 'dt_%' "
+            sql &= "and name not in ('syssegments','sysconstraints','sysdiagrams',"
+            sql &= "'sp_alterdiagram','sp_creatediagram',"
+            sql &= "'sp_dropdiagram','sp_helpdiagramdefinition','sp_helpdiagrams',"
+            sql &= "'sp_renamediagram','sp_upgraddiagrams','fn_diagramobjects') "
+            sql &= "order by type, name"
+        Else
+            sql = "select type, name "
+            sql &= "from sys.objects "
+            Select Case Type
+                Case "P", "U", "V"
+                    sql &= "where type = '" & Type & "' "
+                Case "F"
+                    sql &= "where type in ('FN', 'TF') "
+                Case Else
+                    sql &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
+            End Select
+            If Name <> "" Then
+                sql &= "and name like '" & Name & "' "
+            End If
+            sql &= "and name not like 'dt_%' "
+            sql &= "and name not in ('syssegments','sysconstraints','sysdiagrams',"
+            sql &= "'sp_alterdiagram','sp_creatediagram',"
+            sql &= "'sp_dropdiagram','sp_helpdiagramdefinition','sp_helpdiagrams',"
+            sql &= "'sp_renamediagram','sp_upgraddiagrams','fn_diagramobjects') "
+            sql &= "order by type, name"
         End If
-        sql &= "and uid = 1 "
-        sql &= "and name not like 'dt_%' "
-        sql &= "and name not in ('syssegments','sysconstraints','sysdiagrams',"
-        sql &= "'sp_alterdiagram','sp_creatediagram',"
-        sql &= "'sp_dropdiagram','sp_helpdiagramdefinition','sp_helpdiagrams',"
-        sql &= "'sp_renamediagram','sp_upgraddiagrams','fn_diagramobjects') "
-        sql &= "order by type, name"
 
         Return GetTable(sql)
     End Function
@@ -154,8 +177,13 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select text from syscomments"
-        sql &= " where id = object_id('" & Name & "') order by number, colid"
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select text from syscomments "
+            sql &= "where id = object_id('" & Name & "') order by number, colid"
+        Else
+            sql = "select text from sys.syscomments "
+            sql &= "where id = object_id('" & Name & "') order by number, colid"
+        End If
 
         Return GetTable(sql)
     End Function
@@ -178,24 +206,48 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select TABLE_NAME TableName"
-        sql &= ",i.COLUMN_NAME"
-        sql &= ",i.DATA_TYPE"
-        sql &= ",i.CHARACTER_MAXIMUM_LENGTH"
-        sql &= ",i.IS_NULLABLE"
-        sql &= ",i.NUMERIC_PRECISION"
-        sql &= ",i.NUMERIC_SCALE"
-        sql &= ",s.name DEFAULT_NAME"
-        sql &= ",i.COLUMN_DEFAULT DEFAULT_TEXT "
-        sql &= "from INFORMATION_SCHEMA.COLUMNS i "
-        sql &= "join dbo.syscolumns c "
-        sql &= "on c.id = object_id('" & Name & "') "
-        sql &= "and c.name = i.COLUMN_NAME "
-        sql &= "left join dbo.sysobjects s "
-        sql &= "on s.id = c.cdefault "
-        sql &= "where TABLE_NAME = '" & Name & "' "
-        sql &= "and TABLE_SCHEMA = 'dbo' "
-        sql &= "order by ORDINAL_POSITION"
+
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select object_name(c.id) TableName"
+            sql &= ",c.name COLUMN_NAME"
+            sql &= ",t.name DATA_TYPE"
+            sql &= ",c.prec CHARACTER_MAXIMUM_LENGTH"
+            sql &= ",case c.isnullable when 0 then 'NO' else 'YES' end IS_NULLABLE"
+            sql &= ",c.xprec NUMERIC_PRECISION"
+            sql &= ",c.xscale NUMERIC_SCALE"
+            sql &= ",s.name DEFAULT_NAME"
+            sql &= ",cm.text DEFAULT_TEXT "
+            sql &= "from dbo.syscolumns c "
+            sql &= "left join dbo.sysobjects s "
+            sql &= "on s.id = c.cdefault "
+            sql &= "left join dbo.syscomments cm "
+            sql &= "on cm.id = s.id "
+            sql &= "and cm.colid = 1 "
+            sql &= "join dbo.systypes t "
+            sql &= "on t.xtype = c.xtype "
+            sql &= "and t.xusertype = c.xusertype "
+            sql &= "where c.id = object_id('dbo." & Name & "') "
+            sql &= "order by c.colorder"
+        Else
+            sql = "select TABLE_NAME TableName"
+            sql &= ",i.COLUMN_NAME"
+            sql &= ",i.DATA_TYPE"
+            sql &= ",i.CHARACTER_MAXIMUM_LENGTH"
+            sql &= ",i.IS_NULLABLE"
+            sql &= ",i.NUMERIC_PRECISION"
+            sql &= ",i.NUMERIC_SCALE"
+            sql &= ",s.name DEFAULT_NAME"
+            sql &= ",i.COLUMN_DEFAULT DEFAULT_TEXT "
+            sql &= "from INFORMATION_SCHEMA.COLUMNS i "
+            sql &= "join sys.columns c "
+            sql &= "on c.object_id = object_id('" & Name & "') "
+            sql &= "and c.name = i.COLUMN_NAME "
+            sql &= "left join sys.objects s "
+            sql &= "on s.object_id = c.default_object_id "
+            sql &= "where TABLE_NAME = '" & Name & "' "
+            sql &= "and TABLE_SCHEMA = 'dbo' "
+            sql &= "order by ORDINAL_POSITION"
+        End If
 
         Return GetTable(sql)
     End Function
@@ -205,7 +257,12 @@ Public Class sql
         Dim dr As DataRow
 
         openConnect()
-        sql = "select name from syscolumns where id = object_id('" & Name & "') and colstat & 1 = 1"
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select name from syscolumns where id = object_id('" & Name & "') and colstat & 1 = 1"
+
+        Else
+            sql = "select name from sys.columns where object_id = object_id('" & Name & "') and is_identity = 1"
+        End If
         dr = GetRow(sql)
         If Not dr Is Nothing Then
             Return GetString(dr.Item("name"))
@@ -217,23 +274,35 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select c.CONSTRAINT_NAME ConstraintName"
-        sql &= ",u1.ORDINAL_POSITION Sequence"
-        sql &= ",u1.COLUMN_NAME ColumnName"
-        sql &= ",u2.TABLE_NAME LinkedTable"
-        sql &= ",u2.COLUMN_NAME LinkedColumn "
-        sql &= "from INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
-        sql &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u1 "
-        sql &= "on u1.CONSTRAINT_CATALOG = c.CONSTRAINT_CATALOG "
-        sql &= "and u1.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA "
-        sql &= "and u1.CONSTRAINT_NAME = c.CONSTRAINT_NAME "
-        sql &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u2 "
-        sql &= "on u2.CONSTRAINT_CATALOG = c.UNIQUE_CONSTRAINT_CATALOG "
-        sql &= "and u2.CONSTRAINT_SCHEMA = c.UNIQUE_CONSTRAINT_SCHEMA "
-        sql &= "and u2.CONSTRAINT_NAME = c.UNIQUE_CONSTRAINT_NAME "
-        sql &= "and u2.ORDINAL_POSITION = u1.ORDINAL_POSITION "
-        sql &= "where u1.TABLE_NAME = '" & Name & "' "
-        sql &= "order by 1, 2"
+
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select object_name(k.constid) ConstraintName"
+            sql &= ",k.keyno Sequence"
+            sql &= ",col_name(k.fkeyid, k.fkey) ColumnName"
+            sql &= ",object_name(k.rkeyid) LinkedTable"
+            sql &= ",col_name(k.rkeyid, k.rkey) LinkedColumn "
+            sql &= "from dbo.sysforeignkeys k "
+            sql &= "where k.fkeyid = object_id('" & Name & "') "
+            sql &= "order by 1, 2"
+        Else
+            sql = "select c.CONSTRAINT_NAME ConstraintName"
+            sql &= ",u1.ORDINAL_POSITION Sequence"
+            sql &= ",u1.COLUMN_NAME ColumnName"
+            sql &= ",u2.TABLE_NAME LinkedTable"
+            sql &= ",u2.COLUMN_NAME LinkedColumn "
+            sql &= "from INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
+            sql &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u1 "
+            sql &= "on u1.CONSTRAINT_CATALOG = c.CONSTRAINT_CATALOG "
+            sql &= "and u1.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA "
+            sql &= "and u1.CONSTRAINT_NAME = c.CONSTRAINT_NAME "
+            sql &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u2 "
+            sql &= "on u2.CONSTRAINT_CATALOG = c.UNIQUE_CONSTRAINT_CATALOG "
+            sql &= "and u2.CONSTRAINT_SCHEMA = c.UNIQUE_CONSTRAINT_SCHEMA "
+            sql &= "and u2.CONSTRAINT_NAME = c.UNIQUE_CONSTRAINT_NAME "
+            sql &= "and u2.ORDINAL_POSITION = u1.ORDINAL_POSITION "
+            sql &= "where u1.TABLE_NAME = '" & Name & "' "
+            sql &= "order by 1, 2"
+        End If
 
         Return GetTable(sql)
     End Function
@@ -452,6 +521,11 @@ Public Class sql
                     sql &= "grant select on syscomments to " & Logon & vbCrLf
                     sql &= "grant select on syscolumns to " & Logon & vbCrLf
                     sql &= "grant select on systypes to " & Logon & vbCrLf
+                    sql &= "grant select on sysindexes to " & Logon & vbCrLf
+                    sql &= "grant select on sysindexkeys to " & Logon & vbCrLf
+                    sql &= "grant select on sysforeignkeys to " & Logon
+                Else
+                    sql &= "grant select on sys.syscomments to " & Logon
                 End If
 
         End Select
