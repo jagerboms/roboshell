@@ -94,6 +94,10 @@ Module Scriptor
         End If
 
         Dim tDefn As New TableColumns(sTable, sqllib, True)
+        If tDefn.State <> 2 Then
+            Console.WriteLine("Error: cannot open table '" & sTable & "'.")
+            Return 1
+        End If
 
         dom.PreserveWhitespace = True
         node = dom.CreateProcessingInstruction("xml", "version='1.0'")
@@ -658,6 +662,10 @@ Module Scriptor
         End If
 
         Dim tDefn As New TableColumns(sTable, sqllib, True)
+        If tDefn.State <> 2 Then
+            Console.WriteLine("Error: cannot open table '" & sTable & "'.")
+            Return -1
+        End If
 
         sOut = Header("") & vbCrLf & tDefn.FullTableText & Footer(True)
         PutFile("table." & tDefn.TableName & ".sql", sOut)
@@ -688,7 +696,7 @@ Module Scriptor
             sOut = tDefn.FKeyText(s)
             If sOut <> "" Then
                 sOut = Header("") & sOut & Footer(True)
-                PutFile("fkey." & tDefn.TableName & "." & s & ".sql", sOut)
+                PutFile("fkey." & tDefn.TableName & "." & tDefn.LinkedTable(s) & "." & s & ".sql", sOut)
             End If
         Next
     End Function
@@ -704,6 +712,10 @@ Module Scriptor
         Next
 
         Dim tDefn As New TableColumns(sTable, sqllib, True)
+        If tDefn.State <> 2 Then
+            Console.WriteLine("Error: cannot open table '" & sTable & "'.")
+            Return -1
+        End If
         Dim aDefn As TableColumns
         Dim sName As String
         Dim sOut As String
@@ -856,6 +868,10 @@ Module Scriptor
         End If
 
         Dim tDefn As New TableColumns(sTable, sqllib, True)
+        If tDefn.State <> 2 Then
+            Console.WriteLine("Error: cannot open table '" & sTable & "'.")
+            Return -1
+        End If
 
         sOut = Header("") & vbCrLf
         sOut &= tDefn.DataScript(sFilter)
@@ -1485,7 +1501,7 @@ Module Scriptor
                         End If
                     End If
                 Next
-                sOut &= "                   ,State = 'ac'" & vbCrLf
+                sOut &= s & "State = 'ac'" & vbCrLf
                 If tDefn.hasAudit Then
                     sOut &= "                   ,AuditID = @AuditID" & vbCrLf
                 End If

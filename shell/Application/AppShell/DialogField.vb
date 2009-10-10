@@ -159,6 +159,57 @@ Public Class DialogField
         Name = sName
         items = New DialogFieldItems
     End Sub
+
+    Public Function Label(ByRef fForm As DialogForm) As Label
+        Dim cc As Control
+        Dim l As Label
+        If LabelIndex < 0 Then
+            Return Nothing
+        End If
+
+        If Field.Container <> "" Then
+            cc = GetControl(fForm, Field.Container)
+        Else
+            cc = fForm
+        End If
+        If cc Is Nothing Then
+            Return Nothing
+        End If
+        l = DirectCast(cc.Controls(LabelIndex), Label)
+        Return l
+    End Function
+
+    Public Function Control(ByRef fForm As DialogForm) As Control
+        Dim cc As Control
+        If ControlIndex < 0 Then
+            Return Nothing
+        End If
+
+        If Field.Container <> "" Then
+            cc = GetControl(fForm, Field.Container)
+        Else
+            cc = fForm
+        End If
+        If cc Is Nothing Then
+            Return Nothing
+        End If
+        Return cc.Controls(ControlIndex)
+    End Function
+
+    Private Function GetControl(ByVal ctrl As Control, ByVal sName As String) As Control
+        Dim cc As Control
+
+        For Each c As Control In ctrl.Controls
+            If c.Name = sName Then
+                Return c
+            End If
+            cc = GetControl(c, sName)
+            If Not cc Is Nothing Then
+                Return cc
+            End If
+        Next
+        Return Nothing
+    End Function
 End Class
 
 Public Class DialogFields
@@ -280,43 +331,6 @@ Public Class FieldErrors
     Public ReadOnly Property count() As Integer
         Get
             Return Values.Count
-        End Get
-    End Property
-End Class
-
-Public Class Container
-    Private sName As String
-    Public Height As Integer = 0
-    Public Width As Integer = 0
-    Public Index As Integer = 0
-
-    Public Sub New(ByVal Name As String)
-        sName = Name
-    End Sub
-
-    Public ReadOnly Property Name() As String
-        Get
-            Name = sName
-        End Get
-    End Property
-End Class
-
-Public Class Containers
-    Public Values As New Hashtable
-
-    Public Function Add(ByVal Name As String) As Container
-        Dim parm As New Container(Name)
-        Values.Add(Name, parm)
-        Return parm
-    End Function
-
-    Public ReadOnly Property Item(ByVal index As String) As Container
-        Get
-            Try
-                Return CType(Values.Item(index), Container)
-            Catch
-                Return Nothing
-            End Try
         End Get
     End Property
 End Class

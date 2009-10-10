@@ -3,30 +3,160 @@ Option Strict On
 
 Imports System.Data.SqlClient
 
+#Region "copyright Russell Hansen, Tolbeam Pty Limited"
+'dbSchema is free software issued as open source;
+' you can redistribute it and/or modify it under the terms of the
+' GNU General Public License version 2 as published by the Free Software Foundation.
+'dbSchema is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+' without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+'See the GNU General Public License for more details.
+'You should have received a copy of the GNU General Public License along with dbSchema;
+' if not, go to the web site (http://www.gnu.org/licenses/gpl-2.0.html)
+' or write to:
+'   The Free Software Foundation, Inc.,
+'   59 Temple Place,
+'   Suite 330,
+'   Boston, MA 02111-1307 USA. 
+#End Region
+
 Public Class ProcedureColumn
+    Private sType As String = ""
+    Private iLength As Integer = 0
+    Private iPrecision As Integer = 0
+    Private iScale As Integer = 0
+    Private sqllib As New sql
+
+#Region "Properties"
     Public Index As Integer
     Public Name As String
-    Public Type As String
-    Public Length As Integer
-    Public Precision As Integer
-    Public Scale As Integer
-    Public TestValue As String
+    Public TestValue As Object
     Public IsInput As Boolean
     Public IsOutput As Boolean
-    Public TypeText As String
-    Public vbType As String
 
     Public ReadOnly Property ConfigName() As String
         Get
             ConfigName = Mid(Name, 2)
         End Get
     End Property
+
+    Public ReadOnly Property QuotedName() As String
+        Get
+            QuotedName = sqllib.QuoteIdentifier(Name)
+        End Get
+    End Property
+
+    Public Property Type() As String
+        Get
+            Type = sType
+        End Get
+        Set(ByVal value As String)
+            If value = "int" Then
+                sType = "integer"
+            Else
+                sType = value
+            End If
+        End Set
+    End Property
+
+    Public Property Length() As Integer
+        Get
+            Dim i As Integer
+            Select Case sType
+                Case "decimal", "numeric", "datetime", "smalldatetime"
+                    i = 0
+                Case "sysname"
+                    i = 128
+                Case Else
+                    i = iLength
+            End Select
+            Length = i
+        End Get
+        Set(ByVal value As Integer)
+            iLength = value
+        End Set
+    End Property
+
+    Public Property Precision() As Integer
+        Get
+            Dim i As Integer
+            Select Case sType
+                Case "char", "varchar", "nvarchar", "datetime", "smalldatetime", "sysname"
+                    i = 0
+                Case Else
+                    i = iPrecision
+            End Select
+            Precision = i
+        End Get
+        Set(ByVal value As Integer)
+            iPrecision = value
+        End Set
+    End Property
+
+    Public Property Scale() As Integer
+        Get
+            Dim i As Integer
+            Select Case sType
+                Case "char", "varchar", "nvarchar", "datetime", "smalldatetime", "sysname"
+                    i = 0
+                Case Else
+                    i = iScale
+            End Select
+            Scale = i
+        End Get
+        Set(ByVal value As Integer)
+            iScale = value
+        End Set
+    End Property
+
+    Public ReadOnly Property vbType() As String
+        Get
+            Dim s As String
+            Select Case sType
+                Case "char", "varchar", "nvarchar", "sysname"
+                    s = "string"
+                Case "decimal", "numeric"
+                    s = "double"
+                Case "datetime"
+                    s = "datetime"
+                Case "smalldatetime"
+                    s = "date"
+                Case "uniqueidentifier"
+                    s = "Guid"
+                Case Else
+                    s = sType
+            End Select
+            vbType = s
+        End Get
+    End Property
+
+    Public ReadOnly Property TypeText() As String
+        Get
+            Dim s As String
+            s = sType
+            Select Case sType
+                Case "char", "varchar", "nvarchar"
+                    s &= "(" & iLength & ")"
+                Case "decimal", "numeric"
+                    s &= "(" & iPrecision & "," & iScale & ")"
+            End Select
+            TypeText = s
+        End Get
+    End Property
+#End Region
 End Class
 
 Public Class StoredProcedure
-    Public ProcedureName As String = ""
-    Public ProcedureText As String
+    Private pName As String = ""
+    Private qName As String = ""
+    Private sMode As String = "D"
+    Private PreLoad As Integer = -1
+    Private Values As New Hashtable
+    Private Keys(0) As String
+    Private Results As New Hashtable
+    Private ResultKeys(0) As String
+    Private slib As New sql
 
+    Public ProcedureText As String
     Public ConfigName As String
     Public ModuleName As String
     Public ProcessName As String
@@ -35,12 +165,17 @@ Public Class StoredProcedure
     Public ConfirmMsg As String = ""
     Public SeekKey As String = ""
 
-    Private sMode As String = "D"
-    Private PreLoad As Integer = -1
-    Private Values As New Hashtable
-    Private Keys(0) As String
-    Private Results As New Hashtable
-    Private ResultKeys(0) As String
+    Public Property ProcedureName() As String
+        Get
+            ProcedureName = pName
+        End Get
+        Set(ByVal value As String)
+            If PreLoad = 0 Then
+                pName = value
+                qName = slib.QuoteIdentifier(value)
+            End If
+        End Set
+    End Property
 
     Public Sub New()
         PreLoad = 0
@@ -58,13 +193,16 @@ Public Class StoredProcedure
         PreLoad = 2
         dt = sqllib.ProcParms(Name)
         If dt.Rows.Count = 0 Then
+            pName = Name
+            qName = slib.QuoteIdentifier(pName)
             PreLoad = 3
             Return
         End If
 
         For Each dr In dt.Rows        ' Columns
-            If ProcedureName = "" Then
-                ProcedureName = GetString(dr.Item("SPECIFIC_NAME"))
+            If pName = "" Then
+                pName = GetString(dr.Item("SPECIFIC_NAME"))
+                qName = slib.QuoteIdentifier(pName)
             End If
             sName = GetString(dr.Item("PARAMETER_NAME"))
             sType = GetString(dr.Item("DATA_TYPE"))
@@ -134,58 +272,22 @@ Public Class StoredProcedure
 
         Dim parm As New ProcedureColumn
 
-        If sType = "int" Then
-            sType = "integer"
-            parm.vbType = "integer"
-        End If
-
         With parm
             .Index = Values.Count
             .Name = sName
             .Type = sType
+            If IsNumeric(oLength) Then
+                .Length = CInt(oLength)
+            End If
+            If IsNumeric(oPrecision) Then
+                .Precision = CInt(oPrecision)
+            End If
+            If IsNumeric(oScale) Then
+                .Scale = CInt(oScale)
+            End If
             .IsInput = InStr(InOut, "in") > 0
             .IsOutput = InStr(InOut, "out") > 0
         End With
-
-        parm.TypeText = sType
-        If sType = "char" Or sType = "varchar" Or sType = "nvarchar" Then
-            parm.Length = CType(oLength, Integer)
-            parm.TypeText = sType & "(" & parm.Length & ")"
-            parm.vbType = "string"
-        End If
-
-        If sType = "decimal" Then
-            parm.Precision = CType(oPrecision, Integer)
-            parm.Scale = CType(oScale, Integer)
-            parm.TypeText = sType & "(" & parm.Precision & "," & parm.Scale & ")"
-            parm.vbType = "double"
-        End If
-
-        If sType = "datetime" Then
-            parm.vbType = "datetime"
-        End If
-
-        If sType = "smalldatetime" Then
-            parm.vbType = "date"
-        End If
-
-        If sType = "sysname" Then
-            parm.vbType = "string"
-            parm.Length = 128
-        End If
-
-        If parm.vbType = "" Then
-            parm.vbType = sType
-        End If
-
-        '"currency"
-        '"date"
-        '"datetime"
-        '"double"
-        '"integer"
-        '"int64"
-        '"string"
-        '"object"
 
         If parm.Index > Keys.GetUpperBound(0) Then
             ReDim Preserve Keys(parm.Index)
@@ -203,58 +305,22 @@ Public Class StoredProcedure
 
         Dim parm As New ProcedureColumn
 
-        If sType = "int" Then
-            sType = "integer"
-            parm.vbType = "integer"
-        End If
-
         With parm
             .Index = Values.Count
             .Name = sName
             .Type = sType
+            If IsNumeric(oLength) Then
+                .Length = CInt(oLength)
+            End If
+            If IsNumeric(oPrecision) Then
+                .Precision = CInt(oPrecision)
+            End If
+            If IsNumeric(oScale) Then
+                .Scale = CInt(oScale)
+            End If
             .IsInput = False
             .IsOutput = True
         End With
-
-        parm.TypeText = sType
-        If sType = "char" Or sType = "varchar" Or sType = "nvarchar" Then
-            parm.Length = CType(oLength, Integer)
-            parm.TypeText = sType & "(" & parm.Length & ")"
-            parm.vbType = "string"
-        End If
-
-        If sType = "decimal" Then
-            parm.Precision = CType(oPrecision, Integer)
-            parm.Scale = CType(oScale, Integer)
-            parm.TypeText = sType & "(" & parm.Precision & "," & parm.Scale & ")"
-            parm.vbType = "double"
-        End If
-
-        If sType = "datetime" Then
-            parm.vbType = "datetime"
-        End If
-
-        If sType = "smalldatetime" Then
-            parm.vbType = "date"
-        End If
-
-        If sType = "sysname" Then
-            parm.vbType = "string"
-            parm.Length = 128
-        End If
-
-        If parm.vbType = "" Then
-            parm.vbType = sType
-        End If
-
-        '"currency"
-        '"date"
-        '"datetime"
-        '"double"
-        '"integer"
-        '"int64"
-        '"string"
-        '"object"
 
         If parm.Index > Keys.GetUpperBound(0) Then
             ReDim Preserve Keys(parm.Index)
@@ -272,7 +338,7 @@ Public Class StoredProcedure
 
         sOut = "execute dbo.shlStoredProcInsert" & vbCrLf
         sOut &= "    @objectname = '" & ConfigName & "'" & vbCrLf
-        sOut &= "   ,@procname = '" & ProcedureName & "'" & vbCrLf
+        sOut &= "   ,@procname = '" & pName & "'" & vbCrLf
         If sMode = "D" Then
             sOut &= "   ,@dataparameter = '" & ConfigName & "'" & vbCrLf
         Else
@@ -346,9 +412,9 @@ Public Class StoredProcedure
     Public Function FullText() As String
         Dim sOut As String
 
-        sOut = "if object_id('dbo." & ProcedureName & "') is not null" & vbCrLf
+        sOut = "if object_id('dbo." & pName & "') is not null" & vbCrLf
         sOut &= "begin" & vbCrLf
-        sOut &= "    drop procedure dbo." & ProcedureName & vbCrLf
+        sOut &= "    drop procedure dbo." & pName & vbCrLf
         sOut &= "end" & vbCrLf
         sOut &= "go" & vbCrLf
         sOut &= ProcedureText

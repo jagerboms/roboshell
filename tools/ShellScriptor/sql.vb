@@ -537,6 +537,7 @@ Public Class sql
         Dim s As String = ""
         Dim dr As DataRow
 
+        openConnect()
         sql = "select dbo.shlVariableGet('SystemName')"
         dr = GetRow(sql)
         If Not dr Is Nothing Then
