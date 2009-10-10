@@ -20,6 +20,7 @@ Imports System.Data.SqlClient
 #End Region
 
 Public Class TableColumn
+    Private sType As String = ""
     Private iLength As Integer = 0
     Private iPrecision As Integer = 0
     Private iScale As Integer = 0
@@ -29,7 +30,6 @@ Public Class TableColumn
     Public Index As Integer
     Public Name As String
     Public Nullable As String
-    Public Type As String
     Public DefaultName As String
     Public DefaultValue As String
     Public Primary As Boolean = False
@@ -48,10 +48,23 @@ Public Class TableColumn
         End Get
     End Property
 
+    Public Property Type() As String
+        Get
+            Type = sType
+        End Get
+        Set(ByVal value As String)
+            If value = "int" Then
+                sType = "integer"
+            Else
+                sType = value
+            End If
+        End Set
+    End Property
+
     Public Property Length() As Integer
         Get
             Dim i As Integer
-            Select Case Type
+            Select Case sType
                 Case "decimal", "numeric", "datetime", "smalldatetime"
                     i = 0
                 Case "sysname"
@@ -69,7 +82,7 @@ Public Class TableColumn
     Public Property Precision() As Integer
         Get
             Dim i As Integer
-            Select Case Type
+            Select Case sType
                 Case "char", "varchar", "nvarchar", "datetime", "smalldatetime", "sysname"
                     i = 0
                 Case Else
@@ -85,7 +98,7 @@ Public Class TableColumn
     Public Property Scale() As Integer
         Get
             Dim i As Integer
-            Select Case Type
+            Select Case sType
                 Case "char", "varchar", "nvarchar", "datetime", "smalldatetime", "sysname"
                     i = 0
                 Case Else
@@ -101,7 +114,7 @@ Public Class TableColumn
     Public ReadOnly Property vbType() As String
         Get
             Dim s As String
-            Select Case Type
+            Select Case sType
                 Case "char", "varchar", "nvarchar", "sysname"
                     s = "string"
                 Case "decimal", "numeric"
@@ -113,7 +126,7 @@ Public Class TableColumn
                 Case "uniqueidentifier"
                     s = "Guid"
                 Case Else
-                    s = Type
+                    s = sType
             End Select
             vbType = s
         End Get
@@ -122,12 +135,12 @@ Public Class TableColumn
     Public ReadOnly Property TypeText() As String
         Get
             Dim s As String
-            s = Type
-            Select Case Type
+            s = sType
+            Select Case sType
                 Case "char", "varchar", "nvarchar"
-                    s &= "(" & Length & ")"
+                    s &= "(" & iLength & ")"
                 Case "decimal", "numeric"
-                    s &= "(" & Precision & "," & Scale & ")"
+                    s &= "(" & iPrecision & "," & iScale & ")"
             End Select
             TypeText = s
         End Get
@@ -772,10 +785,6 @@ Public Class TableColumns
         End If
         If parm.Name = "State" Then
             bState = True
-        End If
-
-        If parm.Type = "int" Then
-            parm.Type = "integer"
         End If
 
         With parm

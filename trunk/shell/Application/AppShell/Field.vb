@@ -58,6 +58,7 @@ Public Class Field
             .LabelWidth = LabelWidth
             .Decimals = Decimals
             .NullText = NullText
+            .Container = Container
         End With
     End Sub
 End Class

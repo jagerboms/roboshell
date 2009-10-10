@@ -272,8 +272,8 @@ begin
                ,f.HelpText
                ,f.LabelWidth
                ,coalesce(f.Decimals, -1) "Decimal"
-               ,NullText
-               ,Container
+               ,f.NullText
+               ,f.Container
         from    dbo.shlFields f
         join    @temp t
         on      t.ObjectName = f.ObjectName

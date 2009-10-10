@@ -454,7 +454,10 @@ Module Publics
                         End Try
                     End If
                     If Version > 1.0 Then
-                        f.Container = GetString(dr.Item("Container"))
+                        s = GetString(dr.Item("Container"))
+                        If s <> "" Then
+                            f.Container = s
+                        End If
                     End If
                 End If
                 Application.DoEvents()
