@@ -31,6 +31,7 @@ Public Class sql
     Private sPassword As String = ""
     Private sNetwork As String = ""
     Private sConnect As String = ""
+    Private iTimeOut As Integer = 0
 
 #Region "Properties"
     Public Property Server() As String
@@ -107,6 +108,15 @@ Public Class sql
                 sNetwork = ""
                 CloseConnect()
             End If
+        End Set
+    End Property
+
+    Public Property TimeOut() As Integer
+        Get
+            TimeOut = iTimeOut
+        End Get
+        Set(ByVal value As Integer)
+            iTimeOut = value
         End Set
     End Property
 
@@ -631,6 +641,9 @@ Public Class sql
         Dim Details As New DataSet
 
         psAdapt = New SqlDataAdapter(sql, psConn)
+        If iTimeOut > 0 Then
+            psAdapt.SelectCommand.CommandTimeout = iTimeOut
+        End If
         psAdapt.SelectCommand.CommandType = CommandType.Text
 
         psAdapt.Fill(Details)
