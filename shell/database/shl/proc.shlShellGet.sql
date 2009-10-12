@@ -191,6 +191,7 @@ begin
                ,p.Width
                ,p.Value
                ,p.Type
+               ,p.Field
         from    dbo.shlParameters p
         join    @temp t
         on      t.ObjectName = p.ObjectName
@@ -337,7 +338,7 @@ begin
                ,r.ActionName
                ,r.Value
 
-        select  1.1 ShellVersion
+        select  1.2 ShellVersion
         break
     end
     return @e

@@ -11,8 +11,8 @@ table.shlUserProperties.sql
 table.shlActionProcessRules.sql
 table.shlValidations.sql
 table.shlValidationRules.sql
-table.shlModulePocedures.sql
-table.shlModulePocesses.sql
+table.shlModuleProcedures.sql
+table.shlModuleProcesses.sql
 table.shlModuleUsers.sql
 table.shlModuleUsersAudit.sql
 table.shlVariables.sql
@@ -34,6 +34,7 @@ fkey.shlModuleProcesses.shlModules.shlModuleProcessesFK.sql
 fkey.shlModuleProcesses.shlProcesses.shlModuleProcessesProcFK.sql
 fkey.shlModuleUsers.shlModules.shlModuleUsersFK.sql
 fkey.shlParameters.shlObjects.shlParametersFK.sql
+fkey.shlParameters.shlFields.shlParametersFieldFK.sql
 fkey.shlProcesses.shlObjects.shlProcessesFK.sql
 fkey.shlProperties.shlObjects.shlPropertiesFK.sql
 fkey.shlValidationRules.shlFields.shlValidationRulesFieldFK.sql
@@ -92,3 +93,4 @@ proc.shlDirectoryInsert.sql
 config.shlUserPropertyAlter.sql
 
 {scl=SecurityAdmin\SecurityAdmin.scl}
+{scl=Notifications\Notifications.scl}

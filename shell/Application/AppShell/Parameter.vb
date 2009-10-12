@@ -18,6 +18,7 @@ Public Class shellParameter
     Private oValue As Object
     Public Initialised As Boolean = False
     Public InputText As String
+    Public Field As String
 
     Public Property Value() As Object
         Get
@@ -183,6 +184,7 @@ Public Class ShellParameters
                 .Output = p.Output
                 .Width = p.Width
                 .ValueType = p.ValueType
+                .Field = p.Field
                 If p.Initialised Then
                     .Value = p.Value
                     .InputText = p.InputText

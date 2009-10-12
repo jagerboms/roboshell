@@ -56,20 +56,6 @@ begin
 
         begin transaction
 
-        execute @e = dbo.shlParametersInsert
-            @ObjectName = @ObjectName
-           ,@ParameterName = @FieldName
-           ,@ValueType = @ValueType
-           ,@Width = @Width
-           ,@Value = @ParamValue
-           ,@IsInput = @IsInput
-           ,@IsOutput = @IsOutput
-           ,@Type = @ParamType
-        if @e <> 0
-        begin
-            break
-        end
-
         execute @e = dbo.shlFieldsInsert
             @ObjectName = @ObjectName
            ,@FieldName = @FieldName
@@ -99,6 +85,22 @@ begin
         begin
             break
         end
+
+        execute @e = dbo.shlParametersInsert
+            @ObjectName = @ObjectName
+           ,@ParameterName = @FieldName
+           ,@ValueType = @ValueType
+           ,@Width = @Width
+           ,@Value = @ParamValue
+           ,@IsInput = @IsInput
+           ,@IsOutput = @IsOutput
+           ,@Type = @ParamType
+           ,@Field = @FieldName
+        if @e <> 0
+        begin
+            break
+        end
+
         break
     end
     if @e <> 0

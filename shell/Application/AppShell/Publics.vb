@@ -222,6 +222,7 @@ Module Publics
         Dim dt As DataTable
         Dim Version As Double = 1
         Dim f As Field
+        Dim p As shellParameter
         Dim dr As DataRow
         Dim objd As ObjectDefn
         Dim Act As ActionDefns
@@ -393,10 +394,16 @@ Module Publics
                             objValue = dr.Item("Value")
                     End Select
 
-                    objd.Parms.Add(GetString(dr.Item("ParameterName")), objValue, _
+                    p = objd.Parms.Add(GetString(dr.Item("ParameterName")), objValue, _
                                     vt, (CType(dr.Item("Input"), String) = "Y"), _
                                 (CType(dr.Item("Output"), String) = "Y"), _
                                     CType(dr.Item("Width"), Int32))
+                    If Version > 1.1 Then
+                        s = GetString(dr.Item("Field"))
+                        If s <> "" Then
+                            p.Field = s
+                        End If
+                    End If
                 End If
 
                 Application.DoEvents()

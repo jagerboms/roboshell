@@ -310,7 +310,7 @@ Public Class Dialog
                     b = False
                     If Not LocalParms Is Nothing Then
                         If Not LocalParms.Item(d.Name) Is Nothing Then
-                            If d.Field.DisplayType = "T" Then
+                            If d.Field.DisplayType = "T" Or d.Field.DisplayType = "P" Then
                                 s = LocalParms.Item(d.Name).InputText
                             Else
                                 s = ""
@@ -585,7 +585,7 @@ Public Class Dialog
                     With tp
                         .Name = d.Field.Name
                         .AutoScroll = True
-                        .BackColor = Color.White
+                        .BackColor = GetBackColour()
                         .BorderStyle = BorderStyle.None
                         .Margin = New System.Windows.Forms.Padding(0)
                     End With
@@ -680,7 +680,7 @@ Public Class Dialog
                         cw += d.Field.DisplayWidth
                         If iH > ch Then ch = iH
 
-                    Case "T"            'Textbox
+                    Case "T", "P"            'Textbox, DatePicker
                         Dim t As New TextBox
                         With t
                             Select Case d.Field.Justify
@@ -698,7 +698,7 @@ Public Class Dialog
                             Else
                                 .ReadOnly = True
                             End If
-                            If d.Field.DisplayHeight > 1 Then
+                            If d.Field.DisplayHeight > 1 And UCase(d.Field.DisplayType) = "T" Then
                                 .Multiline = True
                                 iH = t.Height * d.Field.DisplayHeight
                             Else
@@ -715,32 +715,23 @@ Public Class Dialog
                         End If
                         If iH > ch Then ch = iH
 
-                    Case "P"            'DatePicker
-                        Dim t As New DateTimePicker
-                        With t
-                            If d.Field.Format <> "" Then
-                                t.Format = DateTimePickerFormat.Custom
-                                t.CustomFormat = d.Field.Format
-                            Else
-                                t.Format = DateTimePickerFormat.Short
-                            End If
-                            If d.Field.Enabled Then
-                                If d.Field.Required Then
-                                    .BackColor = Color.FromArgb(255, 255, 100)
-                                End If
-                            Else
-                                .Enabled = False
-                            End If
-                            iH = -1
-                        End With
-                        AddControl(d, CType(t, Control), ctrs, ct, _
-                                cl + cw, d.Field.DisplayWidth, iH)
-                        cw += d.Field.DisplayWidth
-                        iH = t.Height
-                        If d.Field.DisplayHeight > 1 Then
-                            iH += 3
+                        If UCase(d.Field.DisplayType) = "P" Then   'DatePicker
+                            Dim dp As New DateTimePicker
+                            With dp
+                                .Top = ct
+                                .Left = cl + cw
+                                .Width = 20
+                                .TabStop = False
+                                .DropDownAlign = LeftRightAlignment.Right
+                                .Tag = d.Name
+                                .Format = DateTimePickerFormat.Short
+
+                                AddHandler .ValueChanged, AddressOf DatePickChanged
+                                AddHandler .Enter, AddressOf DatePickEnter
+                            End With
+                            ctrs.Add(dp)
+                            cw += 20
                         End If
-                        If iH > ch Then ch = iH
 
                     Case "D"        'Dropdownlist
                         Dim cbox As New ComboBox
@@ -872,6 +863,42 @@ Public Class Dialog
         d.ControlIndex = ctrs.IndexOf(ctl)
     End Sub
 
+    Private Sub DatePickEnter(ByVal sender As Object, ByVal e As System.EventArgs)
+        Dim dp As DateTimePicker
+        Dim s As String
+        Dim dt As Date
+        Dim d As DialogField
+        Dim t As TextBox
+
+        dp = DirectCast(sender, DateTimePicker)
+        s = CType(dp.Tag, String)
+        d = dlogf.Item(s)
+        t = DirectCast(d.Control(fForm), TextBox)
+        s = t.Text
+        If IsDate(s) Then
+            dt = CDate(s)
+            dp.Value = dt
+        End If
+    End Sub
+
+    Private Sub DatePickChanged(ByVal sender As System.Object, ByVal e As System.EventArgs)
+        Dim dp As DateTimePicker
+        Dim s As String
+        Dim d As DialogField
+        Dim t As TextBox
+
+        dp = DirectCast(sender, DateTimePicker)
+        s = CType(dp.Tag, String)
+        d = dlogf.Item(s)
+        t = DirectCast(d.Control(fForm), TextBox)
+        If d.Field.Format = "" Then
+            t.Text = Format(dp.Value, "d-MMM-yyyy")
+        Else
+            t.Text = Format(dp.Value, d.Field.Format)
+        End If
+        SetFieldText(s)
+    End Sub
+
     Private Sub TabDrawItem(ByVal sender As Object, ByVal e As System.Windows.Forms.DrawItemEventArgs)
         Dim tc As System.Windows.Forms.TabControl = DirectCast(sender, System.Windows.Forms.TabControl)
         Dim sf As New StringFormat
@@ -882,12 +909,12 @@ Public Class Dialog
         sf.Alignment = StringAlignment.Center
         sf.LineAlignment = StringAlignment.Center
         sf.HotkeyPrefix = Drawing.Text.HotkeyPrefix.Show
+        If e.Index = 0 Then
+            i = 4
+        Else
+            i = 0
+        End If
         If tc.SelectedIndex = e.Index Then
-            If e.Index = 0 Then
-                i = 4
-            Else
-                i = 0
-            End If
             e.Graphics.FillRectangle(New SolidBrush(GetBackColour()), e.Bounds.X + i, e.Bounds.Y, e.Bounds.Width - i - 3, e.Bounds.Height)
 
             r = tc.GetTabRect(tc.TabPages.Count - 1)
@@ -895,8 +922,10 @@ Public Class Dialog
               tc.Width - (r.X + r.Width), r.Height + 5)
 
             e.Graphics.FillRectangle(New SolidBrush(tc.Parent.BackColor), rf)
+        Else
+            e.Graphics.FillRectangle(Brushes.Gainsboro, e.Bounds.X + i, e.Bounds.Y, e.Bounds.Width - i - 3, e.Bounds.Height)
         End If
-        e.Graphics.DrawString(tc.TabPages(e.Index).Text, tc.Font, SystemBrushes.ControlText, RectangleF.op_Implicit(e.Bounds), sf)
+        e.Graphics.DrawString(tc.TabPages(e.Index).Text, tc.Font, Brushes.Blue, RectangleF.op_Implicit(e.Bounds), sf)
         sf.Dispose()
     End Sub
 
@@ -1346,7 +1375,7 @@ Public Class Dialog
                             d.Value = Mid(s, 2, 1)
                         End If
 
-                    Case "T", "L", "B"
+                    Case "T", "P", "L", "B"
                         s = d.Control(fForm).Text
                         d.Value = s
                         d.BusDateRelated = False
@@ -1494,8 +1523,8 @@ Public Class Dialog
             End If
 
         Else
-            If d.Field.DisplayType = "T" Or d.Field.DisplayType = "L" _
-                                                Or d.Field.DisplayType = "B" Then
+            If d.Field.DisplayType = "T" Or d.Field.DisplayType = "P" _
+                Or d.Field.DisplayType = "L" Or d.Field.DisplayType = "B" Then
                 Select Case d.Field.ValueType
                     Case DbType.Date, DbType.DateTime
                         Dim dt As System.DateTime
@@ -1514,7 +1543,8 @@ Public Class Dialog
                                 con.Text = Format(dt, d.Field.Format)
                             End If
                         End If
-                        If d.Field.DisplayType = "T" And d.Field.Enabled Then
+                        If (d.Field.DisplayType = "T" Or d.Field.DisplayType = "P") _
+                          And d.Field.Enabled Then
                             If d.BusDateRelated And _
                                 Format(Publics.BusinessDate, "yyyyMMdd") <> Format(Now(), "yyyyMMdd") Then
                                 con.BackColor = Color.GreenYellow
@@ -1797,7 +1827,7 @@ Public Class Dialog
                         CType(cc, CheckBox).Checked = False
                     End If
 
-                Case "T", "L", "B"
+                Case "T", "P", "L", "B"
                     d.BusDateRelated = False
                     If d.Text <> "" Then
                         Select Case d.Field.ValueType

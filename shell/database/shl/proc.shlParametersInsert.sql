@@ -20,6 +20,7 @@ create procedure dbo.shlParametersInsert
    ,@IsInput char(1) = 'Y'
    ,@IsOutput char(1) = 'Y'
    ,@Type char(1) = 'U'
+   ,@Field varchar(32) = null
 as
 begin
     set nocount on
@@ -54,13 +55,13 @@ begin
         (
             ObjectName, ParameterName, Sequence,
             IsInput, IsOutput, ValueType, Width,
-            Value, Type
+            Value, Type, Field
         )
         values
         (
             @ObjectName, @ParameterName, @Sequence,
             @IsInput, @IsOutput, @ValueType, @Width,
-            @Value, @Type
+            @Value, @Type, @Field
         )
         set @e = @@error
         break
