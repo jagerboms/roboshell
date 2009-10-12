@@ -94,7 +94,7 @@ begin
         end
 
         delete
-        from    dbo.shlFields
+        from    dbo.shlParameters
         where   ObjectName = @ObjectName
 
         set @e = @@error
@@ -104,7 +104,7 @@ begin
         end
 
         delete
-        from    dbo.shlParameters
+        from    dbo.shlFields
         where   ObjectName = @ObjectName
 
         set @e = @@error

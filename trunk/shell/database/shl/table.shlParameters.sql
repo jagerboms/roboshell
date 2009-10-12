@@ -18,12 +18,27 @@ begin
        ,Width integer not null
        ,Value varchar(255) null
        ,Type char(1) not null
+       ,Field varchar(32) null
        ,constraint shlParametersPK primary key clustered
        (
             ObjectName
            ,ParameterName
        )
     )
+end
+go
+
+if not exists
+(
+    select  'a'
+    from INFORMATION_SCHEMA.Columns c
+    where   c.TABLE_NAME = 'shlParameters'
+    and     c.TABLE_SCHEMA = 'dbo'
+    and     c.COLUMN_NAME = 'Field'
+)
+begin
+    alter table dbo.shlParameters
+        add Field varchar(32) null
 end
 go
 
