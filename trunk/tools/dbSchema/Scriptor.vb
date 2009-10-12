@@ -60,8 +60,8 @@ Module Scriptor
             SendMessage("", "N")
 
             If GetSwitch("-?") Or Trim(Microsoft.VisualBasic.Command()) = "" Then
-                SendMessage("usage: dbSchema [-sServer] [-dDatabase] [-uUserID [-pPassword]] [-tType]", "T")
-                SendMessage("                [-oObject] [-f] [-c] [-?] [-l] [-gLogFile] [-v]", "T")
+                SendMessage("usage: dbSchema [-sServer] [-dDatabase] [-uUserID [-pPassword]] [-iTimeOut]", "T")
+                SendMessage("                [-tType] [-oObject] [-f] [-c] [-?] [-l] [-gLogFile] [-v]", "T")
                 SendMessage(" where:", "T")
                 SendMessage("   -sServer is the name of the SQL server to access.", "T")
                 SendMessage("     provided the local machine is used.", "T")
@@ -81,6 +81,8 @@ Module Scriptor
                 SendMessage("", "T")
                 SendMessage("   -pPassword is the user password for database access. This parameter", "T")
                 SendMessage("     is ignored except when a UserID is provided.", "T")
+                SendMessage("", "T")
+                SendMessage("   -iTimeOut is the timeout used when accessing the database.", "T")
                 SendMessage("", "T")
                 SendMessage("   -tType is the type of object to retrieve. If not provided all", "T")
                 SendMessage("     types except jobs and data are returned. Can be one of:", "T")
@@ -148,6 +150,7 @@ Module Scriptor
             Database = GetCommandParameter("-d")
             sqllib.UserID = GetCommandParameter("-u")
             sqllib.Password = GetCommandParameter("-p")
+            sqllib.TimeOut = CInt(GetCommandParameter("-u"))
             sqllib.Network = GetCommandParameter("-n")
             s = GetCommandParameter("-f")
             Select Case UCase(Mid(s, 1, 1))
