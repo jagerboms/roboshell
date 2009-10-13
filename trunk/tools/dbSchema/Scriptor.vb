@@ -150,7 +150,10 @@ Module Scriptor
             Database = GetCommandParameter("-d")
             sqllib.UserID = GetCommandParameter("-u")
             sqllib.Password = GetCommandParameter("-p")
-            sqllib.TimeOut = CInt(GetCommandParameter("-u"))
+            s = GetCommandParameter("-i")
+            If IsNumeric(s) Then
+                sqllib.TimeOut = CInt(s)
+            End If
             sqllib.Network = GetCommandParameter("-n")
             s = GetCommandParameter("-f")
             Select Case UCase(Mid(s, 1, 1))
