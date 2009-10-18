@@ -223,14 +223,28 @@ Public Class Dialog
     Public Sub New(ByVal Defn As DialogDefn)
         Dim r As ObjectRegister
         Dim fld As Field
+        Dim d As DialogField
+        Dim i As Integer
+
         sDefn = Defn
         sDefn.Parms.Clone(MyBase.Parms)
-        MyBase.Parms.Clone(LocalParms)
+        MyBase.parms.Clone(LocalParms)
 
         For Each c As Field In sDefn.Fields
             fld = Nothing
             c.Clone(fld)
-            dlogf.Add(c.Name, fld)
+            d = dlogf.Add(c.Name, fld)
+            For Each f As Field In sDefn.Fields
+                If f.LinkField = c.Name Then
+                    If d.LinkedFields Is Nothing Then
+                        i = 0
+                    Else
+                        i = d.LinkedFields.GetUpperBound(0) + 1
+                    End If
+                    ReDim Preserve d.LinkedFields(i)
+                    d.LinkedFields(i) = f.Name
+                End If
+            Next
         Next
 
         r = Register.Add(CType(Me, ShellObject))
@@ -539,7 +553,7 @@ Public Class Dialog
 
         For Each f As Field In sDefn.Fields
             d = dlogf.Item(f.Name)
-            If d.Field.DisplayType <> "H" And d.Field.DisplayType <> "R" And d.Field.Container = sCont Then ' do nothing for hidden fields
+            If d.Field.DisplayType <> "H" And d.Field.DisplayType <> "REL" And d.Field.Container = sCont Then ' do nothing for hidden fields
                 Select Case d.Field.Locate
                     Case "G"
                         gl = 5
@@ -581,7 +595,16 @@ Public Class Dialog
                     LoadContainer(d.Field.Name, tb.Controls)
 
                 ElseIf UCase(d.Field.DisplayType) = "TBP" Then
-                    Dim tp As New TabPage(d.Field.Label)
+                    Dim s As String = ""
+                    If d.Field.LinkField <> "" Then
+                        Dim c2 As DialogField
+                        c2 = dlogf.Item(d.Field.LinkField)
+                        s = c2.Value.ToString
+                    End If
+                    If s = "" Then
+                        s = d.Field.Label
+                    End If
+                    Dim tp As New TabPage(s)
                     With tp
                         .Name = d.Field.Name
                         .AutoScroll = True
@@ -718,7 +741,7 @@ Public Class Dialog
                         If UCase(d.Field.DisplayType) = "P" Then   'DatePicker
                             Dim dp As New DateTimePicker
                             With dp
-                                .Top = ct
+                                .Top = ct + 1
                                 .Left = cl + cw
                                 .Width = 20
                                 .TabStop = False
@@ -772,13 +795,13 @@ Public Class Dialog
                         AddHandler cbox.SelectedIndexChanged, AddressOf Field_Change
                         If cbox.Height > ch Then ch = cbox.Height
 
-                    Case "S"            'Listbox
+                    Case "LST"            'Listbox
                         Dim lbox As New ListBox
-                        With lbox
-                            If d.Field.Required Then
-                                .BackColor = Color.FromArgb(255, 255, 100)
-                            End If
-                        End With
+                        'With lbox
+                        '    If d.Field.Required Then
+                        '        .BackColor = Color.FromArgb(255, 255, 100)
+                        '    End If
+                        'End With
                         If d.Field.DisplayHeight > 1 Then
                             iH = 17 + 13 * d.Field.DisplayHeight
                         Else
@@ -790,7 +813,7 @@ Public Class Dialog
                         AddHandler lbox.SelectedIndexChanged, AddressOf Field_Change
                         If lbox.Height > ch Then ch = lbox.Height
 
-                    Case "C"            'Checkbox
+                    Case "CHK", "C"            'Checkbox
                         Dim cb As New CheckBox
                         AddControl(d, CType(cb, Control), ctrs, ct - 2, _
                                           cl + cw, 15, -1)
@@ -843,18 +866,6 @@ Public Class Dialog
                     End If
                     ReDim Preserve d.Actions(i)
                     d.Actions(i) = a.Name
-                End If
-            Next
-
-            For Each f As Field In sDefn.Fields
-                If f.LinkField = d.Name Then
-                    If d.LinkedFields Is Nothing Then
-                        i = 0
-                    Else
-                        i = d.LinkedFields.GetUpperBound(0) + 1
-                    End If
-                    ReDim Preserve d.LinkedFields(i)
-                    d.LinkedFields(i) = f.Name
                 End If
             Next
             .Tag = d.Name
@@ -1281,28 +1292,36 @@ Public Class Dialog
                         Return MyBase.parms.Item(Field).Value
                     End If
 
-                Case "R"    'dRopdown column
+                Case "REL"          'Related field
                     Dim c2 As DialogField
                     Dim i As Integer
                     Dim ds As Object
-                    c2 = dlogf.Item(c.Field.TextField)
-                    If c2.Field.DisplayType = "D" Then
-                        Dim cb As ComboBox = DirectCast(c2.Control(fForm), ComboBox)
-                        i = cb.SelectedIndex
-                        ds = cb.DataSource
-                    Else
-                        Dim lb As ListBox = DirectCast(c2.Control(fForm), ListBox)
-                        i = lb.SelectedIndex
-                        ds = lb.DataSource
-                    End If
+                    Dim o As Object
+
+                    c2 = dlogf.Item(c.Field.LinkField)
+                    Select Case c2.Field.DisplayType
+                        Case "D"
+                            Dim cb As ComboBox = DirectCast(c2.Control(fForm), ComboBox)
+                            i = cb.SelectedIndex
+                            ds = cb.DataSource
+
+                        Case "LST"
+                            Dim lb As ListBox = DirectCast(c2.Control(fForm), ListBox)
+                            i = lb.SelectedIndex
+                            ds = lb.DataSource
+
+                        Case Else
+                            Return c2.Value
+                    End Select
                     If i = -1 Then
                         Return Nothing
-                    Else
-                        Dim o As Object
-                        If dlogf.Item(c.Field.TextField).Field.FillProcess <> "" Then
-                            o = CType(ds, DataTable).Rows.Item(i)(c.Field.ValueField)
-                        Else
-                            Select Case c.Field.ValueField
+                    End If
+                    Select Case LCase(ds.GetType.ToString)
+                        Case "system.data.datatable", "datatable"
+                            o = CType(ds, DataTable).Rows.Item(i)(c.Field.LinkColumn)
+
+                        Case "system.collections.arraylist", "arraylist"
+                            Select Case c.Field.LinkColumn
                                 Case "Text"
                                     o = CType(CType(ds, ArrayList).Item(i), ComboSource).Text
                                 Case "Value"
@@ -1310,12 +1329,14 @@ Public Class Dialog
                                 Case Else
                                     Return Nothing
                             End Select
-                        End If
-                        If IsDBNull(o) Then
+
+                        Case Else
                             Return Nothing
-                        Else
-                            Return o
-                        End If
+                    End Select
+                    If IsDBNull(o) Then
+                        Return Nothing
+                    Else
+                        Return o
                     End If
 
                 Case "TBP"
@@ -1342,7 +1363,7 @@ Public Class Dialog
         Try
             d.Text = d.Control(fForm).Text
 
-            If GetString(d.Text) = "" And d.Field.DisplayType <> "C" Then
+            If GetString(d.Text) = "" And d.Field.DisplayType <> "C" And d.Field.DisplayType <> "CHK" Then
                 d.Value = Nothing
             Else
                 d.Value = d.Text
@@ -1355,7 +1376,7 @@ Public Class Dialog
                             d.Value = cb.SelectedValue
                         End If
 
-                        'Case "S"            'Listbox
+                        'Case "LST"            'Listbox
                         '    Dim lb As ListBox = directcast(d.Control(fForm), ListBox)
                         '    If lb.SelectedIndex = -1 Then
                         '        d.Value = Nothing
@@ -1363,7 +1384,7 @@ Public Class Dialog
                         '        d.Value = lb.SelectedValue
                         '    End If
 
-                    Case "C"            'Checkbox
+                    Case "CHK", "C"            'Checkbox
                         If Len(d.Field.ValueField) > 1 Then
                             s = UCase(d.Field.ValueField)
                         Else
@@ -1488,239 +1509,250 @@ Public Class Dialog
             For Each ss As String In d.LinkedFields
                 dx = dlogf.Item(ss)
                 If Not dx Is Nothing Then
-                    If dx.Field.DisplayType = "D" Then  ' dropdown list
-                        If dx.Field.FillProcess <> "" Then
-                            cb = DirectCast(dx.Control(fForm), ComboBox)
-                            save = cb.Text
-                            dt = CType(cb.DataSource, DataTable)
-                            dt.DefaultView.RowFilter = dx.Field.LinkColumn & " = '" & s & "'"
-                            cb.Text = save
-                            If cb.Text <> save Or cb.SelectedIndex = -1 Then
-                                cb.Text = ""
-                                cb.SelectedIndex = -1
-                                cb.SelectedIndex = -1
+                    Select Case dx.Field.DisplayType
+                        Case "D"   ' dropdown list
+                            If dx.Field.FillProcess <> "" Then
+                                If Not dx.Field.LinkColumn Is Nothing Then
+                                    cb = DirectCast(dx.Control(fForm), ComboBox)
+                                    save = cb.Text
+                                    dt = CType(cb.DataSource, DataTable)
+                                    dt.DefaultView.RowFilter = dx.Field.LinkColumn & " = '" & s & "'"
+                                    cb.Text = save
+                                    If cb.Text <> save Or cb.SelectedIndex = -1 Then
+                                        cb.Text = ""
+                                        cb.SelectedIndex = -1
+                                        cb.SelectedIndex = -1
+                                    End If
+                                End If
+                            Else
+                                Dim i As Integer
+                                i = 9 ' link to user data not yet supported!!
                             End If
-                        Else
-                            Dim i As Integer
-                            i = 9 ' link to user data not yet supported!!
-                        End If
-                    End If
+
+                        Case "REL"
+                            dx.Value = GetFieldValue(ss)
+                            CheckField(ss)
+
+                    End Select
                 End If
             Next
         End If
 
-        If s = "" Then
-            If d.Field.Required Then
-                d.Errs.Add("R", "Must not be empty")
-            End If
-            If d.BusDateRelated Then
-                If d.Field.Required = True Then
-                    con.BackColor = Color.FromArgb(255, 255, 100)
-                Else
-                    con.BackColor = Color.White
-                End If
-                d.BusDateRelated = False
-            End If
+        If d.Field.DisplayType <> "REL" And d.Field.DisplayType <> "H" Then
 
-        Else
-            If d.Field.DisplayType = "T" Or d.Field.DisplayType = "P" _
-                Or d.Field.DisplayType = "L" Or d.Field.DisplayType = "B" Then
-                Select Case d.Field.ValueType
-                    Case DbType.Date, DbType.DateTime
-                        Dim dt As System.DateTime
-                        Try
-                            dt = CType(d.Value, Date)
-                            If dt = DateTime.MinValue Then
+            If s = "" Then
+                If d.Field.Required Then
+                    d.Errs.Add("R", "Must not be empty")
+                End If
+                If d.BusDateRelated Then
+                    If d.Field.Required = True Then
+                        con.BackColor = Color.FromArgb(255, 255, 100)
+                    Else
+                        con.BackColor = Color.White
+                    End If
+                    d.BusDateRelated = False
+                End If
+
+            Else
+                If d.Field.DisplayType = "T" Or d.Field.DisplayType = "P" _
+                    Or d.Field.DisplayType = "L" Or d.Field.DisplayType = "B" Then
+                    Select Case d.Field.ValueType
+                        Case DbType.Date, DbType.DateTime
+                            Dim dt As System.DateTime
+                            Try
+                                dt = CType(d.Value, Date)
+                                If dt = DateTime.MinValue Then
+                                    d.Errs.Add("V", "Invalid date")
+                                End If
+                            Catch
                                 d.Errs.Add("V", "Invalid date")
-                            End If
-                        Catch
-                            d.Errs.Add("V", "Invalid date")
-                        End Try
-                        If d.Errs.count = 0 Then
-                            If d.Field.Format = "" Then
-                                con.Text = Format(dt, "d-MMM-yyyy")
-                            Else
-                                con.Text = Format(dt, d.Field.Format)
-                            End If
-                        End If
-                        If (d.Field.DisplayType = "T" Or d.Field.DisplayType = "P") _
-                          And d.Field.Enabled Then
-                            If d.BusDateRelated And _
-                                Format(Publics.BusinessDate, "yyyyMMdd") <> Format(Now(), "yyyyMMdd") Then
-                                con.BackColor = Color.GreenYellow
-                            Else
-                                If d.Field.Required = True Then
-                                    con.BackColor = Color.FromArgb(255, 255, 100)
+                            End Try
+                            If d.Errs.count = 0 Then
+                                If d.Field.Format = "" Then
+                                    con.Text = Format(dt, "d-MMM-yyyy")
                                 Else
-                                    con.BackColor = Color.White
+                                    con.Text = Format(dt, d.Field.Format)
                                 End If
                             End If
-                        End If
+                            If (d.Field.DisplayType = "T" Or d.Field.DisplayType = "P") _
+                              And d.Field.Enabled Then
+                                If d.BusDateRelated And _
+                                    Format(Publics.BusinessDate, "yyyyMMdd") <> Format(Now(), "yyyyMMdd") Then
+                                    con.BackColor = Color.GreenYellow
+                                Else
+                                    If d.Field.Required = True Then
+                                        con.BackColor = Color.FromArgb(255, 255, 100)
+                                    Else
+                                        con.BackColor = Color.White
+                                    End If
+                                End If
+                            End If
 
-                    Case DbType.Currency
-                        Dim dc As Decimal
-                        Try
-                            dc = CType(d.Value, Decimal)
-                        Catch
-                            d.Errs.Add("V", "Invalid numeric value")
-                        End Try
-                        If d.Errs.count = 0 Then
-                            dc = CType(d.Text, Decimal)
-                            con.Text = Format(dc, d.Field.Format)
-                        End If
+                        Case DbType.Currency
+                            Dim dc As Decimal
+                            Try
+                                dc = CType(d.Value, Decimal)
+                            Catch
+                                d.Errs.Add("V", "Invalid numeric value")
+                            End Try
+                            If d.Errs.count = 0 Then
+                                dc = CType(d.Text, Decimal)
+                                con.Text = Format(dc, d.Field.Format)
+                            End If
 
-                    Case DbType.Double
-                        Dim db As Double
-                        Try
-                            db = CType(d.Value, Double)
-                        Catch
-                            d.Errs.Add("V", "Invalid numeric value")
-                        End Try
-                        If d.Errs.count = 0 Then
-                            db = CType(d.Text, Double)
-                            con.Text = Format(db, d.Field.Format)
-                        End If
+                        Case DbType.Double
+                            Dim db As Double
+                            Try
+                                db = CType(d.Value, Double)
+                            Catch
+                                d.Errs.Add("V", "Invalid numeric value")
+                            End Try
+                            If d.Errs.count = 0 Then
+                                db = CType(d.Text, Double)
+                                con.Text = Format(db, d.Field.Format)
+                            End If
 
-                    Case DbType.Int32
-                        Dim i2 As Int32
-                        Try
-                            i2 = CType(d.Value, Integer)
-                        Catch
-                            d.Errs.Add("V", "Invalid integer value")
-                        End Try
-                        If d.Errs.count = 0 Then
-                            i2 = CType(d.Text, Integer)
-                            con.Text = Format(i2, d.Field.Format)
-                        End If
+                        Case DbType.Int32
+                            Dim i2 As Int32
+                            Try
+                                i2 = CType(d.Value, Integer)
+                            Catch
+                                d.Errs.Add("V", "Invalid integer value")
+                            End Try
+                            If d.Errs.count = 0 Then
+                                i2 = CType(d.Text, Integer)
+                                con.Text = Format(i2, d.Field.Format)
+                            End If
 
-                    Case DbType.Int64
-                        Dim i4 As Int64
-                        Try
-                            i4 = CType(d.Value, Int64)
-                        Catch
-                            d.Errs.Add("V", "Invalid integer value")
-                        End Try
-                        If d.Errs.count = 0 Then
-                            i4 = CType(d.Text, Int64)
-                            con.Text = Format(i4, d.Field.Format)
-                        End If
+                        Case DbType.Int64
+                            Dim i4 As Int64
+                            Try
+                                i4 = CType(d.Value, Int64)
+                            Catch
+                                d.Errs.Add("V", "Invalid integer value")
+                            End Try
+                            If d.Errs.count = 0 Then
+                                i4 = CType(d.Text, Int64)
+                                con.Text = Format(i4, d.Field.Format)
+                            End If
 
-                    Case DbType.String
-                        If Len(d.Text) > d.Field.Width Then
-                            d.Errs.Add("V", "Too many characters")
-                        End If
-                        If d.Errs.count = 0 Then
+                        Case DbType.String
+                            If Len(d.Text) > d.Field.Width Then
+                                d.Errs.Add("V", "Too many characters")
+                            End If
+                            If d.Errs.count = 0 Then
+                                con.Text = d.Text
+                            End If
+
+                        Case Else
                             con.Text = d.Text
-                        End If
+                    End Select
+                End If
 
-                    Case Else
-                        con.Text = d.Text
-                End Select
+                For Each vv As ValidationDefn In sDefn.Validations
+                    If vv.FieldName = Field Then
+                        d.Errs.Remove("-" & vv.Name)
+                        sComp1 = s
+                        Select Case vv.ValueType
+                            Case ValidationDefn.ValType.Process
+                                Dim p As New ShellProcess(vv.Process, Me, Me.parms)
+                                sComp1 = GetString(Me.parms.Item(vv.ReturnParameter).Value)
+                                sComp2 = vv.Value.ToString
+                            Case ValidationDefn.ValType.Constant
+                                sComp2 = vv.Value.ToString
+                            Case ValidationDefn.ValType.Field
+                                sComp2 = GetString(GetFieldValue(vv.Value.ToString))
+                        End Select
+                        b = True
+                        Select Case vv.Type
+                            Case ValidationDefn.ValidationType.EQ
+                                If sComp1 = sComp2 Then
+                                    b = False
+                                End If
+                            Case ValidationDefn.ValidationType.NE
+                                If sComp1 <> sComp2 Then
+                                    b = False
+                                End If
+                            Case ValidationDefn.ValidationType.GT
+                                If sComp1 > sComp2 Then
+                                    b = False
+                                End If
+                            Case ValidationDefn.ValidationType.GE
+                                If sComp1 >= sComp2 Then
+                                    b = False
+                                End If
+                            Case ValidationDefn.ValidationType.LT
+                                If sComp1 < sComp2 Then
+                                    b = False
+                                End If
+                            Case ValidationDefn.ValidationType.LE
+                                If sComp1 <= sComp2 Then
+                                    b = False
+                                End If
+                        End Select
+                        If Not b Then
+                            d.Errs.Add("-" & vv.Name, vv.Message)
+                        End If
+                    ElseIf Not vv.AssociatedFields Is Nothing Then
+                        For Each ss As String In vv.AssociatedFields
+                            If ss = Field Then
+                                Dim dff As DialogField = dlogf.Item(vv.FieldName)
+                                dff.Errs.Remove("-" & vv.Name)
+                                sComp1 = GetString(dff.Value)
+                                If sComp1 <> "" Then
+                                    Select Case vv.ValueType
+                                        Case ValidationDefn.ValType.Process
+                                            Dim p As New ShellProcess(vv.Process, Me, Me.parms)
+                                            sComp1 = GetString(Me.parms.Item( _
+                                                                vv.ReturnParameter).Value)
+                                            sComp2 = vv.Value.ToString
+                                        Case ValidationDefn.ValType.Constant
+                                            sComp2 = vv.Value.ToString
+                                        Case ValidationDefn.ValType.Field
+                                            sComp2 = GetString(GetFieldValue( _
+                                                                vv.Value.ToString))
+                                    End Select
+                                    b = True
+                                    Select Case vv.Type
+                                        Case ValidationDefn.ValidationType.EQ
+                                            If sComp1 = sComp2 Then
+                                                b = False
+                                            End If
+                                        Case ValidationDefn.ValidationType.NE
+                                            If sComp1 <> sComp2 Then
+                                                b = False
+                                            End If
+                                        Case ValidationDefn.ValidationType.GT
+                                            If sComp1 > sComp2 Then
+                                                b = False
+                                            End If
+                                        Case ValidationDefn.ValidationType.GE
+                                            If sComp1 >= sComp2 Then
+                                                b = False
+                                            End If
+                                        Case ValidationDefn.ValidationType.LT
+                                            If sComp1 < sComp2 Then
+                                                b = False
+                                            End If
+                                        Case ValidationDefn.ValidationType.LE
+                                            If sComp1 <= sComp2 Then
+                                                b = False
+                                            End If
+                                    End Select
+                                    If Not b Then
+                                        dff.Errs.Add("-" & vv.Name, vv.Message)
+                                    End If
+                                End If
+                                SetErrorState(dff)
+                                Exit For
+                            End If
+                        Next
+                    End If
+                Next
             End If
 
-            For Each vv As ValidationDefn In sDefn.Validations
-                If vv.FieldName = Field Then
-                    d.Errs.Remove("-" & vv.Name)
-                    sComp1 = s
-                    Select Case vv.ValueType
-                        Case ValidationDefn.ValType.Process
-                            Dim p As New ShellProcess(vv.Process, Me, Me.parms)
-                            sComp1 = GetString(Me.parms.Item(vv.ReturnParameter).Value)
-                            sComp2 = vv.Value.ToString
-                        Case ValidationDefn.ValType.Constant
-                            sComp2 = vv.Value.ToString
-                        Case ValidationDefn.ValType.Field
-                            sComp2 = GetString(GetFieldValue(vv.Value.ToString))
-                    End Select
-                    b = True
-                    Select Case vv.Type
-                        Case ValidationDefn.ValidationType.EQ
-                            If sComp1 = sComp2 Then
-                                b = False
-                            End If
-                        Case ValidationDefn.ValidationType.NE
-                            If sComp1 <> sComp2 Then
-                                b = False
-                            End If
-                        Case ValidationDefn.ValidationType.GT
-                            If sComp1 > sComp2 Then
-                                b = False
-                            End If
-                        Case ValidationDefn.ValidationType.GE
-                            If sComp1 >= sComp2 Then
-                                b = False
-                            End If
-                        Case ValidationDefn.ValidationType.LT
-                            If sComp1 < sComp2 Then
-                                b = False
-                            End If
-                        Case ValidationDefn.ValidationType.LE
-                            If sComp1 <= sComp2 Then
-                                b = False
-                            End If
-                    End Select
-                    If Not b Then
-                        d.Errs.Add("-" & vv.Name, vv.Message)
-                    End If
-                ElseIf Not vv.AssociatedFields Is Nothing Then
-                    For Each ss As String In vv.AssociatedFields
-                        If ss = Field Then
-                            Dim dff As DialogField = dlogf.Item(vv.FieldName)
-                            dff.Errs.Remove("-" & vv.Name)
-                            sComp1 = GetString(dff.Value)
-                            If sComp1 <> "" Then
-                                Select Case vv.ValueType
-                                    Case ValidationDefn.ValType.Process
-                                        Dim p As New ShellProcess(vv.Process, Me, Me.parms)
-                                        sComp1 = GetString(Me.parms.Item( _
-                                                            vv.ReturnParameter).Value)
-                                        sComp2 = vv.Value.ToString
-                                    Case ValidationDefn.ValType.Constant
-                                        sComp2 = vv.Value.ToString
-                                    Case ValidationDefn.ValType.Field
-                                        sComp2 = GetString(GetFieldValue( _
-                                                            vv.Value.ToString))
-                                End Select
-                                b = True
-                                Select Case vv.Type
-                                    Case ValidationDefn.ValidationType.EQ
-                                        If sComp1 = sComp2 Then
-                                            b = False
-                                        End If
-                                    Case ValidationDefn.ValidationType.NE
-                                        If sComp1 <> sComp2 Then
-                                            b = False
-                                        End If
-                                    Case ValidationDefn.ValidationType.GT
-                                        If sComp1 > sComp2 Then
-                                            b = False
-                                        End If
-                                    Case ValidationDefn.ValidationType.GE
-                                        If sComp1 >= sComp2 Then
-                                            b = False
-                                        End If
-                                    Case ValidationDefn.ValidationType.LT
-                                        If sComp1 < sComp2 Then
-                                            b = False
-                                        End If
-                                    Case ValidationDefn.ValidationType.LE
-                                        If sComp1 <= sComp2 Then
-                                            b = False
-                                        End If
-                                End Select
-                                If Not b Then
-                                    dff.Errs.Add("-" & vv.Name, vv.Message)
-                                End If
-                            End If
-                            SetErrorState(dff)
-                            Exit For
-                        End If
-                    Next
-                End If
-            Next
+            SetErrorState(d)
         End If
-
-        SetErrorState(d)
 
         SetActions()
         If Not GetString(d.Last) = GetString(d.Value) Then   ' data has changed
@@ -1809,11 +1841,11 @@ Public Class Dialog
                         End If
                     End If
 
-                Case "S"            'Listbox
+                Case "LST"            'Listbox
                     CType(cc, ListBox).DataSource = Value
                     d.Value = Value
 
-                Case "C"            'Checkbox
+                Case "CHK", "C"            'Checkbox
                     Dim so As String = "YN"
 
                     If Len(d.Field.ValueField) > 1 Then
