@@ -444,22 +444,18 @@ Module Publics
                                     GetString(dr.Item("NullText")), _
                                     GetString(dr.Item("HelpText")))
 
-                    If CType(dr.Item("DisplayType"), String) = "D" _
-                        Or CType(dr.Item("DisplayType"), String) = "R" _
-                        Or CType(dr.Item("DisplayType"), String) = "C" _
-                        Or CType(dr.Item("DisplayType"), String) = "S" Then
-                        f.FillProcess = GetString(dr.Item("FillProcess"))
-                        f.TextField = GetString(dr.Item("TextField"))
-                        f.ValueField = GetString(dr.Item("ValueField"))
-                        Try
-                            f.LinkColumn = GetString(dr.Item("LinkColumn"))
-                        Catch ex As Exception
-                        End Try
-                        Try
-                            f.LinkField = GetString(dr.Item("LinkField"))
-                        Catch ex As Exception
-                        End Try
-                    End If
+                    f.FillProcess = GetString(dr.Item("FillProcess"))
+                    f.TextField = GetString(dr.Item("TextField"))
+                    f.ValueField = GetString(dr.Item("ValueField"))
+                    Try
+                        f.LinkColumn = GetString(dr.Item("LinkColumn"))
+                    Catch ex As Exception
+                    End Try
+                    Try
+                        f.LinkField = GetString(dr.Item("LinkField"))
+                    Catch ex As Exception
+                    End Try
+
                     If Version > 1.0 Then
                         s = GetString(dr.Item("Container"))
                         If s <> "" Then

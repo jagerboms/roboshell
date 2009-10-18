@@ -227,7 +227,7 @@ Public Class DialogFields
             .Field = fField
         End With
         Me.Add(parm)
-        Return CType(Values.Item(sName), DialogField)
+        Return parm
     End Function
 
     Public ReadOnly Property Item(ByVal index As String) As DialogField
