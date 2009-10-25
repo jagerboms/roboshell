@@ -214,7 +214,7 @@ Public Class Monitor
                 fForm.Name = sDefn.Title
                 SetCaption()
                 If Not Publics.MDIParent Is Nothing Then
-                    fForm.MdiParent = CType(Publics.MDIParent, Form)
+                    fForm.MdiParent = Publics.MDIParent
                 End If
 
                 FileName = "\\" & sMachine & "\ServiceLogs\" & sService & "_" & _
