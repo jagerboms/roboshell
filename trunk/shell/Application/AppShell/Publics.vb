@@ -7,26 +7,60 @@ Imports System.Configuration
 Imports System.Collections.Specialized
 
 Module Publics
-    Public Processes As New ProcessDefns
-    Public Objects As New ObjectDefns
-    Public Register As New ObjectRegisters
-    Public MDIParent As Object
-
     Private sSystems As String = ""
     Private SystemKey As String
     Private ImageKey As String = ""
     Private Variables As New Hashtable
-    Public BusinessDate As Date = Nothing
-    Public IsMDI As Boolean = False
     Private sImagePath As String = ""
     Private sHelpPath As String = ""
-
-    Public ShellIcon As System.Drawing.Icon
-    Public BatchMode As Boolean = False
-    Public inInit As Boolean = True
     Private Ab As System.Windows.Forms.Form
     Private Missing As Image
     Private PropParm As ShellParameters
+    Private oIcon As System.Drawing.Icon
+    Private bMDI As Boolean = False
+    Private bInit As Boolean = True
+    Private dBusiness As Date = Nothing
+    Private oParent As Form
+
+    Public Processes As New ProcessDefns
+    Public Objects As New ObjectDefns
+    Public Register As New ObjectRegisters
+
+    Public Property MDIParent() As Form
+        Get
+            MDIParent = oParent
+        End Get
+        Set(ByVal value As Form)
+            oParent = value
+        End Set
+    End Property
+
+    Public ReadOnly Property BusinessDate() As Date
+        Get
+            BusinessDate = dBusiness
+        End Get
+    End Property
+
+    Public ReadOnly Property IsMDI() As Boolean
+        Get
+            IsMDI = bMDI
+        End Get
+    End Property
+
+    Public ReadOnly Property ShellIcon() As System.Drawing.Icon
+        Get
+            ShellIcon = oIcon
+        End Get
+    End Property
+
+    Public Property inInit() As Boolean
+        Get
+            inInit = bInit
+        End Get
+        Set(ByVal value As Boolean)
+            bInit = value
+        End Set
+    End Property
 
     Public Function InitialiseApp(ByRef objStartup As MainMenu) As Boolean
         Dim b As Boolean = False
@@ -50,7 +84,7 @@ Module Publics
                     sHelpPath = appStgs(i)
                 Case "mdi"
                     If LCase(appStgs(i)) = "y" Then
-                        IsMDI = True
+                        bMDI = True
                     End If
             End Select
         Next
@@ -93,16 +127,16 @@ Module Publics
         End If
 
         Missing = Image.FromStream(System.Reflection.Assembly.GetExecutingAssembly.GetManifestResourceStream("AppShell.missing.gif"))
-        BusinessDate = Today()
+        dBusiness = Today()
         About()
         Application.DoEvents()
-        If Publics.ShellIcon Is Nothing Then
+        If oIcon Is Nothing Then
             sFile = GetImagePath(ImageKey & ".ico")
             Try
                 Dim ico As New System.Drawing.Icon(sFile)
-                Publics.ShellIcon = ico
+                oIcon = ico
             Catch
-                Publics.ShellIcon = Ab.Icon
+                oIcon = Ab.Icon
             End Try
         End If
 
@@ -160,7 +194,7 @@ Module Publics
                                     sHelpPath = a.InnerText
                                 Case "mdi"
                                     If LCase(a.InnerText) = "y" Then
-                                        IsMDI = True
+                                        bMDI = True
                                     End If
                             End Select
                         Next
@@ -281,7 +315,7 @@ Module Publics
             For Each dr In dt.Rows        ' Variables
                 s = LCase(GetString(dr("VariableID")))
                 If s = "businessdate" Then
-                    BusinessDate = CDate(GetString(dr("VariableValue")))
+                    dBusiness = CDate(GetString(dr("VariableValue")))
                 Else
                     Variables.Add(LCase(GetString(dr("VariableID"))), GetString(dr("VariableValue")))
                 End If
@@ -715,9 +749,9 @@ Module Publics
                 Dim p As ShellProperty = td.Properties.Item("IsMDI", "u")
                 If Not p Is Nothing Then
                     If UCase(GetString(p.Value)) = "Y" Then
-                        IsMDI = True
+                        bMDI = True
                     Else
-                        IsMDI = False
+                        bMDI = False
                     End If
                 End If
             End If
@@ -806,7 +840,7 @@ Module Publics
             AddHandler Ab.Click, AddressOf ab_Click
             AddHandler Ab.KeyPress, AddressOf ab_Press
         End If
-        If Not Publics.inInit Then
+        If Not bInit Then
             lbl = CType(Ab.Controls.Item(0), Label)
             lbl.Text = "Version " & Publics.GetVariable("Release")
             lbl.Visible = True

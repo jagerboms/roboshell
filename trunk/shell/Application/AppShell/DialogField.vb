@@ -1,232 +1,195 @@
 Option Explicit On 
 Option Strict On
 
-Public Class DialogFieldItem
-    Public Key As String
-    Public Value As Object
-    Public Text As String = ""
-    Public Last As Object
-    Public Errs As FieldErrors
-    Public BusDateRelated As Boolean = False
-
-    Public Sub New(ByVal sKey As String)
-        Key = sKey
-        Errs = New FieldErrors
-    End Sub
-End Class
-
-Public Class DialogFieldItems
-    Public Values As New Hashtable
-
-    Public Function Add(ByVal Key As String) As DialogFieldItem
-        Dim it As New DialogFieldItem(Key)
-        Values.Add(Key, it)
-        Return CType(Values.Item(Key), DialogFieldItem)
-    End Function
-
-    Public Sub Remove(ByVal key As String)
-        Try
-            Values.Remove(key)
-        Catch
-        End Try
-    End Sub
-
-    Public Sub Clear()
-        Try
-            Values = New Hashtable
-        Catch
-        End Try
-    End Sub
-
-    Public ReadOnly Property Item(ByVal key As String) As DialogFieldItem
-        Get
-            Try
-                Return CType(Values.Item(key), DialogFieldItem)
-            Catch
-                Return Nothing
-            End Try
-        End Get
-    End Property
-
-    Public ReadOnly Property count() As Integer
-        Get
-            Return Values.Count
-        End Get
-    End Property
-End Class
-
 Public Class DialogField
-    Public Name As String
-    Public Field As Field
-    Public Actions() As String
-    Public LinkedFields() As String
-    Public Caption As String = ""
-    Public LabelIndex As Integer = -1
-    Public ControlIndex As Integer = -1
-    Public Key As String = "x"
-    Public items As DialogFieldItems
+    Private sName As String
+    Private oField As Field
+    Private sActions() As String
+    Private sLinkedFields() As String
+    Private sErrField As String
+    Private oLabel As Label
+    Private oControl As Control
+    Private oValue As Object
+    Private sText As String = ""
+    Private oLast As Object
+    Private oErrs As FieldErrors
+    Private bBusDateRelated As Boolean = False
+
+    Public ReadOnly Property Name() As String
+        Get
+            Name = sName
+        End Get
+    End Property
+
+    Public ReadOnly Property Field() As Field
+        Get
+            Field = oField
+        End Get
+    End Property
+
+    Public ReadOnly Property Actions() As String()
+        Get
+            Actions = sActions
+        End Get
+    End Property
+
+    Public ReadOnly Property LinkedFields() As String()
+        Get
+            LinkedFields = sLinkedFields
+        End Get
+    End Property
+
+    Public Property ErrField() As String
+        Get
+            ErrField = sErrField
+        End Get
+        Set(ByVal value As String)
+            sErrField = value
+        End Set
+    End Property
+
+    Public ReadOnly Property Label() As Label
+        Get
+            Label = oLabel
+        End Get
+    End Property
+
+    Public ReadOnly Property Control() As Control
+        Get
+            Control = oControl
+        End Get
+    End Property
 
     Public Property Value() As Object
         Get
-            Dim itm As DialogFieldItem = items.Item(Key)
-            If itm Is Nothing Then
-                Value = Nothing
-            Else
-                Value = itm.Value
-            End If
+            Value = oValue
         End Get
         Set(ByVal Value As Object)
-            Dim itm As DialogFieldItem = items.Item(Key)
-            If itm Is Nothing Then
-                itm = items.Add(Key)
-            End If
-            itm.Value = Value
+            oValue = Value
         End Set
     End Property
 
     Public Property Text() As String
         Get
-            Dim itm As DialogFieldItem = items.Item(Key)
-            If itm Is Nothing Then
-                Text = ""
-            Else
-                Text = itm.Text
-            End If
+            Text = sText
         End Get
         Set(ByVal Value As String)
-            Dim itm As DialogFieldItem = items.Item(Key)
-            If itm Is Nothing Then
-                itm = items.Add(Key)
-            End If
-            itm.Text = Value
+            sText = Value
         End Set
     End Property
 
     Public Property Last() As Object
         Get
-            Dim itm As DialogFieldItem = items.Item(Key)
-            If itm Is Nothing Then
-                Last = Nothing
-            Else
-                Last = itm.Last
-            End If
+            Last = oLast
         End Get
         Set(ByVal Value As Object)
-            Dim itm As DialogFieldItem = items.Item(Key)
-            If itm Is Nothing Then
-                itm = items.Add(Key)
-            End If
-            itm.Last = Value
+            oLast = Value
         End Set
     End Property
 
     Public Property Errs() As FieldErrors
         Get
-            Dim itm As DialogFieldItem = items.Item(Key)
-            If itm Is Nothing Then
-                itm = items.Add(Key)
-            End If
-            Errs = itm.Errs
+            Errs = oErrs
         End Get
         Set(ByVal Value As FieldErrors)
-            Dim itm As DialogFieldItem = items.Item(Key)
-            If itm Is Nothing Then
-                itm = items.Add(Key)
-            End If
-            itm.Errs = Value
+            oErrs = Value
         End Set
     End Property
 
     Public Property BusDateRelated() As Boolean
         Get
-            Dim itm As DialogFieldItem = items.Item(Key)
-            If itm Is Nothing Then
-                BusDateRelated = False
-            Else
-                BusDateRelated = itm.BusDateRelated
-            End If
+            BusDateRelated = bBusDateRelated
         End Get
         Set(ByVal Value As Boolean)
-            Dim itm As DialogFieldItem = items.Item(Key)
-            If itm Is Nothing Then
-                itm = items.Add(Key)
-            End If
-            itm.BusDateRelated = Value
+            bBusDateRelated = Value
         End Set
     End Property
 
-    Public Sub New(ByVal sName As String)
-        Name = sName
-        items = New DialogFieldItems
+    Public Sub New(ByVal fField As Field)
+        sName = fField.Name
+        oField = fField
+        oErrs = New FieldErrors
     End Sub
 
-    Public Function Label(ByRef fForm As DialogForm) As Label
-        Dim cc As Control
-        Dim l As Label
-        If LabelIndex < 0 Then
-            Return Nothing
-        End If
-
-        If Field.Container <> "" Then
-            cc = GetControl(fForm, Field.Container)
+    Public Sub AddAction(ByVal Name As String)
+        Dim i As Integer
+        If sActions Is Nothing Then
+            i = 0
         Else
-            cc = fForm
+            i = sActions.GetUpperBound(0) + 1
         End If
-        If cc Is Nothing Then
-            Return Nothing
-        End If
-        l = DirectCast(cc.Controls(LabelIndex), Label)
-        Return l
-    End Function
+        ReDim Preserve sActions(i)
+        sActions(i) = Name
+    End Sub
 
-    Public Function Control(ByRef fForm As DialogForm) As Control
-        Dim cc As Control
-        If ControlIndex < 0 Then
-            Return Nothing
-        End If
-
-        If Field.Container <> "" Then
-            cc = GetControl(fForm, Field.Container)
+    Public Sub AddLinkedField(ByVal Name As String)
+        Dim i As Integer
+        If sLinkedFields Is Nothing Then
+            i = 0
         Else
-            cc = fForm
+            i = sLinkedFields.GetUpperBound(0) + 1
         End If
-        If cc Is Nothing Then
-            Return Nothing
-        End If
-        Return cc.Controls(ControlIndex)
-    End Function
+        ReDim Preserve sLinkedFields(i)
+        sLinkedFields(i) = Name
+    End Sub
 
-    Private Function GetControl(ByVal ctrl As Control, ByVal sName As String) As Control
-        Dim cc As Control
+    Public Sub AddLabel(ByRef lLabel As Label)
+        oLabel = lLabel
+    End Sub
 
-        For Each c As Control In ctrl.Controls
-            If c.Name = sName Then
-                Return c
-            End If
-            cc = GetControl(c, sName)
-            If Not cc Is Nothing Then
-                Return cc
-            End If
-        Next
-        Return Nothing
-    End Function
+    Public Sub AddControl(ByRef cControl As Control)
+        oControl = cControl
+    End Sub
 End Class
 
 Public Class DialogFields
-    Public Values As New Hashtable
 
-    Friend Sub Add(ByVal Parm As DialogField)
-        Values.Add(Parm.Name, Parm)
-    End Sub
+#Region "enumerator implementation"
+    Implements IEnumerable
+    Public Function GetEnumerator() As System.Collections.IEnumerator _
+                    Implements System.Collections.IEnumerable.GetEnumerator
+        Return New ActStatesEnum(Values)
+    End Function
 
-    Public Function Add(ByVal sName As String, _
-                        ByVal fField As Field) As DialogField
-        Dim parm As New DialogField(sName)
+    Public Class ActStatesEnum
+        Implements IEnumerable, IEnumerator
+        Private Values As New Collection
+        Private EnumeratorPosition As Integer = 0
 
-        With parm
-            .Field = fField
-        End With
-        Me.Add(parm)
+        Public Sub New(ByVal col As Collection)
+            Values = col
+        End Sub
+
+        Public Function GetEnumerator() As System.Collections.IEnumerator _
+                            Implements System.Collections.IEnumerable.GetEnumerator
+            Return CType(Me, IEnumerator)
+        End Function
+
+        Public Overridable Overloads ReadOnly Property Current() As Object _
+                                                    Implements IEnumerator.Current
+            Get
+                Return CType(Values.Item(EnumeratorPosition), DialogField)
+            End Get
+        End Property
+
+        Public Function MoveNext() As Boolean _
+                                Implements System.Collections.IEnumerator.MoveNext
+            EnumeratorPosition += 1
+            Return (EnumeratorPosition <= Values.Count)
+        End Function
+
+        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
+            EnumeratorPosition = 0
+        End Sub
+    End Class
+#End Region
+
+    Private Values As New Collection ''Hashtable
+
+    Public Function Add(ByVal fField As Field) As DialogField
+        Dim parm As New DialogField(fField)
+
+        Values.Add(parm, parm.Name)
         Return parm
     End Function
 
@@ -239,48 +202,26 @@ Public Class DialogFields
             End Try
         End Get
     End Property
-
-    Public ReadOnly Property count() As Integer
-        Get
-            Return Values.Count
-        End Get
-    End Property
-
-    Public Sub ClearItems()
-        Dim itm As DialogField
-        For Each o As DictionaryEntry In Values
-            itm = CType(o.Value, DialogField)
-            If Not itm Is Nothing Then
-                itm.items = New DialogFieldItems
-            End If
-        Next
-    End Sub
-
-    Public Sub ClearKeyItem(ByVal Key As String)
-        Dim itm As DialogField
-        For Each o As DictionaryEntry In Values
-            itm = CType(o.Value, DialogField)
-            If Not itm Is Nothing Then
-                If Not itm.items.Item(Key) Is Nothing Then
-                    itm.items.Remove(Key)
-                End If
-            End If
-        Next
-    End Sub
 End Class
 
 Public Class FieldError
-    Public ValidationName As String
-    Public Message As String = ""
+    Private sValidationName As String
+    Private sMessage As String = ""
 
-    Public Sub New(ByVal sName As String, ByVal sMessage As String)
-        ValidationName = sName
-        Message = sMessage
+    Public ReadOnly Property Message() As String
+        Get
+            Message = sMessage
+        End Get
+    End Property
+
+    Public Sub New(ByVal Name As String, ByVal Message As String)
+        sValidationName = Name
+        sMessage = Message
     End Sub
 End Class
 
 Public Class FieldErrors
-    Public Values As New Hashtable
+    Private Values As New Hashtable
 
     Public Function Add(ByVal Name As String, _
                         ByVal Message As String) As FieldError
@@ -297,10 +238,7 @@ Public Class FieldErrors
     End Sub
 
     Public Sub Clear()
-        Try
-            Values = New Hashtable
-        Catch
-        End Try
+        Values = New Hashtable
     End Sub
 
     Public ReadOnly Property Item(ByVal index As String) As FieldError

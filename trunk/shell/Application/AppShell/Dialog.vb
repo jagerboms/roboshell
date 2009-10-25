@@ -174,9 +174,27 @@ End Class
 Public Class DialogDefn
     Inherits ObjectDefn
 
-    Public Title As String
-    Public TitleParameter() As String
-    Public HelpPage As String
+    Private sTitle As String
+    Private sTitleParameter() As String
+    Private sHelpPage As String
+
+    Public ReadOnly Property Title() As String
+        Get
+            Title = sTitle
+        End Get
+    End Property
+
+    Public ReadOnly Property HelpPage() As String
+        Get
+            HelpPage = sHelpPage
+        End Get
+    End Property
+
+    Public ReadOnly Property TitleParameter() As String()
+        Get
+            TitleParameter = sTitleParameter
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -190,11 +208,11 @@ Public Class DialogDefn
 
         Select Case Name
             Case "Title"
-                Title = GetString(Value)
+                sTitle = GetString(Value)
             Case "TitleParameters"
-                TitleParameter = Split(GetString(Value), "||")
+                sTitleParameter = Split(GetString(Value), "||")
             Case "HelpPage"
-                HelpPage = GetString(Value)
+                sHelpPage = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by Dialog object")
         End Select
@@ -206,7 +224,6 @@ Public Class Dialog
 
     Private sDefn As DialogDefn
     Private fForm As DialogForm
-    Dim ToolBar As System.Windows.Forms.ToolStrip
     Private bLoading As Boolean = False
     Private bInit As Boolean = True
     Private bEditing As Boolean = True
@@ -224,7 +241,6 @@ Public Class Dialog
         Dim r As ObjectRegister
         Dim fld As Field
         Dim d As DialogField
-        Dim i As Integer
 
         sDefn = Defn
         sDefn.Parms.Clone(MyBase.Parms)
@@ -233,16 +249,10 @@ Public Class Dialog
         For Each c As Field In sDefn.Fields
             fld = Nothing
             c.Clone(fld)
-            d = dlogf.Add(c.Name, fld)
+            d = dlogf.Add(fld)
             For Each f As Field In sDefn.Fields
                 If f.LinkField = c.Name Then
-                    If d.LinkedFields Is Nothing Then
-                        i = 0
-                    Else
-                        i = d.LinkedFields.GetUpperBound(0) + 1
-                    End If
-                    ReDim Preserve d.LinkedFields(i)
-                    d.LinkedFields(i) = f.Name
+                    d.AddLinkedField(c.Name)
                 End If
             Next
         Next
@@ -262,8 +272,7 @@ Public Class Dialog
             Dim d As DialogField
             Try
                 If Not bLoading Then
-                    For Each o As DictionaryEntry In dlogf.Values
-                        d = CType(o.Value, DialogField)
+                    For Each d In dlogf
                         p = MyBase.parms.Item(d.Name)
                         If Not p Is Nothing Then
                             If p.Output Then
@@ -301,7 +310,7 @@ Public Class Dialog
                 fForm.Name = sDefn.Title
                 SetTitle()
                 If Not Publics.MDIParent Is Nothing Then
-                    fForm.MdiParent = CType(Publics.MDIParent, Form)
+                    fForm.MdiParent = Publics.MDIParent
                 End If
                 If Not InitialiseDialog() Then
                     ProcessClose()
@@ -310,17 +319,15 @@ Public Class Dialog
                 End If
                 InitialiseAction()
                 Publics.SetFormPosition(CType(fForm, Form), sDefn.Name)
-                For Each o As DictionaryEntry In dlogf.Values
-                    d = CType(o.Value, DialogField)
+                For Each d In dlogf
                     If d.Field.DisplayType = "D" Then
-                        CType(d.Control(fForm), ComboBox).SelectedIndex = -1
-                        CType(d.Control(fForm), ComboBox).SelectedIndex = -1
+                        CType(d.Control, ComboBox).SelectedIndex = -1
+                        CType(d.Control, ComboBox).SelectedIndex = -1
                     End If
                 Next
 
                 fForm.Show()
-                For Each o As DictionaryEntry In dlogf.Values
-                    d = CType(o.Value, DialogField)
+                For Each d In dlogf
                     b = False
                     If Not LocalParms Is Nothing Then
                         If Not LocalParms.Item(d.Name) Is Nothing Then
@@ -462,8 +469,7 @@ Public Class Dialog
                 'match primary key columns to input parms 
 
                 b = True
-                For Each o As DictionaryEntry In dlogf.Values
-                    d = CType(o.Value, DialogField)
+                For Each d In dlogf
                     If d.Field.Primary Then
                         Try
                             If GetString(GetFieldValue(d.Name)) <> _
@@ -540,7 +546,7 @@ Public Class Dialog
         Dim fw As Integer = 100
         Dim ft As Integer = 30
 
-        Dim ci As Integer = -1
+        Dim ci As String = ""
         Dim d As DialogField
 
         If sCont = "" Then
@@ -553,7 +559,7 @@ Public Class Dialog
 
         For Each f As Field In sDefn.Fields
             d = dlogf.Item(f.Name)
-            If d.Field.DisplayType <> "H" And d.Field.DisplayType <> "REL" And d.Field.Container = sCont Then ' do nothing for hidden fields
+            If d.Field.DisplayType <> "REL" And d.Field.DisplayType <> "H" And d.Field.Container = sCont Then ' do nothing for hidden fields
                 Select Case d.Field.Locate
                     Case "G"
                         gl = 5
@@ -580,8 +586,8 @@ Public Class Dialog
                         iH = 17
                     End If
                     With tb
-                        .Name = d.Field.Name
-                        .Appearance = TabAppearance.Normal
+                        .Name = d.Name
+                        .Appearance = TabAppearance.FlatButtons
                         .Top = ct - 2
                         .Left = cl + cw
                         .Height = iH
@@ -592,7 +598,7 @@ Public Class Dialog
                     AddHandler tb.DrawItem, AddressOf TabDrawItem
                     tb.DrawMode = TabDrawMode.OwnerDrawFixed
                     ctrs.Add(tb)
-                    LoadContainer(d.Field.Name, tb.Controls)
+                    LoadContainer(d.Name, tb.Controls)
 
                 ElseIf UCase(d.Field.DisplayType) = "TBP" Then
                     Dim s As String = ""
@@ -606,14 +612,14 @@ Public Class Dialog
                     End If
                     Dim tp As New TabPage(s)
                     With tp
-                        .Name = d.Field.Name
+                        .Name = d.Name
                         .AutoScroll = True
                         .BackColor = GetBackColour()
                         .BorderStyle = BorderStyle.None
                         .Margin = New System.Windows.Forms.Padding(0)
                     End With
                     ctrs.Add(tp)
-                    LoadContainer(d.Field.Name, tp.Controls)
+                    LoadContainer(d.Name, tp.Controls)
 
                 ElseIf d.Field.Locate <> "P" Or i = 0 Then
                     ct += ch + 5
@@ -638,13 +644,15 @@ Public Class Dialog
                     End With
                     cw += 5
                     ctrs.Add(l)
-                    d.LabelIndex = ctrs.IndexOf(l)
-                    ci = d.LabelIndex
+                    d.AddLabel(l)
+                    ci = d.Name
+                    d.ErrField = ci
                     ch = l.Height
                 Else
                     'ct = gt
                     cw += 2
-                    d.LabelIndex = ci
+                    d.ErrField = ci
+
                 End If
 
                 Select Case UCase(d.Field.DisplayType)
@@ -838,7 +846,6 @@ Public Class Dialog
                 ByVal ctrs As Control.ControlCollection, _
                 ByVal top As Integer, ByVal left As Integer, _
                 ByVal width As Integer, ByVal Height As Integer)
-        Dim i As Integer
 
         With ctl
             .Enabled = d.Field.Enabled
@@ -859,19 +866,14 @@ Public Class Dialog
 
             For Each a As ActionDefn In sDefn.Actions
                 If a.FieldName = d.Name Then
-                    If d.Actions Is Nothing Then
-                        i = 0
-                    Else
-                        i = d.Actions.GetUpperBound(0) + 1
-                    End If
-                    ReDim Preserve d.Actions(i)
-                    d.Actions(i) = a.Name
+                    d.AddAction(a.Name)
                 End If
             Next
+            .Name = d.Name
             .Tag = d.Name
         End With
         ctrs.Add(ctl)
-        d.ControlIndex = ctrs.IndexOf(ctl)
+        d.AddControl(ctl)
     End Sub
 
     Private Sub DatePickEnter(ByVal sender As Object, ByVal e As System.EventArgs)
@@ -884,7 +886,7 @@ Public Class Dialog
         dp = DirectCast(sender, DateTimePicker)
         s = CType(dp.Tag, String)
         d = dlogf.Item(s)
-        t = DirectCast(d.Control(fForm), TextBox)
+        t = DirectCast(d.Control, TextBox)
         s = t.Text
         If IsDate(s) Then
             dt = CDate(s)
@@ -901,7 +903,7 @@ Public Class Dialog
         dp = DirectCast(sender, DateTimePicker)
         s = CType(dp.Tag, String)
         d = dlogf.Item(s)
-        t = DirectCast(d.Control(fForm), TextBox)
+        t = DirectCast(d.Control, TextBox)
         If d.Field.Format = "" Then
             t.Text = Format(dp.Value, "d-MMM-yyyy")
         Else
@@ -913,28 +915,22 @@ Public Class Dialog
     Private Sub TabDrawItem(ByVal sender As Object, ByVal e As System.Windows.Forms.DrawItemEventArgs)
         Dim tc As System.Windows.Forms.TabControl = DirectCast(sender, System.Windows.Forms.TabControl)
         Dim sf As New StringFormat
-        Dim i As Integer
-        Dim r As Rectangle
-        Dim rf As RectangleF
+        'Dim r As Rectangle
+        'Dim rf As RectangleF
 
         sf.Alignment = StringAlignment.Center
         sf.LineAlignment = StringAlignment.Center
         sf.HotkeyPrefix = Drawing.Text.HotkeyPrefix.Show
-        If e.Index = 0 Then
-            i = 4
-        Else
-            i = 0
-        End If
         If tc.SelectedIndex = e.Index Then
-            e.Graphics.FillRectangle(New SolidBrush(GetBackColour()), e.Bounds.X + i, e.Bounds.Y, e.Bounds.Width - i - 3, e.Bounds.Height)
+            e.Graphics.FillRectangle(New SolidBrush(GetBackColour()), e.Bounds.X, e.Bounds.Y, e.Bounds.Width, e.Bounds.Height)
 
-            r = tc.GetTabRect(tc.TabPages.Count - 1)
-            rf = New RectangleF(r.X + r.Width, r.Y - 5, _
-              tc.Width - (r.X + r.Width), r.Height + 5)
+            'r = tc.GetTabRect(tc.TabPages.Count - 1)
+            'rf = New RectangleF(r.X + r.Width, r.Y - 5, _
+            '  tc.Width - (r.X + r.Width), r.Height + 5)
 
-            e.Graphics.FillRectangle(New SolidBrush(tc.Parent.BackColor), rf)
-        Else
-            e.Graphics.FillRectangle(Brushes.Gainsboro, e.Bounds.X + i, e.Bounds.Y, e.Bounds.Width - i - 3, e.Bounds.Height)
+            'e.Graphics.FillRectangle(New SolidBrush(tc.Parent.BackColor), rf)
+            'Else
+            '    e.Graphics.FillRectangle(Brushes.Gainsboro, e.Bounds.X, e.Bounds.Y, e.Bounds.Width, e.Bounds.Height)
         End If
         e.Graphics.DrawString(tc.TabPages(e.Index).Text, tc.Font, Brushes.Blue, RectangleF.op_Implicit(e.Bounds), sf)
         sf.Dispose()
@@ -999,7 +995,7 @@ Public Class Dialog
         d.Last = d.Value
         ActiveField = d.Name
 
-        c = d.Control(fForm)
+        c = d.Control
         If Not c Is Nothing Then
             If c.GetType.Name = "TextBox" Then
                 Dim t As TextBox = DirectCast(c, TextBox)
@@ -1032,9 +1028,7 @@ Public Class Dialog
 
     Private Sub Field_Change(ByVal sender As Object, ByVal e As System.EventArgs)
         Dim d As DialogField = dlogf.Item(CType(CType(sender, Control).Tag, String))
-        Dim s As String
         If ActiveField = d.Name Then
-            s = d.Control(fForm).GetType.Name
             If Not d.Actions Is Nothing And bEditing Then
                 fForm.statusBar.Panels(1).Style = StatusBarPanelStyle.OwnerDraw
                 fForm.statusBar.Panels(1).Text = "Stale"
@@ -1047,8 +1041,7 @@ Public Class Dialog
         Dim d As DialogField
 
         Try
-            For Each o As DictionaryEntry In dlogf.Values
-                d = CType(o.Value, DialogField)
+            For Each d In dlogf
                 If Not d.Errs Is Nothing Then
                     If d.Errs.count > 0 Then
                         Return False
@@ -1285,28 +1278,29 @@ Public Class Dialog
         Try
             c = dlogf.Item(Field)
             Select Case c.Field.DisplayType
-                Case "H"            'Hidden field return parameter value if it exists
-                    If MyBase.parms.Item(Field) Is Nothing Then
-                        Return Nothing
-                    Else
-                        Return MyBase.parms.Item(Field).Value
-                    End If
-
-                Case "REL"          'Related field
+                Case "REL", "H"    'Related or Hidden field return parameter value if it exists
                     Dim c2 As DialogField
                     Dim i As Integer
                     Dim ds As Object
                     Dim o As Object
 
+                    If c.Field.LinkField = "" Then
+                        If MyBase.parms.Item(Field) Is Nothing Then
+                            Return Nothing
+                        Else
+                            Return MyBase.parms.Item(Field).Value
+                        End If
+                    End If
+
                     c2 = dlogf.Item(c.Field.LinkField)
                     Select Case c2.Field.DisplayType
                         Case "D"
-                            Dim cb As ComboBox = DirectCast(c2.Control(fForm), ComboBox)
+                            Dim cb As ComboBox = DirectCast(c2.Control, ComboBox)
                             i = cb.SelectedIndex
                             ds = cb.DataSource
 
                         Case "LST"
-                            Dim lb As ListBox = DirectCast(c2.Control(fForm), ListBox)
+                            Dim lb As ListBox = DirectCast(c2.Control, ListBox)
                             i = lb.SelectedIndex
                             ds = lb.DataSource
 
@@ -1339,14 +1333,15 @@ Public Class Dialog
                         Return o
                     End If
 
-                Case "TBP"
-                    Dim i As Integer
-                    i = CType(dlogf.Item(c.Field.Container).Control(fForm), TabControl).SelectedIndex
-                    If i = c.ControlIndex Then
-                        Return "Y"
-                    Else
-                        Return "N"
-                    End If
+                    'Case "TBP"
+                    '    Dim i As Integer
+                    '    i = CType(dlogf.Item(c.Name).Control, TabPage).
+                    '    i = CType(dlogf.Item(c.Field.Container).Control, TabControl).SelectedIndex
+                    '    If i = c.ControlIndex Then
+                    '        Return "Y"
+                    '    Else
+                    '        Return "N"
+                    '    End If
 
                 Case Else
                     Return c.Value
@@ -1361,7 +1356,7 @@ Public Class Dialog
         Dim d As DialogField = dlogf.Item(Field)
 
         Try
-            d.Text = d.Control(fForm).Text
+            d.Text = d.Control.Text
 
             If GetString(d.Text) = "" And d.Field.DisplayType <> "C" And d.Field.DisplayType <> "CHK" Then
                 d.Value = Nothing
@@ -1369,7 +1364,7 @@ Public Class Dialog
                 d.Value = d.Text
                 Select Case d.Field.DisplayType
                     Case "D"            'DropdownList
-                        Dim cb As ComboBox = DirectCast(d.Control(fForm), ComboBox)
+                        Dim cb As ComboBox = DirectCast(d.Control, ComboBox)
                         If cb.SelectedIndex = -1 Then
                             d.Value = Nothing
                         Else
@@ -1377,7 +1372,7 @@ Public Class Dialog
                         End If
 
                         'Case "LST"            'Listbox
-                        '    Dim lb As ListBox = directcast(d.Control(fForm), ListBox)
+                        '    Dim lb As ListBox = directcast(d.Control, ListBox)
                         '    If lb.SelectedIndex = -1 Then
                         '        d.Value = Nothing
                         '    Else
@@ -1390,14 +1385,14 @@ Public Class Dialog
                         Else
                             s = "YN"
                         End If
-                        If DirectCast(d.Control(fForm), CheckBox).Checked Then
+                        If DirectCast(d.Control, CheckBox).Checked Then
                             d.Value = Mid(s, 1, 1)
                         Else
                             d.Value = Mid(s, 2, 1)
                         End If
 
                     Case "T", "P", "L", "B"
-                        s = d.Control(fForm).Text
+                        s = d.Control.Text
                         d.Value = s
                         d.BusDateRelated = False
                         If s <> "" Then
@@ -1480,7 +1475,7 @@ Public Class Dialog
                             End Select
                         End If
                     Case Else
-                        d.Value = d.Control(fForm).Text
+                        d.Value = d.Control.Text
                 End Select
             End If
             CheckField(Field)
@@ -1493,13 +1488,12 @@ Public Class Dialog
         Dim s As String
         Dim a As ActionDefn
         Dim d As DialogField = dlogf.Item(Field)
-        Dim con As Control = d.Control(fForm)
+        Dim con As Control = d.Control
         Dim sComp1 As String
         Dim sComp2 As String = ""
         Dim b As Boolean
 
         s = GetString(d.Value)
-        d.Errs.Clear()
 
         If Not d.LinkedFields Is Nothing Then
             Dim dx As DialogField
@@ -1512,8 +1506,8 @@ Public Class Dialog
                     Select Case dx.Field.DisplayType
                         Case "D"   ' dropdown list
                             If dx.Field.FillProcess <> "" Then
-                                If Not dx.Field.LinkColumn Is Nothing Then
-                                    cb = DirectCast(dx.Control(fForm), ComboBox)
+                                If dx.Field.LinkColumn <> "" Then
+                                    cb = DirectCast(dx.Control, ComboBox)
                                     save = cb.Text
                                     dt = CType(cb.DataSource, DataTable)
                                     dt.DefaultView.RowFilter = dx.Field.LinkColumn & " = '" & s & "'"
@@ -1529,16 +1523,18 @@ Public Class Dialog
                                 i = 9 ' link to user data not yet supported!!
                             End If
 
-                        Case "REL"
+                        Case "REL", "H"
                             dx.Value = GetFieldValue(ss)
-                            CheckField(ss)
-
+                            If ss <> Field Then
+                                CheckField(ss)
+                            End If
                     End Select
                 End If
             Next
         End If
 
         If d.Field.DisplayType <> "REL" And d.Field.DisplayType <> "H" Then
+            d.Errs.Clear()
 
             If s = "" Then
                 If d.Field.Required Then
@@ -1772,28 +1768,27 @@ Public Class Dialog
 
     Private Sub SetErrorState(ByVal d As DialogField)
         Dim b As Boolean
-        Dim lab As Label = d.Label(fForm)
-        Dim con As Control = d.Control(fForm)
+        Dim sField As String = d.ErrField
+        Dim dErr As DialogField = dlogf.Item(sField)
+        Dim lab As Label = dErr.Label()
+        Dim con As Control = d.Control
 
         If d.Errs.count = 0 Then
+            If fForm.ToolTip1.GetToolTip(con) <> "" Then
+                fForm.ToolTip1.SetToolTip(con, "")
+            End If
+
             b = True
-            Dim dd As DialogField
-            For Each obj As DictionaryEntry In dlogf.Values
-                dd = CType(obj.Value, DialogField)
-                If dd.Name <> d.Name And dd.LabelIndex = d.LabelIndex _
-                And dd.Field.Container = d.Field.Container And dd.Errs.count > 0 Then
+            For Each dd As DialogField In dlogf
+                If dd.ErrField = sField And dd.Errs.count > 0 Then
                     b = False
                     Exit For
                 End If
             Next
             If b Then
                 lab.ForeColor = Color.Blue
-                If fForm.ToolTip1.GetToolTip(con) <> "" Then
-                    fForm.ToolTip1.SetToolTip(con, "")
-                End If
             Else
                 lab.ForeColor = Color.Red
-                fForm.ToolTip1.SetToolTip(con, d.Errs.Message)
             End If
         Else
             lab.ForeColor = Color.Red
@@ -1814,7 +1809,7 @@ Public Class Dialog
                 Exit Sub
             End If
 
-            Dim cc As Control = d.Control(fForm)
+            Dim cc As Control = d.Control
 
             If sText <> "" Then
                 d.Text = sText
@@ -2054,8 +2049,7 @@ Public Class Dialog
         Dim s As String
         Dim d As DialogField
 
-        For Each o As DictionaryEntry In dlogf.Values
-            d = CType(o.Value, DialogField)
+        For Each d In dlogf
             If d.Field.DisplayType <> "H" Then
                 Obj = GetFieldValue(d.Name)
                 If d.Field.Label = "" Then

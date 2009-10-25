@@ -12,7 +12,7 @@ Imports System.Runtime.InteropServices
 <Assembly: AssemblyDescription("RoboShell Application Runner")> 
 <Assembly: AssemblyCompany("Tolbeam Pty Limited")> 
 <Assembly: AssemblyProduct("RoboShell")> 
-<Assembly: AssemblyCopyright("Russell Hansen, Tolbeam Pty Limited")> 
+<Assembly: AssemblyCopyright("Russell Hansen")> 
 <Assembly: AssemblyTrademark("")> 
 <Assembly: CLSCompliant(True)> 
 
@@ -29,6 +29,6 @@ Imports System.Runtime.InteropServices
 ' You can specify all the values or you can default the Build and Revision Numbers 
 ' by using the '*' as shown below:
 
-<Assembly: AssemblyVersion("1.6.*")> 
+<Assembly: AssemblyVersion("1.7.*")> 
 
 <Assembly: ComVisibleAttribute(False)> 

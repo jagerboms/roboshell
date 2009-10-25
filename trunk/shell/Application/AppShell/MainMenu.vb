@@ -84,7 +84,6 @@ Public Class MainMenu
         If sStartUp = "" Then
             MainMenu()
         Else
-            Publics.BatchMode = True
             Dim p As New ShellProcess(sStartUp, Me, Nothing)
             Me.Close()
         End If
@@ -128,7 +127,7 @@ Public Class MainMenu
         Me.Text = s
         If Publics.IsMDI Then
             Me.IsMdiContainer = True
-            Publics.MDIParent = Me
+            Publics.MDIParent = CType(Me, Form)
         Else
             'Me.Width = 100
             Me.MaximizeBox = False

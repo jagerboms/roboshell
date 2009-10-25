@@ -161,12 +161,48 @@ End Class
 Public Class GridDefn
     Inherits ObjectDefn
 
-    Public Title As String
-    Public DataParameter As String
-    Public ColourColumn As String
-    Public TitleParameter() As String
-    Public HelpPage As String
-    Public StateFilter As Boolean = False
+    Private sTitle As String
+    Private sDataParameter As String
+    Private sColourColumn As String
+    Private sTitleParameter() As String
+    Private sHelpPage As String
+    Private bStateFilter As Boolean = False
+
+    Public ReadOnly Property Title() As String
+        Get
+            Title = sTitle
+        End Get
+    End Property
+
+    Public ReadOnly Property DataParameter() As String
+        Get
+            DataParameter = sDataParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property ColourColumn() As String
+        Get
+            ColourColumn = sColourColumn
+        End Get
+    End Property
+
+    Public ReadOnly Property TitleParameter() As String()
+        Get
+            TitleParameter = sTitleParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property HelpPage() As String
+        Get
+            HelpPage = sHelpPage
+        End Get
+    End Property
+
+    Public ReadOnly Property StateFilter() As Boolean
+        Get
+            StateFilter = bStateFilter
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -179,17 +215,17 @@ Public Class GridDefn
     Public Overrides Sub SetProperty(ByVal Name As String, ByVal Value As Object)
         Select Case LCase(Name)
             Case "title"
-                Title = GetString(Value)
+                sTitle = GetString(Value)
             Case "dataparameter"
-                DataParameter = GetString(Value)
+                sDataParameter = GetString(Value)
             Case "colourcolumn"
-                ColourColumn = GetString(Value)
+                sColourColumn = GetString(Value)
             Case "statefilter"
-                StateFilter = True
+                bStateFilter = True
             Case "titleparameters"
-                TitleParameter = Split(GetString(Value), "||")
+                sTitleParameter = Split(GetString(Value), "||")
             Case "helppage"
-                HelpPage = GetString(Value)
+                sHelpPage = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by Grid object")
         End Select
@@ -276,7 +312,7 @@ Public Class GridForm
                 SetTitle()
 
                 If Not Publics.MDIParent Is Nothing Then
-                    fForm.MdiParent = CType(Publics.MDIParent, Form)
+                    fForm.MdiParent = Publics.MDIParent
                 End If
                 InitialiseGrid()
                 InitialiseAction()

@@ -252,7 +252,7 @@ Public Class Tree
                 fForm.Name = sDefn.Title
                 SetTitle()
                 If Not Publics.MDIParent Is Nothing Then
-                    fForm.MdiParent = CType(Publics.MDIParent, Form)
+                    fForm.MdiParent = Publics.MDIParent
                 End If
                 InitialiseAction()
                 Publics.SetFormPosition(CType(fForm, Form), sDefn.Name)
