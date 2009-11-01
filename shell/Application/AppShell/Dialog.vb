@@ -224,7 +224,7 @@ Public Class Dialog
 
     Private sDefn As DialogDefn
     Private fForm As DialogForm
-    Private bLoading As Boolean = False
+    Private bLoading As Boolean
     Private bInit As Boolean = True
     Private bEditing As Boolean = True
     Private WithEvents mAction As ShellMenu
@@ -233,7 +233,7 @@ Public Class Dialog
     Private FirstField As String
     Private LocalParms As New ShellParameters
     Private dlogf As New DialogFields
-    Private bCloseState As Boolean = False
+    Private bCloseState As Boolean
     Private sTitle As String
     Private TxtHeight As Integer
 

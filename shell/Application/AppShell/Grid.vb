@@ -166,7 +166,7 @@ Public Class GridDefn
     Private sColourColumn As String
     Private sTitleParameter() As String
     Private sHelpPage As String
-    Private bStateFilter As Boolean = False
+    Private bStateFilter As Boolean
 
     Public ReadOnly Property Title() As String
         Get
@@ -235,18 +235,31 @@ End Class
 Public Class GridForm
     Inherits ShellObject
 
-    Public rowforecolour As System.Drawing.Color = Color.Black
-    Public rowbackcolour As System.Drawing.Color = Color.White
+    Private oforecolour As System.Drawing.Color = Color.Black
+    Private obackcolour As System.Drawing.Color = Color.White
 
     Private sDefn As GridDefn
     Private fForm As Grid
 
     Private bFilter As Boolean = True
     Private WithEvents mAction As ShellMenu
-    Private bFormOff As Boolean = False
+    Private bFormOff As Boolean
     Private ActionStates As New ActionStates
-    Private bCloseState As Boolean = False
+    Private bCloseState As Boolean
     Private sTitle As String
+
+    Public ReadOnly Property rowforecolour() As System.Drawing.Color
+        Get
+            rowforecolour = oforecolour
+        End Get
+    End Property
+
+    Public ReadOnly Property rowbackcolour() As System.Drawing.Color
+        Get
+            rowbackcolour = obackcolour
+        End Get
+    End Property
+
 
     Public Sub New(ByVal Defn As GridDefn)
         Dim r As ObjectRegister
@@ -400,10 +413,10 @@ Public Class GridForm
         End If
     End Sub
 
-    Public Overrides Sub Listener(ByVal Params As ShellParameters)
+    Public Overrides Sub Listener(ByVal Parms As ShellParameters)
         Dim b As Boolean
         Try
-            If Not Params Is Nothing Then
+            If Not Parms Is Nothing Then
 
                 'find grid dataset row with a primary key equal to input parameter data 
 
@@ -412,7 +425,7 @@ Public Class GridForm
                     For Each f As Field In sDefn.Fields
                         If f.Primary Then
                             If GetString(r.Item(f.Name)) <> _
-                                            GetString(Params.Item(f.Name).Value) Then
+                                            GetString(Parms.Item(f.Name).Value) Then
                                 b = False
                                 Exit For
                             End If
@@ -424,7 +437,7 @@ Public Class GridForm
                     If b Then
                         fForm.Grid1.SuspendLayout()
                         r.BeginEdit()
-                        For Each p As shellParameter In Params
+                        For Each p As shellParameter In Parms
                             Try
                                 r.Item(p.Name) = p.Value
                             Catch
@@ -455,11 +468,11 @@ Public Class GridForm
         End If
     End Sub
 
-    Public Overrides Sub MsgOut(ByVal Msgs As ShellMessages)
+    Public Overrides Sub MsgOut(ByVal msgs As ShellMessages)
         Dim s As String = ""
         Dim b As Boolean = False
 
-        For Each ms As ShellMessage In Msgs
+        For Each ms As ShellMessage In msgs
             s &= ms.Message & vbCrLf
             If ms.Type = "U" And Not b Then
                 ProcessAction("Refresh")
@@ -558,19 +571,19 @@ Public Class GridForm
         Dim cs As shellProperties
         Dim c As ShellProperty
 
-        rowforecolour = Color.Black
-        rowbackcolour = Color.White
+        oforecolour = Color.Black
+        obackcolour = Color.White
         sColumn = sDefn.ColourColumn
         If sColumn <> "" Then
             cs = sDefn.Properties
             If Not cs Is Nothing Then
                 c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "cl")
                 If Not c Is Nothing Then
-                    rowforecolour = System.Drawing.Color.FromName(CType(c.Value, String))
+                    oforecolour = System.Drawing.Color.FromName(CType(c.Value, String))
                 End If
                 c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "cb")
                 If Not c Is Nothing Then
-                    rowbackcolour = System.Drawing.Color.FromName(CType(c.Value, String))
+                    obackcolour = System.Drawing.Color.FromName(CType(c.Value, String))
                 End If
             End If
         End If

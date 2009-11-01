@@ -90,33 +90,6 @@ Public Class MainMenu
         Publics.AboutClose()
     End Sub
 
-    Public Sub Suspend(ByVal Mode As Boolean)
-    End Sub
-
-    Public Sub Progress(ByVal Progress As Integer)
-    End Sub
-
-    Public Sub ProcessError(ByVal es As ShellMessages)
-        Dim s As String = ""
-        For Each e As Exception In es
-            s &= e.Message & vbCrLf
-        Next
-        Publics.MessageOut(s)
-    End Sub
-
-    Public Sub MsgOut(ByVal msgs As ShellMessages)
-        Dim s As String = ""
-        Dim sType As String = "I"
-
-        For Each ss As ShellMessage In msgs
-            s &= ss.Message & vbCrLf
-            If ss.Type = "E" Then
-                sType = "E"
-            End If
-        Next
-        Publics.MessageOut(s, sType)
-    End Sub
-
     Private Sub MainMenu()
         Me.Cursor = Cursors.WaitCursor
         Me.Icon = Publics.ShellIcon

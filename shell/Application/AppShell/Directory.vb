@@ -4,11 +4,41 @@ Option Strict On
 Public Class DirectoryDefn
     Inherits ObjectDefn
 
-    Public Title As String
-    Public TitleParameter() As String
-    Public InitialDirectory As String = "c:\"
-    Public OutputParameter As String
-    Public AllowNew As Boolean = True
+    Private sTitle As String
+    Private sTitleParameter() As String
+    Private sInitialDirectory As String = "c:\"
+    Private sOutputParameter As String
+    Private bAllowNew As Boolean = True
+
+    Public ReadOnly Property Title() As String
+        Get
+            Title = sTitle
+        End Get
+    End Property
+
+    Public ReadOnly Property TitleParameter() As String()
+        Get
+            TitleParameter = sTitleParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property InitialDirectory() As String
+        Get
+            InitialDirectory = sInitialDirectory
+        End Get
+    End Property
+
+    Public ReadOnly Property OutputParameter() As String
+        Get
+            OutputParameter = sOutputParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property AllowNew() As Boolean
+        Get
+            AllowNew = bAllowNew
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -22,15 +52,15 @@ Public Class DirectoryDefn
 
         Select Case Name
             Case "Title"
-                Title = GetString(Value)
+                sTitle = GetString(Value)
             Case "TitleParameters"
-                TitleParameter = Split(GetString(Value), "||")
+                sTitleParameter = Split(GetString(Value), "||")
             Case "InitialDirectory"
-                InitialDirectory = GetString(Value)
+                sInitialDirectory = GetString(Value)
             Case "OutputParameter"
-                OutputParameter = GetString(Value)
+                sOutputParameter = GetString(Value)
             Case "AllowNew"
-                AllowNew = CType(IIf(GetString(Value) = "Y", True, False), Boolean)
+                bAllowNew = CType(IIf(GetString(Value) = "Y", True, False), Boolean)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by Directory object")
         End Select

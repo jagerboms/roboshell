@@ -4,11 +4,41 @@ Option Strict On
 Public Class MailToDefn
     Inherits ObjectDefn
 
-    Public email As String
-    Public cc As String
-    Public bcc As String
-    Public subject As String
-    Public body As String
+    Private sEmail As String
+    Private sCC As String
+    Private sBCC As String
+    Private sSubject As String
+    Private sBody As String
+
+    Public ReadOnly Property email() As String
+        Get
+            email = sEmail
+        End Get
+    End Property
+
+    Public ReadOnly Property cc() As String
+        Get
+            cc = sCC
+        End Get
+    End Property
+
+    Public ReadOnly Property bcc() As String
+        Get
+            bcc = sBCC
+        End Get
+    End Property
+
+    Public ReadOnly Property subject() As String
+        Get
+            subject = sSubject
+        End Get
+    End Property
+
+    Public ReadOnly Property body() As String
+        Get
+            body = sBody
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -22,15 +52,15 @@ Public Class MailToDefn
 
         Select Case Name
             Case "email"
-                email = GetString(Value)
+                sEmail = GetString(Value)
             Case "cc"
-                cc = GetString(Value)
+                sCC = GetString(Value)
             Case "bcc"
-                bcc = GetString(Value)
+                sBCC = GetString(Value)
             Case "subject"
-                subject = GetString(Value)
+                sSubject = GetString(Value)
             Case "body"
-                body = GetString(Value)
+                sBody = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by MailTo object")
         End Select

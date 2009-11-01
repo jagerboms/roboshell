@@ -2,10 +2,46 @@ Option Explicit On
 Option Strict On
 
 Public Class ShellProperty
-    Public Name As String
-    Public Type As String
-    Public UserSpecific As Boolean
-    Public Value As Object
+    Private sName As String
+    Private sType As String
+    Private bUserSpecific As Boolean
+    Private oValue As Object
+
+    Public Property Name() As String
+        Get
+            Name = sName
+        End Get
+        Set(ByVal v As String)
+            sName = v
+        End Set
+    End Property
+
+    Public Property Type() As String
+        Get
+            Type = sType
+        End Get
+        Set(ByVal v As String)
+            sType = v
+        End Set
+    End Property
+
+    Public Property UserSpecific() As Boolean
+        Get
+            UserSpecific = bUserSpecific
+        End Get
+        Set(ByVal v As Boolean)
+            bUserSpecific = v
+        End Set
+    End Property
+
+    Public Property Value() As Object
+        Get
+            Value = oValue
+        End Get
+        Set(ByVal v As Object)
+            oValue = v
+        End Set
+    End Property
 End Class
 
 Public Class shellProperties
@@ -14,10 +50,10 @@ Public Class shellProperties
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New PropertyEnum(Keys, Values)
+        Return New PropertyCollection(Keys, Values)
     End Function
 
-    Public Class PropertyEnum
+    Public Class PropertyCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Hashtable
         Dim Keys() As String

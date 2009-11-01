@@ -4,9 +4,27 @@ Option Explicit On
 
 Public Class ShellProcess
     Private sProcessKey As String
-    Public oOwner As Object              '' close / parameters / errors
-    Public Success As Boolean = False
-    Public WithEvents ProcessObject As ShellObject
+    Private ooOwner As Object              '' close / parameters / errors
+    Private bSuccess As Boolean = False
+    Private WithEvents ProcessObject As ShellObject
+
+    Public Property oOwner() As Object
+        Get
+            oOwner = ooOwner
+        End Get
+        Set(ByVal v As Object)
+            ooOwner = v
+        End Set
+    End Property
+
+    Public Property Success() As Boolean
+        Get
+            Success = bSuccess
+        End Get
+        Set(ByVal v As Boolean)
+            bSuccess = v
+        End Set
+    End Property
 
     Public Sub New(ByVal ProcessKey As String, ByVal Owner As Object, _
                                                 ByVal parms As ShellParameters)

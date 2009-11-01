@@ -2,14 +2,71 @@ Option Explicit On
 'Option Strict On
 
 Public MustInherit Class ObjectDefn
-    Public Name As String
-    Public Parms As New ShellParameters
-    Public Fields As New Fields
-    Public Actions As New ActionDefns
-    Public Validations As New ValidationDefns
-    Public Properties As New shellProperties
+    Private sName As String
+    Private oParms As New ShellParameters
+    Private oFields As New Fields
+    Private oActions As New ActionDefns
+    Private oValidations As New ValidationDefns
+    Private oProperties As New shellProperties
+
+    Public Property Name() As String
+        Get
+            Name = sName
+        End Get
+        Set(ByVal v As String)
+            sName = v
+        End Set
+    End Property
+
+    Public Property Parms() As ShellParameters
+        Get
+            Parms = oParms
+        End Get
+        Set(ByVal v As ShellParameters)
+            oParms = v
+        End Set
+    End Property
+
+    Public Property Fields() As Fields
+        Get
+            Fields = oFields
+        End Get
+        Set(ByVal v As Fields)
+            oFields = v
+        End Set
+    End Property
+
+    Public Property Actions() As ActionDefns
+        Get
+            Actions = oActions
+        End Get
+        Set(ByVal v As ActionDefns)
+            oActions = v
+        End Set
+    End Property
+
+    Public Property Validations() As ValidationDefns
+        Get
+            Validations = oValidations
+        End Get
+        Set(ByVal v As ValidationDefns)
+            oValidations = v
+        End Set
+    End Property
+
+    Public Property Properties() As shellProperties
+        Get
+            Properties = oProperties
+        End Get
+        Set(ByVal v As shellProperties)
+            oProperties = v
+        End Set
+    End Property
 
     Public MustOverride Sub SetProperty(ByVal Name As String, ByVal Value As Object)
+
+    Protected Sub New()
+    End Sub
 End Class
 
 Public Class ObjectDefns
@@ -18,10 +75,10 @@ Public Class ObjectDefns
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ObjectsEnum(Keys, Values)
+        Return New ObjectsCollection(Keys, Values)
     End Function
 
-    Public Class ObjectsEnum
+    Public Class ObjectsCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Hashtable
         Dim Keys() As String
@@ -87,15 +144,60 @@ Public Class ObjectDefns
 End Class
 
 Public MustInherit Class ShellObject
+    Private sObjectType As String
+    Private sRegKey As String
+    Private oMessages As New ShellMessages
+    Private oParent As Object
+    Private bSuccessFlag As Boolean = True
+    Private MyParams As New ShellParameters
+
     Public Event ExitOkay()
     Public Event ExitFail()
-    Public ObjectType As String
-    Public RegKey As String
-    Public Messages As New ShellMessages
-    Public Parent As Object
-    Public SuccessFlag As Boolean = True
 
-    Private MyParams As New ShellParameters
+    Public Property ObjectType() As String
+        Get
+            ObjectType = sObjectType
+        End Get
+        Set(ByVal v As String)
+            sObjectType = v
+        End Set
+    End Property
+
+    Public Property RegKey() As String
+        Get
+            RegKey = sRegKey
+        End Get
+        Set(ByVal v As String)
+            sRegKey = v
+        End Set
+    End Property
+
+    Public Property Messages() As ShellMessages
+        Get
+            Messages = oMessages
+        End Get
+        Set(ByVal v As ShellMessages)
+            oMessages = v
+        End Set
+    End Property
+
+    Public Property Parent() As Object
+        Get
+            Parent = oParent
+        End Get
+        Set(ByVal v As Object)
+            oParent = v
+        End Set
+    End Property
+
+    Public Property SuccessFlag() As Boolean
+        Get
+            SuccessFlag = bSuccessFlag
+        End Get
+        Set(ByVal v As Boolean)
+            bSuccessFlag = v
+        End Set
+    End Property
 
     Public ReadOnly Property parms() As ShellParameters
         Get
@@ -134,5 +236,8 @@ Public MustInherit Class ShellObject
 
     Friend Sub OnExitFail()
         RaiseEvent ExitFail()
+    End Sub
+
+    Protected Sub New()
     End Sub
 End Class

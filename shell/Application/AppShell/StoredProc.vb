@@ -5,12 +5,48 @@ Imports System.Data.SqlClient
 Public Class StoredProcDefn
     Inherits ObjectDefn
 
-    Public ProcName As String
-    Public ConnectKey As String
-    Public Mode As String
-    Public DataParameter() As String
-    Public Messages As Boolean = True
-    Public TimeOut As Integer = 0
+    Private sProcName As String
+    Private sConnectKey As String
+    Private sMode As String
+    Private sDataParameter() As String
+    Private bMessages As Boolean = True
+    Private iTimeOut As Integer
+
+    Public ReadOnly Property ProcName() As String
+        Get
+            ProcName = sProcName
+        End Get
+    End Property
+
+    Public ReadOnly Property ConnectKey() As String
+        Get
+            ConnectKey = sConnectKey
+        End Get
+    End Property
+
+    Public ReadOnly Property Mode() As String
+        Get
+            Mode = sMode
+        End Get
+    End Property
+
+    Public ReadOnly Property DataParameter() As String()
+        Get
+            DataParameter = sDataParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property Messages() As Boolean
+        Get
+            Messages = bMessages
+        End Get
+    End Property
+
+    Public ReadOnly Property TimeOut() As Integer
+        Get
+            TimeOut = iTimeOut
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -24,17 +60,17 @@ Public Class StoredProcDefn
 
         Select Case LCase(Name)
             Case "procname"
-                ProcName = GetString(Value)
+                sProcName = GetString(Value)
             Case "connectkey"
-                ConnectKey = GetString(Value)
+                sConnectKey = GetString(Value)
             Case "mode"
-                Mode = GetString(Value)
+                sMode = GetString(Value)
             Case "dataparameter"
-                DataParameter = Split(GetString(Value), "||")
+                sDataParameter = Split(GetString(Value), "||")
             Case "messages"
-                Messages = (GetString(Value) = "Y")
+                bMessages = (GetString(Value) = "Y")
             Case "timeout"
-                TimeOut = CInt(Value)
+                iTimeOut = CInt(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by Stored Procedure object")
         End Select

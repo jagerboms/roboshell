@@ -148,10 +148,10 @@ Public Class DialogFields
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActStatesEnum(Values)
+        Return New ActStatesCollection(Values)
     End Function
 
-    Public Class ActStatesEnum
+    Public Class ActStatesCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Collection
         Private EnumeratorPosition As Integer = 0

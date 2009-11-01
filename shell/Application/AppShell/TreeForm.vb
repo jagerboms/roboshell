@@ -131,17 +131,83 @@ End Class
 Public Class TreeDefn
     Inherits ObjectDefn
 
-    Public Title As String
-    Public DataParameter As String
-    Public KeyColumn As String
-    Public DescriptionColumn As String
-    Public ParentColumn As String
-    Public TypeColumn As String
-    Public ColourColumn As String
-    Public DefaultImage As String
-    Public TitleParameter() As String
-    Public RefreshTree As Boolean = False
-    Public HelpPage As String
+    Private sTitle As String
+    Private sDataParameter As String
+    Private sKeyColumn As String
+    Private sDescriptionColumn As String
+    Private sParentColumn As String
+    Private sTypeColumn As String
+    Private sColourColumn As String
+    Private sDefaultImage As String
+    Private sTitleParameter() As String
+    Private bRefreshTree As Boolean = False
+    Private sHelpPage As String
+
+    Public ReadOnly Property Title() As String
+        Get
+            Title = sTitle
+        End Get
+    End Property
+
+    Public ReadOnly Property DataParameter() As String
+        Get
+            DataParameter = sDataParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property KeyColumn() As String
+        Get
+            KeyColumn = sKeyColumn
+        End Get
+    End Property
+
+    Public ReadOnly Property DescriptionColumn() As String
+        Get
+            DescriptionColumn = sDescriptionColumn
+        End Get
+    End Property
+
+    Public ReadOnly Property ParentColumn() As String
+        Get
+            ParentColumn = sParentColumn
+        End Get
+    End Property
+
+    Public ReadOnly Property TypeColumn() As String
+        Get
+            TypeColumn = sTypeColumn
+        End Get
+    End Property
+
+    Public ReadOnly Property ColourColumn() As String
+        Get
+            ColourColumn = sColourColumn
+        End Get
+    End Property
+
+    Public ReadOnly Property DefaultImage() As String
+        Get
+            DefaultImage = sDefaultImage
+        End Get
+    End Property
+
+    Public ReadOnly Property TitleParameter() As String()
+        Get
+            TitleParameter = sTitleParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property RefreshTree() As Boolean
+        Get
+            RefreshTree = bRefreshTree
+        End Get
+    End Property
+
+    Public ReadOnly Property HelpPage() As String
+        Get
+            HelpPage = sHelpPage
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -154,28 +220,28 @@ Public Class TreeDefn
     Public Overrides Sub SetProperty(ByVal Name As String, ByVal Value As Object)
         Select Case LCase(Name)
             Case "title"
-                Title = GetString(Value)
+                sTitle = GetString(Value)
             Case "dataparameter"
-                DataParameter = GetString(Value)
+                sDataParameter = GetString(Value)
             Case "keycolumn"
-                KeyColumn = GetString(Value)
+                sKeyColumn = GetString(Value)
             Case "descriptioncolumn"
-                DescriptionColumn = GetString(Value)
+                sDescriptionColumn = GetString(Value)
             Case "parentcolumn"
-                ParentColumn = GetString(Value)
+                sParentColumn = GetString(Value)
             Case "typecolumn"
-                TypeColumn = GetString(Value)
+                sTypeColumn = GetString(Value)
             Case "colourcolumn"
-                ColourColumn = GetString(Value)
+                sColourColumn = GetString(Value)
             Case "defaultimage"
-                DefaultImage = GetString(Value)
+                sDefaultImage = GetString(Value)
             Case "titleparameters"
-                TitleParameter = Split(GetString(Value), "||")
+                sTitleParameter = Split(GetString(Value), "||")
             Case "helppage"
-                HelpPage = GetString(Value)
+                sHelpPage = GetString(Value)
             Case "refreshtree"
                 If GetString(Value) = "Y" Then
-                    RefreshTree = True
+                    bRefreshTree = True
                 End If
             Case Else
                 Publics.MessageOut(Name & " property is not supported by Tree object")
@@ -188,7 +254,6 @@ Public Class Tree
 
     Private sDefn As TreeDefn
     Private fForm As TreeForm
-    Dim ToolBar As System.Windows.Forms.ToolStrip
     Private WithEvents mAction As ShellMenu
     Private Images() As String
     Private bFormOff As Boolean = False
@@ -349,11 +414,11 @@ Public Class Tree
         End If
     End Sub
 
-    Public Overrides Sub MsgOut(ByVal Msgs As ShellMessages)
+    Public Overrides Sub MsgOut(ByVal msgs As ShellMessages)
         Dim s As String = ""
         Dim b As Boolean = False
 
-        For Each ms As ShellMessage In Msgs
+        For Each ms As ShellMessage In msgs
             s &= ms.Message & vbCrLf
             If ms.Type = "U" And Not b Then
                 ProcessAction("Refresh")

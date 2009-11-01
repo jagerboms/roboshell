@@ -2,12 +2,24 @@ Option Explicit On
 Option Strict On
 
 Public Class ShellMessage
-    Public Type As String = "E"
-    Public Message As String = ""
+    Private sType As String = "E"
+    Private sMessage As String = ""
+
+    Public ReadOnly Property Type() As String
+        Get
+            Type = sType
+        End Get
+    End Property
+
+    Public ReadOnly Property Message() As String
+        Get
+            Message = sMessage
+        End Get
+    End Property
 
     Public Sub New(ByVal sType As String, ByVal Msg As String)
-        Type = sType
-        Message = Msg
+        sType = sType
+        sMessage = Msg
     End Sub
 End Class
 
@@ -17,10 +29,10 @@ Public Class ShellMessages
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ShellMsgEnum(Values)
+        Return New ShellMsgCollection(Values)
     End Function
 
-    Public Class ShellMsgEnum
+    Public Class ShellMsgCollection
         Implements IEnumerable, IEnumerator
         Private Values As New ArrayList
         Private EnumeratorPosition As Integer = -1
@@ -53,7 +65,7 @@ Public Class ShellMessages
     End Class
 #End Region
 
-    Public Values As New ArrayList
+    Private Values As New ArrayList
 
     Public Function Add(ByVal Type As String, ByVal Msg As String) As ShellMessage
         Dim it As New ShellMessage(Type, Msg)

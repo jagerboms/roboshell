@@ -5,14 +5,14 @@ Public Class ActionDefn
     Private sName As String
     Private sProcess As String
     Private bEnabled As Boolean = True
-    Private bChecked As Boolean = False
-    Private bRowBased As Boolean = False
-    Private bValidate As Boolean = False
+    Private bChecked As Boolean
+    Private bRowBased As Boolean
+    Private bValidate As Boolean
     Private sCloseObject As String
     Private oRules As ActionRuleDefns
     Private oProcesses As ActionProcessRuleDefns
-    Private bIsDblClick As Boolean = False
-    Private bIsButton As Boolean = False
+    Private bIsDblClick As Boolean
+    Private bIsButton As Boolean
     Private sImageFile As String
     Private sToolTip As String
     Private sMenuType As String    ' (N)one, (I)tem, (S)ub menu
@@ -240,10 +240,10 @@ Public Class ActionDefns
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActionsEnum(Keys, Values)
+        Return New ActionsCollection(Keys, Values)
     End Function
 
-    Public Class ActionsEnum
+    Public Class ActionsCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Hashtable
         Dim Keys() As String
@@ -262,7 +262,7 @@ Public Class ActionDefns
         Public Overridable Overloads ReadOnly Property Current() As Object _
                                                     Implements IEnumerator.Current
             Get
-                Return CType(Values.Item(Keys(EnumeratorPosition)), ActionDefn)
+                Return Values.Item(Keys(EnumeratorPosition))
             End Get
         End Property
 
@@ -301,16 +301,29 @@ Public Class ActionDefns
                     ByVal CloseObj As String, _
                     ByVal IsDblClick As Boolean, _
                     ByVal ImageFile As String, _
+                    ByVal ToolTip As String) As ActionDefn
+
+        Return Add(Name, Process, Validate, RowBased, CloseObj, IsDblClick, _
+                ImageFile, ToolTip, "N", "", "", Nothing, 0, "", "y||n", "", "")
+    End Function
+
+    Public Function Add(ByVal Name As String, _
+                    ByVal Process As String, _
+                    ByVal Validate As Boolean, _
+                    ByVal RowBased As Boolean, _
+                    ByVal CloseObj As String, _
+                    ByVal IsDblClick As Boolean, _
+                    ByVal ImageFile As String, _
                     ByVal ToolTip As String, _
-                    Optional ByVal MenuType As String = "N", _
-                    Optional ByVal MenuText As String = "", _
-                    Optional ByVal Parent As String = "", _
-                    Optional ByVal Rules As ActionRuleDefns = Nothing, _
-                    Optional ByVal KeyCode As Integer = 0, _
-                    Optional ByVal FieldName As String = "", _
-                    Optional ByVal ProcessField As String = "y||n", _
-                    Optional ByVal LinkedParam As String = "", _
-                    Optional ByVal ParamValue As String = "") As ActionDefn
+                    ByVal MenuType As String, _
+                    ByVal MenuText As String, _
+                    ByVal Parent As String, _
+                    ByVal Rules As ActionRuleDefns, _
+                    ByVal KeyCode As Integer, _
+                    ByVal FieldName As String, _
+                    ByVal ProcessField As String, _
+                    ByVal LinkedParam As String, _
+                    ByVal ParamValue As String) As ActionDefn
         Dim parm As New ActionDefn
 
         With parm
@@ -429,10 +442,10 @@ Public Class ActionRules
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActionRulesEnum(Values)
+        Return New ActionRulesCollection(Values)
     End Function
 
-    Public Class ActionRulesEnum
+    Public Class ActionRulesCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Collection
         Private EnumeratorPosition As Integer = 0
@@ -519,10 +532,10 @@ Public Class ActionRuleDefns
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActionRulesEnum(Values)
+        Return New ActionRulesCollection(Values)
     End Function
 
-    Public Class ActionRulesEnum
+    Public Class ActionRulesCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Collection
         Private EnumeratorPosition As Integer = 0
@@ -566,8 +579,8 @@ Public Class ActionRuleDefns
         Dim rule As New ActionRule
 
         For Each obj As Object In Values
-            If CType(obj, ActionRuleDefn).Name = Name Then
-                parm = CType(obj, ActionRuleDefn)
+            parm = CType(obj, ActionRuleDefn)
+            If parm.Name = Name Then
                 Exit For
             End If
         Next
@@ -623,13 +636,13 @@ Public Class ActionProcessRuleDefns
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActProcRulesEnum(Values)
+        Return New ActProcRulesCollection(Values)
     End Function
 
-    Public Class ActProcRulesEnum
+    Public Class ActProcRulesCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Collection
-        Private EnumeratorPosition As Integer = 0
+        Private EnumeratorPosition As Integer
 
         Public Sub New(ByVal col As Collection)
             Values = col
@@ -708,13 +721,13 @@ Public Class ActionStates
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActStatesEnum(Values)
+        Return New ActStatesCollection(Values)
     End Function
 
-    Public Class ActStatesEnum
+    Public Class ActStatesCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Collection
-        Private EnumeratorPosition As Integer = 0
+        Private EnumeratorPosition As Integer
 
         Public Sub New(ByVal col As Collection)
             Values = col

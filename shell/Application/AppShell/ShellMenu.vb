@@ -26,11 +26,20 @@ Public Class ShellMenu
     Inherits ShellObject
 
     Private Actions As ActionDefns
-    Public fForm As System.Windows.Forms.Form
-
-    Public Event Action(ByVal sAction As String)
     Private ts As System.Windows.Forms.ToolStrip
     Private MyParams As New ShellParameters
+    Private oForm As System.Windows.Forms.Form
+
+    Public Property fForm() As System.Windows.Forms.Form
+        Get
+            fForm = oForm
+        End Get
+        Set(ByVal v As System.Windows.Forms.Form)
+            oForm = v
+        End Set
+    End Property
+
+    Public Event Action(ByVal sAction As String)
 
     Public Sub New(ByVal defn As ObjectDefn)
         Actions = defn.Actions
@@ -84,7 +93,7 @@ Public Class ShellMenu
                     Else
                         a.Checked = False
                     End If
-                    If chk <> a.Checked and Not ts Is Nothing Then
+                    If chk <> a.Checked And Not ts Is Nothing Then
                         b = GetButton(a)
                         If chk Then
                             b.CheckState = CheckState.Unchecked
@@ -148,7 +157,7 @@ Public Class ShellMenu
                                 si.Image = Publics.GetImage(sa.ImageFile)
                             Catch
                             End Try
-                            AddHandler si.Click, AddressOf Menu_Click
+                            AddHandler si.Click, AddressOf MenuClick
                             ddb.DropDownItems.Add(si)
                         End If
                     Next
@@ -166,7 +175,7 @@ Public Class ShellMenu
                         .ImageTransparentColor = System.Drawing.Color.Magenta
 
                         .ToolTipText = a.ToolTip
-                        AddHandler .Click, AddressOf Button_Click
+                        AddHandler .Click, AddressOf ButtonClick
                         .Tag = a
                         If a.LinkedParam <> "" Then
                             .CheckOnClick = True
@@ -203,12 +212,12 @@ Public Class ShellMenu
         Return Nothing
     End Function
 
-    Private Sub Button_Click(ByVal sender As System.Object, ByVal e As System.EventArgs)
+    Private Sub ButtonClick(ByVal sender As System.Object, ByVal e As System.EventArgs)
         Dim b As ToolStripButton = CType(sender, ToolStripButton)
         RaiseEvent Action(b.Name)
     End Sub
 
-    Protected Sub Menu_Click(ByVal sender As System.Object, ByVal e As System.EventArgs)
+    Protected Sub MenuClick(ByVal sender As System.Object, ByVal e As System.EventArgs)
         Dim m As ToolStripMenuItem = CType(sender, ToolStripMenuItem)
         RaiseEvent Action(m.Name)
     End Sub

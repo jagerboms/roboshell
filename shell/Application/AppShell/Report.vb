@@ -7,10 +7,34 @@ Imports System.Drawing.Printing
 Public Class ReportDefn
     Inherits ObjectDefn
 
-    Public DataParameter As String
-    Public Title As String
-    Public PrintPreview As Boolean
-    Public DefaultPrinter As Boolean
+    Private sDataParameter As String
+    Private sTitle As String
+    Private bPrintPreview As Boolean
+    Private bDefaultPrinter As Boolean
+
+    Public ReadOnly Property DataParameter() As String
+        Get
+            DataParameter = sDataParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property Title() As String
+        Get
+            Title = sTitle
+        End Get
+    End Property
+
+    Public ReadOnly Property PrintPreview() As Boolean
+        Get
+            PrintPreview = bPrintPreview
+        End Get
+    End Property
+
+    Public ReadOnly Property DefaultPrinter() As Boolean
+        Get
+            DefaultPrinter = bDefaultPrinter
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -24,13 +48,13 @@ Public Class ReportDefn
 
         Select Case Name
             Case "Title"
-                Title = GetString(Value)
+                sTitle = GetString(Value)
             Case "PrintPreview"
-                PrintPreview = (GetString(Value) = "Y")
+                bPrintPreview = (GetString(Value) = "Y")
             Case "DefaultPrinter"
-                DefaultPrinter = (GetString(Value) = "Y")
+                bDefaultPrinter = (GetString(Value) = "Y")
             Case "DataParameter"
-                DataParameter = GetString(Value)
+                sDataParameter = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by Report object")
         End Select
