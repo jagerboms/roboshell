@@ -6,9 +6,27 @@ Imports System.Threading 'Namespace for Thread class
 Public Class CallOutDefn
     Inherits ObjectDefn
 
-    Public ClassName As String
-    Public MethodName As String
-    Public ReturnParamName As String
+    Private sClassName As String
+    Private sMethodName As String
+    Private sReturnParamName As String
+
+    Public ReadOnly Property ClassName() As String
+        Get
+            ClassName = sClassName
+        End Get
+    End Property
+
+    Public ReadOnly Property MethodName() As String
+        Get
+            MethodName = sMethodName
+        End Get
+    End Property
+
+    Public ReadOnly Property ReturnParamName() As String
+        Get
+            ReturnParamName = sReturnParamName
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -22,11 +40,11 @@ Public Class CallOutDefn
 
         Select Case Name
             Case "ClassName"
-                ClassName = GetString(Value)
+                sClassName = GetString(Value)
             Case "MethodName"
-                MethodName = GetString(Value)
+                sMethodName = GetString(Value)
             Case "ReturnParamName"
-                ReturnParamName = GetString(Value)
+                sReturnParamName = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by CallOut object")
         End Select

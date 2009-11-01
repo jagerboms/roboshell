@@ -2,6 +2,16 @@ Option Explicit On
 Option Strict On
 
 Public Class ValidationDefn
+    Private sName As String
+    Private sFieldName As String
+    Private sAssociatedFields() As String
+    Private sProcess As String
+    Private oType As ValidationType
+    Private oValueType As ValType
+    Private oValue As Object
+    Private sMessage As String
+    Private sReturnParameter As String
+
     Enum ValidationType
         EQ = 0  ' equal
         NE = 1  ' not equal
@@ -17,26 +27,98 @@ Public Class ValidationDefn
         Field = 2
     End Enum
 
-    Public Name As String
-    Public FieldName As String
-    Public AssociatedFields() As String
-    Public Process As String
-    Public Type As ValidationType
-    Public ValueType As ValType
-    Public Value As Object
-    Public Message As String
-    Public ReturnParameter As String
+    Public Property Name() As String
+        Get
+            Name = sName
+        End Get
+        Set(ByVal v As String)
+            sName = v
+        End Set
+    End Property
+
+    Public Property FieldName() As String
+        Get
+            FieldName = sFieldName
+        End Get
+        Set(ByVal v As String)
+            sFieldName = v
+        End Set
+    End Property
+
+    Public Property AssociatedFields() As String()
+        Get
+            AssociatedFields = sAssociatedFields
+        End Get
+        Set(ByVal v As String())
+            sAssociatedFields = v
+        End Set
+    End Property
+
+    Public Property Process() As String
+        Get
+            Process = sProcess
+        End Get
+        Set(ByVal v As String)
+            sProcess = v
+        End Set
+    End Property
+
+    Public Property Type() As ValidationType
+        Get
+            Type = oType
+        End Get
+        Set(ByVal v As ValidationType)
+            oType = v
+        End Set
+    End Property
+
+    Public Property ValueType() As ValType
+        Get
+            ValueType = oValueType
+        End Get
+        Set(ByVal v As ValType)
+            oValueType = v
+        End Set
+    End Property
+
+    Public Property Value() As Object
+        Get
+            Value = oValue
+        End Get
+        Set(ByVal v As Object)
+            oValue = v
+        End Set
+    End Property
+
+    Public Property Message() As String
+        Get
+            Message = sMessage
+        End Get
+        Set(ByVal v As String)
+            sMessage = v
+        End Set
+    End Property
+
+    Public Property ReturnParameter() As String
+        Get
+            ReturnParameter = sReturnParameter
+        End Get
+        Set(ByVal v As String)
+            sReturnParameter = v
+        End Set
+    End Property
 End Class
 
 Public Class ValidationDefns
+
 #Region "enumerator implementation"
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActionsEnum(Keys, Values)
+        Return New ActionsCollection(Keys, Values)
     End Function
 
-    Public Class ActionsEnum
+    Public Class ActionsCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Hashtable
         Dim Keys() As String

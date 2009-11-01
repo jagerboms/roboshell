@@ -7,8 +7,26 @@ Imports System.Diagnostics
 
 Public Class MonitorForm
     Inherits System.Windows.Forms.Form
-    Friend oOwner As Monitor
-    Friend DblClkKey As String
+    Private ooOwner As Monitor
+    Private sDblClkKey As String
+
+    Friend Property oOwner() As Monitor
+        Get
+            oOwner = ooOwner
+        End Get
+        Set(ByVal v As Monitor)
+            ooOwner = v
+        End Set
+    End Property
+
+    Friend Property DblClkKey() As String
+        Get
+            DblClkKey = sDblClkKey
+        End Get
+        Set(ByVal v As String)
+            sDblClkKey = v
+        End Set
+    End Property
 
 #Region " Windows Form Designer generated code "
 
@@ -105,11 +123,41 @@ End Class
 Public Class MonitorDefn
     Inherits ObjectDefn
 
-    Public Title As String
-    Public ServiceParameter As String
-    Public ServerParameter As String
-    Public TitleParameter() As String
-    Public HelpPage As String
+    Private sTitle As String
+    Private sServiceParameter As String
+    Private sServerParameter As String
+    Private sTitleParameter() As String
+    Private sHelpPage As String
+
+    Public ReadOnly Property Title() As String
+        Get
+            Title = sTitle
+        End Get
+    End Property
+
+    Public ReadOnly Property ServiceParameter() As String
+        Get
+            ServiceParameter = sServiceParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property ServerParameter() As String
+        Get
+            ServerParameter = sServerParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property TitleParameter() As String()
+        Get
+            TitleParameter = sTitleParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property HelpPage() As String
+        Get
+            HelpPage = sHelpPage
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -141,15 +189,15 @@ Public Class MonitorDefn
     Public Overrides Sub SetProperty(ByVal Name As String, ByVal Value As Object)
         Select Case Name
             Case "Title"
-                Title = GetString(Value)
+                sTitle = GetString(Value)
             Case "ServiceParameter"
-                ServiceParameter = GetString(Value)
+                sServiceParameter = GetString(Value)
             Case "ServerParameter"
-                ServerParameter = GetString(Value)
+                sServerParameter = GetString(Value)
             Case "TitleParameters"
-                TitleParameter = Split(GetString(Value), "||")
+                sTitleParameter = Split(GetString(Value), "||")
             Case "HelpPage"
-                HelpPage = GetString(Value)
+                sHelpPage = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by Monitor object")
         End Select
@@ -161,7 +209,6 @@ Public Class Monitor
 
     Private sDefn As MonitorDefn
     Private fForm As MonitorForm
-    Dim ToolBar As System.Windows.Forms.ToolStrip
     Private WithEvents mAction As ShellMenu
     Private FileSyn As FileSync
     Private objService As System.ServiceProcess.ServiceController
@@ -271,11 +318,11 @@ Public Class Monitor
         End If
     End Sub
 
-    Public Overrides Sub MsgOut(ByVal Msgs As ShellMessages)
+    Public Overrides Sub MsgOut(ByVal msgs As ShellMessages)
         Dim s As String = ""
         Dim b As Boolean = False
 
-        For Each ms As ShellMessage In Msgs
+        For Each ms As ShellMessage In msgs
             s &= ms.Message & vbCrLf
             If ms.Type = "U" And Not b Then
                 ProcessAction("Refresh")
@@ -439,8 +486,16 @@ Public Class FileSync
     Private bPauseUpdates As Boolean
     Private lFilePos As Long
     Private lstBox As System.Windows.Forms.ListBox
+    Private sFileName As String
 
-    Public FileName As String
+    Public Property FileName() As String
+        Get
+            FileName = sFileName
+        End Get
+        Set(ByVal v As String)
+            sFileName = v
+        End Set
+    End Property
 
     Public Sub New(ByVal lst As System.Windows.Forms.ListBox)
         lstBox = lst
@@ -461,8 +516,8 @@ Public Class FileSync
     Public Sub DoSync()
         lFilePos = 0
         bPauseUpdates = False
-        Dim sFile As String = FileName.Substring(FileName.LastIndexOf("\") + 1)
-        Dim sPath As String = FileName.Substring(0, FileName.LastIndexOf("\"))
+        Dim sFile As String = sFileName.Substring(sFileName.LastIndexOf("\") + 1)
+        Dim sPath As String = sFileName.Substring(0, sFileName.LastIndexOf("\"))
 
         LogWatcher.Path = sPath
         LogWatcher.NotifyFilter = NotifyFilters.LastWrite
@@ -484,7 +539,7 @@ Public Class FileSync
             Exit Sub
         End If
 
-        If FileName = "" Then
+        If sFileName = "" Then
             Exit Sub
         End If
 
@@ -493,7 +548,7 @@ Public Class FileSync
         End If
         bDoing = True
 
-        Dim fs As New FileStream(FileName, FileMode.Open, _
+        Dim fs As New FileStream(sFileName, FileMode.Open, _
                                     FileAccess.Read, FileShare.ReadWrite)
 
         ' if there has not been any change in filelength exit.

@@ -2,8 +2,26 @@ Option Explicit On
 Option Strict On
 
 Public Class ObjectRegister
-    Public Key As String
-    Public pObject As ShellObject
+    Private sKey As String
+    Private oObject As ShellObject
+
+    Public Property Key() As String
+        Get
+            Key = sKey
+        End Get
+        Set(ByVal v As String)
+            sKey = v
+        End Set
+    End Property
+
+    Public Property pObject() As ShellObject
+        Get
+            pObject = oObject
+        End Get
+        Set(ByVal v As ShellObject)
+            oObject = v
+        End Set
+    End Property
 End Class
 
 Public Class ObjectRegisters
@@ -12,10 +30,10 @@ Public Class ObjectRegisters
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ObjRegEnum(Values)
+        Return New ObjRegCollection(Values)
     End Function
 
-    Public Class ObjRegEnum
+    Public Class ObjRegCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Collection
         Private EnumeratorPosition As Integer = 0
@@ -50,7 +68,16 @@ Public Class ObjectRegisters
 
     Private Values As New Collection
     Private iCount As Integer = 1
-    Public Listen As New Listeners
+    Private oListen As New Listeners
+
+    Public Property Listen() As Listeners
+        Get
+            Listen = oListen
+        End Get
+        Set(ByVal v As Listeners)
+            oListen = v
+        End Set
+    End Property
 
     Public Sub Add(ByVal Parm As ObjectRegister)
         Values.Add(Parm, Parm.Key)
@@ -93,10 +120,46 @@ Public Class ObjectRegisters
 End Class
 
 Public Class Listener
-    Public Index As Integer
-    Public Key As String
-    Public KeyType As String
-    Public ObjectKey As String
+    Private iIndex As Integer
+    Private sKey As String
+    Private sKeyType As String
+    Private sObjectKey As String
+
+    Public Property Index() As Integer
+        Get
+            Index = iIndex
+        End Get
+        Set(ByVal v As Integer)
+            iIndex = v
+        End Set
+    End Property
+
+    Public Property Key() As String
+        Get
+            Key = sKey
+        End Get
+        Set(ByVal v As String)
+            sKey = v
+        End Set
+    End Property
+
+    Public Property KeyType() As String
+        Get
+            KeyType = sKeyType
+        End Get
+        Set(ByVal v As String)
+            sKeyType = v
+        End Set
+    End Property
+
+    Public Property ObjectKey() As String
+        Get
+            ObjectKey = sObjectKey
+        End Get
+        Set(ByVal v As String)
+            sObjectKey = v
+        End Set
+    End Property
 End Class
 
 Public Class Listeners
@@ -105,10 +168,10 @@ Public Class Listeners
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ListenerEnum(Values)
+        Return New ListenerCollection(Values)
     End Function
 
-    Public Class ListenerEnum
+    Public Class ListenerCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Collection
         Private EnumeratorPosition As Integer = 0

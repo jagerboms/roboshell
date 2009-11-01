@@ -9,16 +9,94 @@ Option Strict On
 ' the ShellParameters in the order they were created.
 
 Public Class shellParameter
-    Public Index As Integer
-    Public Name As String
-    Public Input As Boolean = True
-    Public Output As Boolean = True
-    Public Width As Integer = 0
-    Public ValueType As System.Data.DbType = DbType.Object
+    Private iIndex As Integer
+    Private sName As String
+    Private bInput As Boolean = True
+    Private bOutput As Boolean = True
+    Private iWidth As Integer = 0
+    Private oValueType As System.Data.DbType = DbType.Object
     Private oValue As Object
-    Public Initialised As Boolean = False
-    Public InputText As String
-    Public Field As String
+    Private bInitialised As Boolean = False
+    Private sInputText As String
+    Private sField As String
+
+    Public Property Index() As Integer
+        Get
+            Index = iIndex
+        End Get
+        Set(ByVal v As Integer)
+            iIndex = v
+        End Set
+    End Property
+
+    Public Property Name() As String
+        Get
+            Name = sName
+        End Get
+        Set(ByVal v As String)
+            sName = v
+        End Set
+    End Property
+
+    Public Property Input() As Boolean
+        Get
+            Input = bInput
+        End Get
+        Set(ByVal v As Boolean)
+            bInput = v
+        End Set
+    End Property
+
+    Public Property Output() As Boolean
+        Get
+            Output = bOutput
+        End Get
+        Set(ByVal v As Boolean)
+            bOutput = v
+        End Set
+    End Property
+
+    Public Property Width() As Integer
+        Get
+            Width = iWidth
+        End Get
+        Set(ByVal v As Integer)
+            iWidth = v
+        End Set
+    End Property
+
+    Public Property ValueType() As System.Data.DbType
+        Get
+            ValueType = oValueType
+        End Get
+        Set(ByVal v As System.Data.DbType)
+            oValueType = v
+        End Set
+    End Property
+
+    Public ReadOnly Property Initialised() As Boolean
+        Get
+            Initialised = bInitialised
+        End Get
+    End Property
+
+    Public Property InputText() As String
+        Get
+            InputText = sInputText
+        End Get
+        Set(ByVal v As String)
+            sInputText = v
+        End Set
+    End Property
+
+    Public Property Field() As String
+        Get
+            Field = sField
+        End Get
+        Set(ByVal v As String)
+            sField = v
+        End Set
+    End Property
 
     Public Property Value() As Object
         Get
@@ -26,7 +104,7 @@ Public Class shellParameter
         End Get
         Set(ByVal Value As Object)
             oValue = Value
-            Initialised = True
+            bInitialised = True
         End Set
     End Property
 End Class
@@ -37,10 +115,10 @@ Public Class ShellParameters
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ShellParametersEnum(Keys, Values)
+        Return New ShellParametersCollection(Keys, Values)
     End Function
 
-    Public Class ShellParametersEnum
+    Public Class ShellParametersCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Hashtable
         Dim Keys() As String
@@ -90,11 +168,16 @@ Public Class ShellParameters
     End Sub
 
     Public Function Add(ByVal sName As String, _
+                    ByVal Value As Object) As shellParameter
+        Return Add(sName, Value, DbType.String, True, True, 0)
+    End Function
+
+    Public Function Add(ByVal sName As String, _
                     ByVal Value As Object, _
-                    Optional ByVal ValueType As System.Data.DbType = DbType.String, _
-                    Optional ByVal Input As Boolean = True, _
-                    Optional ByVal Output As Boolean = True, _
-                    Optional ByVal Width As Integer = 0) As shellParameter
+                    ByVal ValueType As System.Data.DbType, _
+                    ByVal Input As Boolean, _
+                    ByVal Output As Boolean, _
+                    ByVal Width As Integer) As shellParameter
         Dim parm As New shellParameter
 
         With parm

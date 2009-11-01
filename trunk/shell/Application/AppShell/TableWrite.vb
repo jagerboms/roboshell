@@ -4,10 +4,34 @@ Option Strict On
 Public Class TableWriteDefn
     Inherits ObjectDefn
 
-    Public DataParameter As String
-    Public PreWriteProcess As String = ""
-    Public WriteProcess As String
-    Public PostWriteProcess As String = ""
+    Private sDataParameter As String
+    Private sPreWriteProcess As String = ""
+    Private sWriteProcess As String
+    Private sPostWriteProcess As String = ""
+
+    Public ReadOnly Property DataParameter() As String
+        Get
+            DataParameter = sDataParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property PreWriteProcess() As String
+        Get
+            PreWriteProcess = sPreWriteProcess
+        End Get
+    End Property
+
+    Public ReadOnly Property WriteProcess() As String
+        Get
+            WriteProcess = sWriteProcess
+        End Get
+    End Property
+
+    Public ReadOnly Property PostWriteProcess() As String
+        Get
+            PostWriteProcess = sPostWriteProcess
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -20,13 +44,13 @@ Public Class TableWriteDefn
     Public Overrides Sub SetProperty(ByVal Name As String, ByVal Value As Object)
         Select Case Name
             Case "DataParameter"
-                DataParameter = GetString(Value)
+                sDataParameter = GetString(Value)
             Case "PreWriteProcess"
-                PreWriteProcess = GetString(Value)
+                sPreWriteProcess = GetString(Value)
             Case "WriteProcess"
-                WriteProcess = GetString(Value)
+                sWriteProcess = GetString(Value)
             Case "PostWriteProcess"
-                PostWriteProcess = GetString(Value)
+                sPostWriteProcess = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by TableWrite object")
         End Select
@@ -37,7 +61,7 @@ Public Class TableWrite
     Inherits ShellObject
 
     Private sDefn As TableWriteDefn
-    Private bUpdateParameters As Boolean = False
+    Private bUpdateParameters As Boolean
 
     Public Sub New(ByVal Defn As TableWriteDefn)
         sDefn = Defn

@@ -4,11 +4,41 @@ Option Strict On
 Public Class CallAsmDefn
     Inherits ObjectDefn
 
-    Public LibraryName As String
-    Public ClassName As String
-    Public MethodName As String
-    Public ObjectParamName As String
-    Public ReturnParamName As String
+    Private sLibraryName As String
+    Private sClassName As String
+    Private sMethodName As String
+    Private sObjectParamName As String
+    Private sReturnParamName As String
+
+    Public ReadOnly Property LibraryName() As String
+        Get
+            LibraryName = sLibraryName
+        End Get
+    End Property
+
+    Public ReadOnly Property ClassName() As String
+        Get
+            ClassName = sClassName
+        End Get
+    End Property
+
+    Public ReadOnly Property MethodName() As String
+        Get
+            MethodName = sMethodName
+        End Get
+    End Property
+
+    Public ReadOnly Property ObjectParamName() As String
+        Get
+            ObjectParamName = sObjectParamName
+        End Get
+    End Property
+
+    Public ReadOnly Property ReturnParamName() As String
+        Get
+            ReturnParamName = sReturnParamName
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -22,15 +52,15 @@ Public Class CallAsmDefn
 
         Select Case Name
             Case "LibraryName"
-                LibraryName = GetString(Value)
+                sLibraryName = GetString(Value)
             Case "ClassName"
-                ClassName = GetString(Value)
+                sClassName = GetString(Value)
             Case "MethodName"
-                MethodName = GetString(Value)
+                sMethodName = GetString(Value)
             Case "ObjectParamName"
-                ObjectParamName = GetString(Value)
+                sObjectParamName = GetString(Value)
             Case "ReturnParamName"
-                ReturnParamName = GetString(Value)
+                sReturnParamName = GetString(Value)
             Case Else
                 MsgBox(Name & " property is not supported by Call Assembly object")
         End Select
@@ -41,7 +71,6 @@ Public Class CallAsm
     Inherits ShellObject
 
     Private sDefn As CallAsmDefn
-    Private obj As Object
 
     Public Sub New(ByVal Defn As CallAsmDefn)
         sDefn = Defn

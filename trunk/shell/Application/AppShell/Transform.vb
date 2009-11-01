@@ -28,9 +28,27 @@ Option Strict On
 Public Class TransformDefn
     Inherits ObjectDefn
 
-    Public ChoiceParameter As String
-    Public ProcessParameter As String
-    Public NotFoundProcess As String
+    Private sChoiceParameter As String
+    Private sProcessParameter As String
+    Private sNotFoundProcess As String
+
+    Public ReadOnly Property ChoiceParameter() As String
+        Get
+            ChoiceParameter = sChoiceParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property ProcessParameter() As String
+        Get
+            ProcessParameter = sProcessParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property NotFoundProcess() As String
+        Get
+            NotFoundProcess = sNotFoundProcess
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         MyBase.Name = sName
@@ -43,11 +61,11 @@ Public Class TransformDefn
     Public Overrides Sub SetProperty(ByVal Name As String, ByVal Value As Object)
         Select Case Name
             Case "ChoiceParameter"
-                ChoiceParameter = GetString(Value)
+                sChoiceParameter = GetString(Value)
             Case "NotFoundProcess"
-                NotFoundProcess = GetString(Value)
+                sNotFoundProcess = GetString(Value)
             Case "ProcessParameter"
-                ProcessParameter = GetString(Value)
+                sProcessParameter = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by Transform object")
         End Select

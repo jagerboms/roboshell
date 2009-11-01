@@ -1,3 +1,5 @@
+Option Explicit On
+Option Strict On
 'ProcessDefn / ProcessDefns
 ' contains the definitions of the processes able to be run in the system
 ' ProcessDefns is the collection class for ProcessDefn
@@ -5,18 +7,88 @@
 ' the ProcessDefn.Name as the key.
 ' Using Foreach ... next on the ProcessDefns class returns 
 ' the ProcessDefn in the order they were created.
-Option Explicit On 
-Option Strict On
 
 Public Class ProcessDefn
-    Public Name As String
-    Public SuccessProcess As String
-    Public FailProcess As String
-    Public ConfirmMsg As String
-    Public UpdateParent As Boolean
-    Public SuspendParent As Boolean
-    Public ObjectKey As String
-    Public LoadVariables As Boolean
+    Private sName As String
+    Private sSuccessProcess As String
+    Private sFailProcess As String
+    Private sConfirmMsg As String
+    Private bUpdateParent As Boolean
+    Private bSuspendParent As Boolean
+    Private sObjectKey As String
+    Private bLoadVariables As Boolean
+
+    Public Property Name() As String
+        Get
+            Name = sName
+        End Get
+        Set(ByVal v As String)
+            sName = v
+        End Set
+    End Property
+
+    Public Property SuccessProcess() As String
+        Get
+            SuccessProcess = sSuccessProcess
+        End Get
+        Set(ByVal v As String)
+            sSuccessProcess = v
+        End Set
+    End Property
+
+    Public Property FailProcess() As String
+        Get
+            FailProcess = sFailProcess
+        End Get
+        Set(ByVal v As String)
+            sFailProcess = v
+        End Set
+    End Property
+
+    Public Property ConfirmMsg() As String
+        Get
+            ConfirmMsg = sConfirmMsg
+        End Get
+        Set(ByVal v As String)
+            sConfirmMsg = v
+        End Set
+    End Property
+
+    Public Property UpdateParent() As Boolean
+        Get
+            UpdateParent = bUpdateParent
+        End Get
+        Set(ByVal v As Boolean)
+            bUpdateParent = v
+        End Set
+    End Property
+
+    Public Property SuspendParent() As Boolean
+        Get
+            SuspendParent = bSuspendParent
+        End Get
+        Set(ByVal v As Boolean)
+            bSuspendParent = v
+        End Set
+    End Property
+
+    Public Property ObjectKey() As String
+        Get
+            ObjectKey = sObjectKey
+        End Get
+        Set(ByVal v As String)
+            sObjectKey = v
+        End Set
+    End Property
+
+    Public Property LoadVariables() As Boolean
+        Get
+            LoadVariables = bLoadVariables
+        End Get
+        Set(ByVal v As Boolean)
+            bLoadVariables = v
+        End Set
+    End Property
 End Class
 
 Public Class ProcessDefns
@@ -25,10 +97,10 @@ Public Class ProcessDefns
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ProcessesDefnEnum(Keys, Values)
+        Return New ProcessesDefnCollection(Keys, Values)
     End Function
 
-    Public Class ProcessesDefnEnum
+    Public Class ProcessesDefnCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Hashtable
         Dim Keys() As String

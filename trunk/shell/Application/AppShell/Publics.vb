@@ -17,7 +17,7 @@ Module Publics
     Private Missing As Image
     Private PropParm As ShellParameters
     Private oIcon As System.Drawing.Icon
-    Private bMDI As Boolean = False
+    Private bMDI As Boolean
     Private bInit As Boolean = True
     Private dBusiness As Date = Nothing
     Private oParent As Form

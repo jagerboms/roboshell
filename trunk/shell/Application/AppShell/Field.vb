@@ -4,61 +4,274 @@ Option Strict On
 ' used for defining the column of a grid or inputs on a dialog.
 
 Public Class Field
-    Public Index As Integer
-    Public Name As String
-    Public Label As String
-    Public Width As Integer
-    Public DisplayType As String    ' (T)ext, (L)abel, (D)(r)opdown list, (C)heck, (H)idden ...
-    Public FillProcess As String    ' process
-    Public TextField As String      '    to
-    Public ValueField As String     '       fill
-    Public LinkColumn As String     '          dropdown
-    Public LinkField As String      '             list
-    Public DisplayWidth As Integer
-    Public DisplayHeight As Integer
-    Public Format As String
-    Public Primary As Boolean
-    Public Justify As String        ' (L)eft, (R)ight, (C)enter or (D)efault
-    Public Enabled As Boolean = True
-    Public Required As Boolean
-    Public Locate As String         ' (N)ormal, new (C)olumn, new (G)roup, (P)air
-    Public ValueType As System.Data.DbType
-    Public HelpText As String
-    Public LabelWidth As Integer
-    Public Decimals As Integer = -1
-    Public NullText As String = ""
-    Public Container As String = ""
-    'Public Value As Object
-    'Public eValidationType As colValidationType
-    'Public lHelpContext As Long
+    Private iIndex As Integer
+    Private sName As String
+    Private sLabel As String
+    Private iWidth As Integer
+    Private sDisplayType As String    ' (T)ext, (L)abel, (D)(r)opdown list, (C)heck, (H)idden ...
+    Private sFillProcess As String    ' process
+    Private sTextField As String      '    to
+    Private sValueField As String     '       fill
+    Private sLinkColumn As String     '          dropdown
+    Private sLinkField As String      '             list
+    Private iDisplayWidth As Integer
+    Private iDisplayHeight As Integer
+    Private sFormat As String
+    Private bPrimary As Boolean
+    Private sJustify As String        ' (L)eft, (R)ight, (C)enter or (D)efault
+    Private bEnabled As Boolean = True
+    Private bRequired As Boolean
+    Private sLocate As String         ' (N)ormal, new (C)olumn, new (G)roup, (P)air
+    Private oValueType As System.Data.DbType
+    Private sHelpText As String
+    Private iLabelWidth As Integer
+    Private iDecimals As Integer = -1
+    Private sNullText As String = ""
+    Private sContainer As String = ""
+
+    Public Property Index() As Integer
+        Get
+            Index = iIndex
+        End Get
+        Set(ByVal v As Integer)
+            iIndex = v
+        End Set
+    End Property
+
+    Public Property Name() As String
+        Get
+            Name = sName
+        End Get
+        Set(ByVal v As String)
+            sName = v
+        End Set
+    End Property
+
+    Public Property Label() As String
+        Get
+            Label = sLabel
+        End Get
+        Set(ByVal v As String)
+            sLabel = v
+        End Set
+    End Property
+
+    Public Property Width() As Integer
+        Get
+            Width = iWidth
+        End Get
+        Set(ByVal v As Integer)
+            iWidth = v
+        End Set
+    End Property
+
+    Public Property DisplayType() As String
+        Get
+            DisplayType = sDisplayType
+        End Get
+        Set(ByVal v As String)
+            sDisplayType = v
+        End Set
+    End Property
+
+    Public Property FillProcess() As String
+        Get
+            FillProcess = sFillProcess
+        End Get
+        Set(ByVal v As String)
+            sFillProcess = v
+        End Set
+    End Property
+
+    Public Property TextField() As String
+        Get
+            TextField = sTextField
+        End Get
+        Set(ByVal v As String)
+            sTextField = v
+        End Set
+    End Property
+
+    Public Property ValueField() As String
+        Get
+            ValueField = sValueField
+        End Get
+        Set(ByVal v As String)
+            sValueField = v
+        End Set
+    End Property
+
+    Public Property LinkColumn() As String
+        Get
+            LinkColumn = sLinkColumn
+        End Get
+        Set(ByVal v As String)
+            sLinkColumn = v
+        End Set
+    End Property
+
+    Public Property LinkField() As String
+        Get
+            LinkField = sLinkField
+        End Get
+        Set(ByVal v As String)
+            sLinkField = v
+        End Set
+    End Property
+
+    Public Property DisplayWidth() As Integer
+        Get
+            DisplayWidth = iDisplayWidth
+        End Get
+        Set(ByVal v As Integer)
+            iDisplayWidth = v
+        End Set
+    End Property
+
+    Public Property DisplayHeight() As Integer
+        Get
+            DisplayHeight = iDisplayHeight
+        End Get
+        Set(ByVal v As Integer)
+            iDisplayHeight = v
+        End Set
+    End Property
+
+    Public Property Format() As String
+        Get
+            Format = sFormat
+        End Get
+        Set(ByVal v As String)
+            sFormat = v
+        End Set
+    End Property
+
+    Public Property Primary() As Boolean
+        Get
+            Primary = bPrimary
+        End Get
+        Set(ByVal v As Boolean)
+            bPrimary = v
+        End Set
+    End Property
+
+    Public Property Justify() As String
+        Get
+            Justify = sJustify
+        End Get
+        Set(ByVal v As String)
+            sJustify = v
+        End Set
+    End Property
+
+    Public Property Enabled() As Boolean
+        Get
+            Enabled = bEnabled
+        End Get
+        Set(ByVal v As Boolean)
+            bEnabled = v
+        End Set
+    End Property
+
+    Public Property Required() As Boolean
+        Get
+            Required = bRequired
+        End Get
+        Set(ByVal v As Boolean)
+            bRequired = v
+        End Set
+    End Property
+
+    Public Property Locate() As String
+        Get
+            Locate = sLocate
+        End Get
+        Set(ByVal v As String)
+            sLocate = v
+        End Set
+    End Property
+
+    Public Property ValueType() As System.Data.DbType
+        Get
+            ValueType = oValueType
+        End Get
+        Set(ByVal v As System.Data.DbType)
+            oValueType = v
+        End Set
+    End Property
+
+    Public Property HelpText() As String
+        Get
+            HelpText = sHelpText
+        End Get
+        Set(ByVal v As String)
+            sHelpText = v
+        End Set
+    End Property
+
+    Public Property LabelWidth() As Integer
+        Get
+            LabelWidth = iLabelWidth
+        End Get
+        Set(ByVal v As Integer)
+            iLabelWidth = v
+        End Set
+    End Property
+
+    Public Property Decimals() As Integer
+        Get
+            Decimals = iDecimals
+        End Get
+        Set(ByVal v As Integer)
+            iDecimals = v
+        End Set
+    End Property
+
+    Public Property NullText() As String
+        Get
+            NullText = sNullText
+        End Get
+        Set(ByVal v As String)
+            sNullText = v
+        End Set
+    End Property
+
+    Public Property Container() As String
+        Get
+            Container = sContainer
+        End Get
+        Set(ByVal v As String)
+            sContainer = v
+        End Set
+    End Property
 
     Public Sub Clone(ByRef NewField As Field)
         NewField = New Field
         With NewField
-            .Index = Index
-            .Name = Name
-            .Label = Label
-            .Width = Width
-            .DisplayType = DisplayType
-            .FillProcess = FillProcess
-            .TextField = TextField
-            .ValueField = ValueField
-            .LinkColumn = LinkColumn
-            .LinkField = LinkField
-            .DisplayWidth = DisplayWidth
-            .DisplayHeight = DisplayHeight
-            .Format = Format
-            .Primary = Primary
-            .Justify = Justify
-            .Enabled = Enabled
-            .Required = Required
-            .Locate = Locate
-            .ValueType = ValueType
-            .HelpText = HelpText
-            .LabelWidth = LabelWidth
-            .Decimals = Decimals
-            .NullText = NullText
-            .Container = Container
+            .Index = iIndex
+            .Name = sName
+            .Label = sLabel
+            .Width = iWidth
+            .DisplayType = sDisplayType
+            .FillProcess = sFillProcess
+            .TextField = sTextField
+            .ValueField = sValueField
+            .LinkColumn = sLinkColumn
+            .LinkField = sLinkField
+            .DisplayWidth = iDisplayWidth
+            .DisplayHeight = iDisplayHeight
+            .Format = sFormat
+            .Primary = bPrimary
+            .Justify = sJustify
+            .Enabled = bEnabled
+            .Required = bRequired
+            .Locate = sLocate
+            .ValueType = oValueType
+            .HelpText = sHelpText
+            .LabelWidth = iLabelWidth
+            .Decimals = iDecimals
+            .NullText = sNullText
+            .Container = sContainer
         End With
     End Sub
 End Class
@@ -69,10 +282,10 @@ Public Class Fields
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New FieldsEnum(Keys, Values)
+        Return New FieldsCollection(Keys, Values)
     End Function
 
-    Public Class FieldsEnum
+    Public Class FieldsCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Hashtable
         Dim Keys() As String
@@ -198,6 +411,11 @@ Public Class Fields
 End Class
 
 Public Class FieldValidationDefn
+    Private sName As String
+    Private oType As ValidationType
+    Private oValue As Object
+    Private sFieldName As String
+
     ' EQ - equal
     ' NE - not equal
     ' NN - not null
@@ -216,10 +434,41 @@ Public Class FieldValidationDefn
         LE = 6
     End Enum
 
-    Public Name As String
-    Public Type As ValidationType
-    Public Value As Object
-    Public FieldName As String
+    Public Property Name() As String
+        Get
+            Name = sName
+        End Get
+        Set(ByVal v As String)
+            sName = v
+        End Set
+    End Property
+
+    Public Property Type() As ValidationType
+        Get
+            Type = oType
+        End Get
+        Set(ByVal v As ValidationType)
+            oType = ValidationType.EQ
+        End Set
+    End Property
+
+    Public Property Value() As Object
+        Get
+            Value = oValue
+        End Get
+        Set(ByVal v As Object)
+            oValue = v
+        End Set
+    End Property
+
+    Public Property FieldName() As String
+        Get
+            FieldName = sFieldName
+        End Get
+        Set(ByVal v As String)
+            sFieldName = v
+        End Set
+    End Property
 End Class
 
 Public Class FieldValidationDefns
@@ -228,10 +477,10 @@ Public Class FieldValidationDefns
     Implements IEnumerable
     Public Function GetEnumerator() As System.Collections.IEnumerator _
                     Implements System.Collections.IEnumerable.GetEnumerator
-        Return New FieldValidationEnum(Keys, Values)
+        Return New FieldValidationCollection(Keys, Values)
     End Function
 
-    Public Class FieldValidationEnum
+    Public Class FieldValidationCollection
         Implements IEnumerable, IEnumerator
         Private Values As New Hashtable
         Dim Keys() As String

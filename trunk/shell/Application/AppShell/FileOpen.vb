@@ -3,14 +3,55 @@ Option Strict On
 
 Public Class FileOpenDefn
     Inherits ObjectDefn
+    Private sTitle As String
+    Private sTitleParameter() As String
+    Private sInitialDirectory As String = "c:\"
+    Private sFilter As String = "txt files (*.txt)|*.txt|All files (*.*)|*.*"
+    Private iFilterIndex As Integer = 2
+    Private bMultiselect As Boolean = True
+    Private sOutputParameter As String
 
-    Public Title As String
-    Public TitleParameter() As String
-    Public InitialDirectory As String = "c:\"
-    Public Filter As String = "txt files (*.txt)|*.txt|All files (*.*)|*.*"
-    Public FilterIndex As Integer = 2
-    Public Multiselect As Boolean = True
-    Public OutputParameter As String
+    Public ReadOnly Property Title() As String
+        Get
+            Title = sTitle
+        End Get
+    End Property
+
+    Public ReadOnly Property TitleParameter() As String()
+        Get
+            TitleParameter = sTitleParameter
+        End Get
+    End Property
+
+    Public ReadOnly Property InitialDirectory() As String
+        Get
+            InitialDirectory = sInitialDirectory
+        End Get
+    End Property
+
+    Public ReadOnly Property Filter() As String
+        Get
+            Filter = sFilter
+        End Get
+    End Property
+
+    Public ReadOnly Property FilterIndex() As Integer
+        Get
+            FilterIndex = iFilterIndex
+        End Get
+    End Property
+
+    Public ReadOnly Property Multiselect() As Boolean
+        Get
+            Multiselect = bMultiselect
+        End Get
+    End Property
+
+    Public ReadOnly Property OutputParameter() As String
+        Get
+            OutputParameter = sOutputParameter
+        End Get
+    End Property
 
     Public Sub New(ByVal sName As String)
         Me.Name = sName
@@ -24,19 +65,19 @@ Public Class FileOpenDefn
 
         Select Case Name
             Case "Title"
-                Title = GetString(Value)
+                sTitle = GetString(Value)
             Case "TitleParameters"
-                TitleParameter = Split(GetString(Value), "||")
+                sTitleParameter = Split(GetString(Value), "||")
             Case "InitialDirectory"
-                InitialDirectory = GetString(Value)
+                sInitialDirectory = GetString(Value)
             Case "Filter"
-                Filter = GetString(Value)
+                sFilter = GetString(Value)
             Case "FilterIndex"
-                FilterIndex = CInt(GetString(Value))
+                iFilterIndex = CInt(GetString(Value))
             Case "Multiselect"
-                Multiselect = CType(IIf(GetString(Value) = "Y", True, False), Boolean)
+                bMultiselect = CType(IIf(GetString(Value) = "Y", True, False), Boolean)
             Case "OutputParameter"
-                OutputParameter = GetString(Value)
+                sOutputParameter = GetString(Value)
             Case Else
                 Publics.MessageOut(Name & " property is not supported by FileOpen object")
         End Select
