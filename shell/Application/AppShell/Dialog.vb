@@ -252,7 +252,7 @@ Public Class Dialog
             d = dlogf.Add(fld)
             For Each f As Field In sDefn.Fields
                 If f.LinkField = c.Name Then
-                    d.AddLinkedField(c.Name)
+                    d.AddLinkedField(f.Name)
                 End If
             Next
         Next
@@ -321,8 +321,10 @@ Public Class Dialog
                 Publics.SetFormPosition(CType(fForm, Form), sDefn.Name)
                 For Each d In dlogf
                     If d.Field.DisplayType = "D" Then
-                        CType(d.Control, ComboBox).SelectedIndex = -1
-                        CType(d.Control, ComboBox).SelectedIndex = -1
+                        If Not d.Control Is Nothing Then
+                            CType(d.Control, ComboBox).SelectedIndex = -1
+                            CType(d.Control, ComboBox).SelectedIndex = -1
+                        End If
                     End If
                 Next
 
@@ -601,25 +603,23 @@ Public Class Dialog
                     LoadContainer(d.Name, tb.Controls)
 
                 ElseIf UCase(d.Field.DisplayType) = "TBP" Then
-                    Dim s As String = ""
+                    Dim s As String
+                    s = d.Field.Label
                     If d.Field.LinkField <> "" Then
-                        Dim c2 As DialogField
-                        c2 = dlogf.Item(d.Field.LinkField)
-                        s = c2.Value.ToString
+                        s = GetString(GetFieldValue(d.Field.LinkField))
                     End If
-                    If s = "" Then
-                        s = d.Field.Label
+                    If s <> "" Then
+                        Dim tp As New TabPage(s)
+                        With tp
+                            .Name = d.Name
+                            .AutoScroll = True
+                            .BackColor = GetBackColour()
+                            .BorderStyle = BorderStyle.None
+                            .Margin = New System.Windows.Forms.Padding(0)
+                        End With
+                        ctrs.Add(tp)
+                        LoadContainer(d.Name, tp.Controls)
                     End If
-                    Dim tp As New TabPage(s)
-                    With tp
-                        .Name = d.Name
-                        .AutoScroll = True
-                        .BackColor = GetBackColour()
-                        .BorderStyle = BorderStyle.None
-                        .Margin = New System.Windows.Forms.Padding(0)
-                    End With
-                    ctrs.Add(tp)
-                    LoadContainer(d.Name, tp.Controls)
 
                 ElseIf d.Field.Locate <> "P" Or i = 0 Then
                     ct += ch + 5
@@ -774,12 +774,17 @@ Public Class Dialog
                             .DropDownStyle = ComboBoxStyle.DropDown
                             AddHandler .KeyUp, AddressOf Combo_KeyUp
                             If d.Field.FillProcess <> "" Then
+                                Dim dt As DataTable
                                 Dim p As New ShellProcess(d.Field.FillProcess, _
                                                                 Me, Me.parms)
                                 .DisplayMember = d.Field.TextField
                                 .ValueMember = d.Field.ValueField
-                                .DataSource = CType( _
-                                    Me.parms.Item(d.Field.FillProcess).Value, DataTable)
+                                dt = CType(Me.parms.Item(d.Field.FillProcess).Value, DataTable)
+                                If d.Field.LinkField <> "" Then
+                                    dt.DefaultView.RowFilter = d.Field.LinkColumn & " = '" _
+                                        & GetString(GetFieldValue(d.Field.LinkField)) & "'"
+                                End If
+                                .DataSource = dt
                             Else
                                 Dim ds As New ArrayList
                                 Dim s As String
@@ -796,6 +801,7 @@ Public Class Dialog
                                 .DisplayMember = "Text"
                                 .ValueMember = "Value"
                             End If
+
                         End With
                         AddControl(d, CType(cbox, Control), ctrs, ct, _
                               cl + cw, d.Field.DisplayWidth, -1)
