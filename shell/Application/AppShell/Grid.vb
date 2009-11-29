@@ -286,6 +286,7 @@ Public Class GridForm
                     If Not p Is Nothing Then
                         If p.Output Then
                             p.Value = GetGridValue(i, c.Name)
+                            p.InputText = GetString(p.Value)
                         End If
                     End If
                 Next
