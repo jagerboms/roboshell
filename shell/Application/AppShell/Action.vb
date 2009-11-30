@@ -576,15 +576,17 @@ Public Class ActionRuleDefns
                         ByVal Type As ActionRule.ValidationType, _
                         ByVal Value As Object) As ActionRuleDefn
         Dim parm As ActionRuleDefn = Nothing
+        Dim b As Boolean = True
         Dim rule As New ActionRule
 
         For Each obj As Object In Values
             parm = CType(obj, ActionRuleDefn)
             If parm.Name = Name Then
+                b = False
                 Exit For
             End If
         Next
-        If parm Is Nothing Then
+        If b Then
             parm = New ActionRuleDefn
             parm.Name = Name
             Values.Add(parm, Name)
