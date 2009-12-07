@@ -192,14 +192,33 @@ Public Class ShellMenu
     End Sub
 
     Public Sub Enable(ByVal Action As ActionDefn)
+        Dim s As ToolStripItem
+
         If Action.IsButton Or Action.MenuType = "S" Or Action.MenuType = "I" Then
-            For Each s As ToolStripItem In ts.Items
-                If s.Name = Action.Name Then
-                    s.Enabled = Action.Enabled
-                End If
-            Next
+            s = FindToolStripItem(ts.Items, Action.Name)
+            If Not s Is Nothing Then
+                s.Enabled = Action.Enabled
+            End If
         End If
     End Sub
+
+    Private Function FindToolStripItem(ByVal tsi As ToolStripItemCollection, ByVal Name As String) As ToolStripItem
+        Dim x As ToolStripItem
+
+        For Each s As ToolStripItem In tsi
+            If s.Name = Name Then
+                Return s
+            ElseIf TypeOf s Is System.Windows.Forms.ToolStripDropDownButton Then
+                Dim m As System.Windows.Forms.ToolStripDropDownButton
+                m = DirectCast(s, System.Windows.Forms.ToolStripDropDownButton)
+                x = FindToolStripItem(m.DropDownItems, Name)
+                If Not x Is Nothing Then
+                    Return x
+                End If
+            End If
+        Next
+        Return Nothing
+    End Function
 
     Private Function GetButton(ByVal Action As ActionDefn) As ToolStripButton
         If Action.IsButton And Action.MenuType <> "S" Then
