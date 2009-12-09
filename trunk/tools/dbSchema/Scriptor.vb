@@ -175,7 +175,7 @@ Module Scriptor
                 SendMessage("Directory    : " & Environment.CurrentDirectory, "T")
                 s = Environment.CommandLine
                 If sqllib.Password <> "" Then
-                    s = Replace(s, " -p" & sqllib.Password & " ", " -p?????????? ")
+                    s = Replace(s, sqllib.Password, "??????????")
                 End If
                 SendMessage("Command Line : " & s, "T")
             End If
@@ -187,7 +187,7 @@ Module Scriptor
             ElseIf Mid(LCase(sType), 1, 1) = "s" Then
                 ProcessPermissions(sObject)
             ElseIf Database = "*" Then
-                ProcessAllDBs()
+                ProcessAllDB()
             Else
                 If Database = "" Then Database = "master"
                 ProcessDB(Database)
@@ -200,7 +200,7 @@ Module Scriptor
         SendMessage("", "N")
     End Sub
 
-    Private Sub ProcessJobs(ByVal Database As String)
+    Private Function ProcessJobs(ByVal Database As String) As Boolean
         Dim s As String
         Dim dt As DataTable
         Dim dr As DataRow
@@ -223,8 +223,11 @@ Module Scriptor
 
         Catch ex As Exception
             SendMessage(ex.ToString, "E")
+            Return False
         End Try
-    End Sub
+
+        Return True
+    End Function
 
     Private Sub ProcessPermissions(ByVal User As String)
         Dim sDB As String
@@ -327,7 +330,55 @@ Module Scriptor
         End Try
     End Sub
 
-    Private Sub ProcessDB(ByVal Database As String)
+    Private Sub ProcessAllDB()
+        Dim s As String
+        Dim dbVersion As Integer
+        Dim OK As Boolean
+        Dim dt As DataTable
+        Dim dr As DataRow
+        Dim sPWD As String
+
+        sPWD = Environment.CurrentDirectory
+        Try                                 ' Read the config XML into a DataSet
+            sqllib.Database = "master"
+            dt = sqllib.DatabaseList()
+
+            For Each dr In dt.Rows
+                s = sqllib.GetString(dr.Item("name"))
+                dbVersion = CInt(dr("cmptlevel"))
+
+                If System.IO.Directory.Exists(s) Then
+                    Environment.CurrentDirectory = s
+                    System.IO.File.Delete("*.sql")
+                Else
+                    MkDir(s)
+                    Environment.CurrentDirectory = s
+                End If
+
+                If s = "msdb" And dbVersion > 80 Then
+                    OK = ProcessJobs(s)
+                Else
+                    OK = ProcessDB(s)
+                End If
+
+                If Not OK Then
+                    'System.IO.File.Delete("*.sql")
+                    SendMessage(Environment.CurrentDirectory, "I")
+                    Environment.CurrentDirectory = sPWD
+                    SendMessage("Removing " & s, "I")
+                    RmDir(s)
+                Else
+                    Environment.CurrentDirectory = sPWD
+                End If
+            Next
+
+        Catch ex As Exception
+            SendMessage(ex.ToString, "E")
+        End Try
+        Environment.CurrentDirectory = sPWD
+    End Sub
+
+    Private Function ProcessDB(ByVal Database As String) As Boolean
         Dim s As String
         Dim st As String
         Dim dt As DataTable
@@ -358,8 +409,11 @@ Module Scriptor
 
         Catch ex As Exception
             SendMessage(ex.ToString, "E")
+            Return False
         End Try
-    End Sub
+
+        Return True
+    End Function
 
 #Region "common functions"
     Private Function GetTable(ByVal sTable As String, ByVal ConsName As Boolean) As Integer
