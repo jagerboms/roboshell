@@ -137,6 +137,8 @@ Public Class Grid
     Private Sub dataGridView1_CellFormatting(ByVal sender As Object, ByVal e As DataGridViewCellFormattingEventArgs) Handles Grid1.CellFormatting
         e.CellStyle.ForeColor = oOwner.rowforecolour
         e.CellStyle.BackColor = oOwner.rowbackcolour
+        e.CellStyle.SelectionForeColor = oOwner.selforecolour
+        e.CellStyle.SelectionBackColor = oOwner.selbackcolour
     End Sub
 
     Private Sub Grid_Load(ByVal sender As System.Object, _
@@ -237,6 +239,8 @@ Public Class GridForm
 
     Private oforecolour As System.Drawing.Color = Color.Black
     Private obackcolour As System.Drawing.Color = Color.White
+    Private oSelForecolour As System.Drawing.Color = Color.Black
+    Private oSelBackcolour As System.Drawing.Color = Color.Gainsboro
 
     Private sDefn As GridDefn
     Private fForm As Grid
@@ -257,6 +261,18 @@ Public Class GridForm
     Public ReadOnly Property rowbackcolour() As System.Drawing.Color
         Get
             rowbackcolour = obackcolour
+        End Get
+    End Property
+
+    Public ReadOnly Property selforecolour() As System.Drawing.Color
+        Get
+            selforecolour = oSelForecolour
+        End Get
+    End Property
+
+    Public ReadOnly Property selbackcolour() As System.Drawing.Color
+        Get
+            selbackcolour = oSelBackcolour
         End Get
     End Property
 
@@ -574,6 +590,8 @@ Public Class GridForm
 
         oforecolour = Color.Black
         obackcolour = Color.White
+        oSelForecolour = Color.Black
+        oSelBackcolour = Color.Gainsboro
         sColumn = sDefn.ColourColumn
         If sColumn <> "" Then
             cs = sDefn.Properties
@@ -585,6 +603,15 @@ Public Class GridForm
                 c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "cb")
                 If Not c Is Nothing Then
                     obackcolour = System.Drawing.Color.FromName(CType(c.Value, String))
+                End If
+
+                c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "sf")
+                If Not c Is Nothing Then
+                    oSelForecolour = System.Drawing.Color.FromName(CType(c.Value, String))
+                End If
+                c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "sb")
+                If Not c Is Nothing Then
+                    oSelBackcolour = System.Drawing.Color.FromName(CType(c.Value, String))
                 End If
             End If
         End If
