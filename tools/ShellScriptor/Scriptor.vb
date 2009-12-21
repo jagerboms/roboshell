@@ -2672,16 +2672,9 @@ Module Scriptor
         sOut &= vbCrLf
         sOut &= "execute dbo.shlPropertiesInsert" & vbCrLf
         sOut &= "    @ObjectName = '" & sObject & "'" & vbCrLf
-        sOut &= "   ,@PropertyType = 'cl'" & vbCrLf
+        sOut &= "   ,@PropertyType = 'cy'" & vbCrLf
         sOut &= "   ,@PropertyName = 'D'" & vbCrLf
-        sOut &= "   ,@Value = 'red'" & vbCrLf
-        sOut &= "go" & vbCrLf
-        sOut &= vbCrLf
-        sOut &= "execute dbo.shlPropertiesInsert" & vbCrLf
-        sOut &= "    @ObjectName = '" & sObject & "'" & vbCrLf
-        sOut &= "   ,@PropertyType = 'cb'" & vbCrLf
-        sOut &= "   ,@PropertyName = 'D'" & vbCrLf
-        sOut &= "   ,@Value = 'mistyrose'" & vbCrLf
+        sOut &= "   ,@Value = 'disabled'" & vbCrLf
         sOut &= "go" & vbCrLf
         sOut &= vbCrLf
         sOut &= "---------------------------------------------------" & vbCrLf
@@ -2847,16 +2840,9 @@ Module Scriptor
             sOut &= vbCrLf
             sOut &= "execute dbo.shlPropertiesInsert" & vbCrLf
             sOut &= "    @ObjectName = '" & sObject & "'" & vbCrLf
-            sOut &= "   ,@PropertyType = 'cl'" & vbCrLf
+            sOut &= "   ,@PropertyType = 'cy'" & vbCrLf
             sOut &= "   ,@PropertyName = 'dl'" & vbCrLf
-            sOut &= "   ,@Value = 'red'" & vbCrLf
-            sOut &= "go" & vbCrLf
-            sOut &= vbCrLf
-            sOut &= "execute dbo.shlPropertiesInsert" & vbCrLf
-            sOut &= "    @ObjectName = '" & sObject & "'" & vbCrLf
-            sOut &= "   ,@PropertyType = 'cb'" & vbCrLf
-            sOut &= "   ,@PropertyName = 'dl'" & vbCrLf
-            sOut &= "   ,@Value = 'mistyrose'" & vbCrLf
+            sOut &= "   ,@Value = 'disabled'" & vbCrLf
             sOut &= "go" & vbCrLf
             sOut &= vbCrLf
         Else

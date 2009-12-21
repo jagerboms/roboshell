@@ -81,7 +81,21 @@ go
 
 execute dbo.shlPropertiesInsert
     @ObjectName = 'shlSecurityAdmin'
+   ,@PropertyType = 'sf'
+   ,@PropertyName = 'R'
+   ,@Value = 'Green'
+go
+
+execute dbo.shlPropertiesInsert
+    @ObjectName = 'shlSecurityAdmin'
    ,@PropertyType = 'cl'
+   ,@PropertyName = 'G'
+   ,@Value = 'Orange'
+go
+
+execute dbo.shlPropertiesInsert
+    @ObjectName = 'shlSecurityAdmin'
+   ,@PropertyType = 'sf'
    ,@PropertyName = 'G'
    ,@Value = 'Orange'
 go

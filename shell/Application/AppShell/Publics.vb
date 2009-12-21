@@ -25,6 +25,7 @@ Module Publics
     Public Processes As New ProcessDefns
     Public Objects As New ObjectDefns
     Public Register As New ObjectRegisters
+    Public Styles As New shellStyles
 
     Public Property MDIParent() As Form
         Get
@@ -272,7 +273,7 @@ Module Publics
             xob.SetProperty("procname", "shlShellGet")
             xob.SetProperty("connectkey", SystemKey)
             xob.SetProperty("mode", "D")
-            xob.SetProperty("dataparameter", "Var||Proc||Obj||Prop||Parm||Act||ActR||Fld||Val||ValR||APR||Ver")
+            xob.SetProperty("dataparameter", "Var||Proc||Obj||Prop||Parm||Act||ActR||Fld||Val||ValR||APR||Ver||Style")
             xob.Parms.Add("Var", Nothing, DbType.Object, False, True, 0)
             xob.Parms.Add("Proc", Nothing, DbType.Object, False, True, 0)
             xob.Parms.Add("Obj", Nothing, DbType.Object, False, True, 0)
@@ -285,6 +286,7 @@ Module Publics
             xob.Parms.Add("ValR", Nothing, DbType.Object, False, True, 0)
             xob.Parms.Add("APR", Nothing, DbType.Object, False, True, 0)
             xob.Parms.Add("Ver", Nothing, DbType.Object, False, True, 0)
+            xob.Parms.Add("Style", Nothing, DbType.Object, False, True, 0)
             ProcessObject = xob.Create()
             If Not ProcessObject Is Nothing Then
                 ProcessObject.Update(Nothing)
@@ -718,6 +720,18 @@ Module Publics
 
                 Application.DoEvents()
             Next
+
+            If Version > 1.2 Then
+                dt = CType(ProcessObject.parms.Item("Style").Value, DataTable)
+                For Each dr In dt.Rows        ' Styles
+                    Styles.Add(GetString(dr.Item("StyleID")), _
+                               GetString(dr.Item("RowForeColor")), _
+                               GetString(dr.Item("RowBackColor")), _
+                               GetString(dr.Item("SelForeColor")), _
+                               GetString(dr.Item("SelBackColor")))
+                    Application.DoEvents()
+                Next
+            End If
             Return True
 
         Catch ex As Exception

@@ -8,5 +8,6 @@ mod.Base.sql
 {scl=shl\shl.scl}
 data.shlUserModules.sql
 data.Messages.sql
+data.shlStyles.sql
 
 #end
