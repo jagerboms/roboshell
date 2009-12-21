@@ -18,6 +18,7 @@ table.shlModuleUsersAudit.sql
 table.shlVariables.sql
 table.shlVariablesAudit.sql
 table.shlTableValues.sql
+table.shlStyles.sql
 
 fkey.shlActionRules.shlActions.shlActionRulesFK.sql
 fkey.shlActions.shlFields.shlActionsFieldFK.sql
@@ -70,6 +71,7 @@ proc.shlActionProcessRulesInsert.sql
 proc.shlValidationsInsert.sql
 proc.shlValidationRulesInsert.sql
 proc.shlVariablesAuditInsert.sql
+proc.shlStylesInsert.sql
 proc.shlVariableSet.sql
 proc.shlShellGet.sql
 
@@ -93,4 +95,3 @@ proc.shlDirectoryInsert.sql
 config.shlUserPropertyAlter.sql
 
 {scl=SecurityAdmin\SecurityAdmin.scl}
-{scl=Notifications\Notifications.scl}

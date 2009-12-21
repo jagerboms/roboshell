@@ -180,6 +180,7 @@
     <Compile Include="Report.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Style.vb" />
     <Compile Include="TableWrite.vb">
       <SubType>Code</SubType>
     </Compile>

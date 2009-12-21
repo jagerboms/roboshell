@@ -237,10 +237,12 @@ End Class
 Public Class GridForm
     Inherits ShellObject
 
-    Private oforecolour As System.Drawing.Color = Color.Black
-    Private obackcolour As System.Drawing.Color = Color.White
-    Private oSelForecolour As System.Drawing.Color = Color.Black
-    Private oSelBackcolour As System.Drawing.Color = Color.Gainsboro
+    Private oStyle As New shellStyle("", "zz", "zz", "zz", "zz")
+
+    Private oforecolour As System.Drawing.Color
+    Private obackcolour As System.Drawing.Color
+    Private oSelForecolour As System.Drawing.Color
+    Private oSelBackcolour As System.Drawing.Color
 
     Private sDefn As GridDefn
     Private fForm As Grid
@@ -587,31 +589,45 @@ Public Class GridForm
         Dim sColumn As String
         Dim cs As shellProperties
         Dim c As ShellProperty
+        Dim s As String
+        Dim oSty As shellStyle
 
-        oforecolour = Color.Black
-        obackcolour = Color.White
-        oSelForecolour = Color.Black
-        oSelBackcolour = Color.Gainsboro
+        oforecolour = oStyle.RowForeColour
+        obackcolour = oStyle.RowBackColour
+        oSelForecolour = oStyle.SelForeColour
+        oSelBackcolour = oStyle.SelBackColour
         sColumn = sDefn.ColourColumn
         If sColumn <> "" Then
             cs = sDefn.Properties
             If Not cs Is Nothing Then
-                c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "cl")
+                c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "cy")
                 If Not c Is Nothing Then
-                    oforecolour = System.Drawing.Color.FromName(CType(c.Value, String))
-                End If
-                c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "cb")
-                If Not c Is Nothing Then
-                    obackcolour = System.Drawing.Color.FromName(CType(c.Value, String))
-                End If
+                    s = GetString(c.Value)
+                    oSty = Publics.Styles.Item(s)
+                    If Not oSty Is Nothing Then
+                        oforecolour = oSty.RowForeColour
+                        obackcolour = oSty.RowBackColour
+                        oSelForecolour = oSty.SelForeColour
+                        oSelBackcolour = oSty.SelBackColour
+                    End If
+                Else
+                    c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "cl")
+                    If Not c Is Nothing Then
+                        oforecolour = System.Drawing.Color.FromName(CType(c.Value, String))
+                    End If
+                    c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "cb")
+                    If Not c Is Nothing Then
+                        obackcolour = System.Drawing.Color.FromName(CType(c.Value, String))
+                    End If
 
-                c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "sf")
-                If Not c Is Nothing Then
-                    oSelForecolour = System.Drawing.Color.FromName(CType(c.Value, String))
-                End If
-                c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "sb")
-                If Not c Is Nothing Then
-                    oSelBackcolour = System.Drawing.Color.FromName(CType(c.Value, String))
+                    c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "sf")
+                    If Not c Is Nothing Then
+                        oSelForecolour = System.Drawing.Color.FromName(CType(c.Value, String))
+                    End If
+                    c = cs.Item(CType(GetGridValue(e.RowIndex, sColumn), String), "sb")
+                    If Not c Is Nothing Then
+                        oSelBackcolour = System.Drawing.Color.FromName(CType(c.Value, String))
+                    End If
                 End If
             End If
         End If

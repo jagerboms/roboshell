@@ -338,7 +338,15 @@ begin
                ,r.ActionName
                ,r.Value
 
-        select  1.2 ShellVersion
+        select  1.3 ShellVersion
+
+        select  s.StyleID
+               ,s.RowForeColor
+               ,s.RowBackColor
+               ,s.SelForeColor
+               ,s.SelBackColor
+        from    dbo.shlStyles s
+
         break
     end
     return @e
