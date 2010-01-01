@@ -90,14 +90,14 @@ execute dbo.shlPropertiesInsert
     @ObjectName = 'shlSecurityAdmin'
    ,@PropertyType = 'cl'
    ,@PropertyName = 'G'
-   ,@Value = 'Orange'
+   ,@Value = 'Navy'
 go
 
 execute dbo.shlPropertiesInsert
     @ObjectName = 'shlSecurityAdmin'
    ,@PropertyType = 'sf'
    ,@PropertyName = 'G'
-   ,@Value = 'Orange'
+   ,@Value = 'Navy'
 go
 
 execute dbo.shlPropertiesInsert
