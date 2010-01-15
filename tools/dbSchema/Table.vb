@@ -226,8 +226,9 @@ Public Class TableColumns
     Private xPKeys(0) As String
     Private xFKeys(0) As String
     Private xIndexs(0) As String
-    Private dtFKeys As DataTable
+    'Private xTriggers(0) As String
     Private dtIndexs As DataTable
+    Private dtFKeys As DataTable
 
     Private Values As New Hashtable
     Private Keys(0) As String
@@ -654,7 +655,6 @@ Public Class TableColumns
         Dim sPK As String
         Dim sType As String
         Dim sNull As String
-        'Dim sIdentity As String = ""
         Dim dt As DataTable
         Dim dr As DataRow
         Dim i As Integer
@@ -738,7 +738,16 @@ Public Class TableColumns
                 xFKeys(i) = sName
             End If
         Next
-        'Triggers = slib.Table(sTable)
+
+        'dt = slib.TableTriggers(sTable)
+        'For Each r As DataRow In dt.Rows
+        '    i = xTriggers.GetUpperBound(0)
+        '    If xTriggers(0) <> "" Then
+        '        i += 1
+        '        ReDim Preserve xTriggers(i)
+        '    End If
+        '    xTriggers(i) = sqllib.GetString(r.Item("TriggerName"))
+        'Next
     End Sub
 
     Public Sub AddColumn( _

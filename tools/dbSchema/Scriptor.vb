@@ -1,6 +1,9 @@
 Option Explicit On
 Option Strict On
 
+'To Do
+' Permissions
+
 #Region "copyright Russell Hansen, Tolbeam Pty Limited"
 'dbSchema is free software issued as open source;
 ' you can redistribute it and/or modify it under the terms of the
@@ -82,14 +85,17 @@ Module Scriptor
                 SendMessage("   -pPassword is the user password for database access. This parameter", "T")
                 SendMessage("     is ignored except when a UserID is provided.", "T")
                 SendMessage("", "T")
-                SendMessage("   -iTimeOut is the timeout used when accessing the database.", "T")
+                SendMessage("   -iTimeOut is the timeout in seconds used when accessing the database.", "T")
                 SendMessage("", "T")
                 SendMessage("   -tType is the type of object to retrieve. If not provided all", "T")
-                SendMessage("     types except jobs and data are returned. Can be one of:", "T")
+                SendMessage("     types except jobs, script permissions and data are returned.", "T")
+                SendMessage("     Can be one of:", "T")
                 SendMessage("      P - stored procedure        U - user table", "T")
                 SendMessage("      F - user defined function   V - view", "T")
-                SendMessage("      J - job                     D - data", "T")
-                SendMessage("      S - script permissions", "T")
+                SendMessage("      T - trigger                 J - job", "T")
+                SendMessage("      S - script permissions      D - data", "T")
+                SendMessage("     Stored procedures, tables, functions, views and triggers types", "T")
+                SendMessage("     can be combined.", "T")
                 SendMessage("", "T")
                 SendMessage("   -oObject is the like object name to retrieve. If not provided", "T")
                 SendMessage("     all objects are retrieved. This performs a database 'like'", "T")
@@ -99,7 +105,7 @@ Module Scriptor
                 SendMessage("     When the type is 'S' the object parameter contains the user", "T")
                 SendMessage("     the permissions are to be scripted.", "T")
                 SendMessage("", "T")
-                SendMessage("   -fType determines the type of script to be generated. Can bw one of:", "T")
+                SendMessage("   -fType determines the type of script to be generated. Can be one of:", "T")
                 SendMessage("      F - full includes existance checks and separate component files", "T")
                 SendMessage("      I - intermediate has no existance checks but separate component files", "T")
                 SendMessage("      S - summary has no existance checks and all components are in a single file.", "T")
@@ -362,7 +368,6 @@ Module Scriptor
                 End If
 
                 If Not OK Then
-                    'System.IO.File.Delete("*.sql")
                     SendMessage(Environment.CurrentDirectory, "I")
                     Environment.CurrentDirectory = sPWD
                     SendMessage("Removing " & s, "I")
@@ -403,7 +408,7 @@ Module Scriptor
                             GetTable(s, ConsName)
                     End Select
                 Else
-                    GetText(s, st)
+                    GetText(s, st, sqllib.GetString(dr.Item("parent")))
                 End If
             Next
 
@@ -504,7 +509,7 @@ Module Scriptor
         Return 0
     End Function
 
-    Private Function GetText(ByVal Name As String, ByVal Type As String) As Integer
+    Private Function GetText(ByVal Name As String, ByVal Type As String, ByVal Parent As String) As Integer
         Dim sText As String
         Dim sHead As String
         Dim Settings As String = ""
@@ -529,6 +534,12 @@ Module Scriptor
             Case "FN", "TF"
                 Pre = "udf."
                 sHead &= "function"
+                If mode = "F" Then
+                    Settings = GetSetings(Name)
+                End If
+            Case "TR"
+                Pre = "trigger." & Parent & "."
+                sHead &= "trigger"
                 If mode = "F" Then
                     Settings = GetSetings(Name)
                 End If
