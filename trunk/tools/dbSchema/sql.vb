@@ -135,21 +135,48 @@ Public Class sql
 
     Public Function DatabaseObject(ByVal Name As String, ByVal Type As String) As DataTable
         Dim sql As String
+        Dim s As String = ""
+        Dim bT As Boolean = False
+        Dim sC As String = ""
+
+        Type = UCase(Type)
+        If InStr(Type, "P") > 0 Then
+            s = "'P'"
+            sC = ","
+        End If
+        If InStr(Type, "U") > 0 Then
+            s &= sC & "'U'"
+            sC = ","
+        End If
+        If InStr(Type, "F") > 0 Then
+            s &= sC & "'FN', 'TF'"
+            sC = ","
+        End If
+        If InStr(Type, "V") > 0 Then
+            s &= sC & "'V'"
+            sC = ","
+        End If
+        If InStr(Type, "T") > 0 Then
+            s &= sC & "'TR'"
+            sC = ","
+            bT = True
+        End If
+        If sC = "" Then
+            s = "'P','U','FN','TF','V','TR'"
+            bT = True
+        End If
 
         openConnect()
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select type, name "
+            sql = "select type,name,object_name(parent_obj) parent "
             sql &= "from dbo.sysobjects "
-            Select Case Type
-                Case "P", "U", "V"
-                    sql &= "where type = '" & Type & "' "
-                Case "F"
-                    sql &= "where type in ('FN', 'TF') "
-                Case Else
-                    sql &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
-            End Select
+            sql &= "where type in (" & s & ") "
             If Name <> "" Then
-                sql &= "and name like '" & Name & "' "
+                sql &= "and (name like '" & Name & "'"
+                If bT Then
+                    sql &= " or object_name(parent_obj) like '" & Name & "'"
+                End If
+                sql &= ") "
             End If
             sql &= "and uid = 1 "
             sql &= "and name not like 'dt_%' "
@@ -159,18 +186,16 @@ Public Class sql
             sql &= "'sp_renamediagram','sp_upgraddiagrams','fn_diagramobjects') "
             sql &= "order by type, name"
         Else
-            sql = "select type, name "
+            sql = "select type,name,object_name(parent_object_id) parent "
             sql &= "from sys.objects "
-            Select Case Type
-                Case "P", "U", "V"
-                    sql &= "where type = '" & Type & "' "
-                Case "F"
-                    sql &= "where type in ('FN', 'TF') "
-                Case Else
-                    sql &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
-            End Select
+            sql &= "where type in (" & s & ") "
+
             If Name <> "" Then
-                sql &= "and name like '" & Name & "' "
+                sql &= "and (name like '" & Name & "'"
+                If bT Then
+                    sql &= " or object_name(parent_object_id) like '" & Name & "'"
+                End If
+                sql &= ") "
             End If
             sql &= "and name not like 'dt_%' "
             sql &= "and name not in ('syssegments','sysconstraints','sysdiagrams',"
@@ -203,11 +228,12 @@ Public Class sql
 
         openConnect()
         If Version < 90 Then            'SQL 2000 compatible
-            Return Nothing
+            sql = "select objectproperty(object_id('dbo.jobStart'), 'IsAnsiNullsOn') nulls,"
+            sql &= "objectproperty(object_id('dbo.jobStart'), 'IsQuotedIdentOn') quoted"
+        Else
+            sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted from sys.sql_modules"
+            sql &= " where object_id=object_id('" & Name & "')"
         End If
-
-        sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted from sys.sql_modules"
-        sql &= " where object_id=object_id('" & Name & "')"
 
         Return GetTable(sql)
     End Function
