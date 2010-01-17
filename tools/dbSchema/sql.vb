@@ -430,6 +430,24 @@ Public Class sql
         Return GetTable(sql)
     End Function
 
+    Public Function ProcPermissions(ByVal Name As String) As DataTable
+        Dim sql As String
+
+        openConnect()
+
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select user_name(p.uid) grantee,case p.protecttype "
+            sql &= "when 204 then 'W' when 205 then 'G' when 206 then 'D' else '' end state "
+            sql &= "from dbo.sysprotects p "
+            sql &= "where p.action = 224 and object_name(p.id) = '" & Name & "'"
+        Else
+            sql = "select user_name(grantee_principal_id) grantee,state "
+            sql &= "from sys.database_permissions "
+            sql &= "where type = 'EX' and object_name(major_id) = '" & Name & "'"
+        End If
+        Return GetTable(sql)
+    End Function
+
     Public Function JobList(ByVal Name As String) As DataTable
         Dim sql As String
 

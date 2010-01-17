@@ -31,6 +31,7 @@ Public Class sql
     Private sPassword As String = ""
     Private sNetwork As String = ""
     Private sConnect As String = ""
+    Private iTimeOut As Integer = 0
 
 #Region "Properties"
     Public Property Server() As String
@@ -110,6 +111,15 @@ Public Class sql
         End Set
     End Property
 
+    Public Property TimeOut() As Integer
+        Get
+            TimeOut = iTimeOut
+        End Get
+        Set(ByVal value As Integer)
+            iTimeOut = value
+        End Set
+    End Property
+
     Public Version As Integer = -1
 #End Region
 
@@ -125,21 +135,48 @@ Public Class sql
 
     Public Function DatabaseObject(ByVal Name As String, ByVal Type As String) As DataTable
         Dim sql As String
+        Dim s As String = ""
+        Dim bT As Boolean = False
+        Dim sC As String = ""
+
+        Type = UCase(Type)
+        If InStr(Type, "P") > 0 Then
+            s = "'P'"
+            sC = ","
+        End If
+        If InStr(Type, "U") > 0 Then
+            s &= sC & "'U'"
+            sC = ","
+        End If
+        If InStr(Type, "F") > 0 Then
+            s &= sC & "'FN', 'TF'"
+            sC = ","
+        End If
+        If InStr(Type, "V") > 0 Then
+            s &= sC & "'V'"
+            sC = ","
+        End If
+        If InStr(Type, "T") > 0 Then
+            s &= sC & "'TR'"
+            sC = ","
+            bT = True
+        End If
+        If sC = "" Then
+            s = "'P','U','FN','TF','V','TR'"
+            bT = True
+        End If
 
         openConnect()
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select type, name "
+            sql = "select type,name,object_name(parent_obj) parent "
             sql &= "from dbo.sysobjects "
-            Select Case Type
-                Case "P", "U", "V"
-                    sql &= "where type = '" & Type & "' "
-                Case "F"
-                    sql &= "where type in ('FN', 'TF') "
-                Case Else
-                    sql &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
-            End Select
+            sql &= "where type in (" & s & ") "
             If Name <> "" Then
-                sql &= "and name like '" & Name & "' "
+                sql &= "and (name like '" & Name & "'"
+                If bT Then
+                    sql &= " or object_name(parent_obj) like '" & Name & "'"
+                End If
+                sql &= ") "
             End If
             sql &= "and uid = 1 "
             sql &= "and name not like 'dt_%' "
@@ -149,18 +186,16 @@ Public Class sql
             sql &= "'sp_renamediagram','sp_upgraddiagrams','fn_diagramobjects') "
             sql &= "order by type, name"
         Else
-            sql = "select type, name "
+            sql = "select type,name,object_name(parent_object_id) parent "
             sql &= "from sys.objects "
-            Select Case Type
-                Case "P", "U", "V"
-                    sql &= "where type = '" & Type & "' "
-                Case "F"
-                    sql &= "where type in ('FN', 'TF') "
-                Case Else
-                    sql &= "where type in ('P', 'U', 'V', 'FN', 'TF') "
-            End Select
+            sql &= "where type in (" & s & ") "
+
             If Name <> "" Then
-                sql &= "and name like '" & Name & "' "
+                sql &= "and (name like '" & Name & "'"
+                If bT Then
+                    sql &= " or object_name(parent_object_id) like '" & Name & "'"
+                End If
+                sql &= ") "
             End If
             sql &= "and name not like 'dt_%' "
             sql &= "and name not in ('syssegments','sysconstraints','sysdiagrams',"
@@ -193,11 +228,12 @@ Public Class sql
 
         openConnect()
         If Version < 90 Then            'SQL 2000 compatible
-            Return Nothing
+            sql = "select objectproperty(object_id('dbo.jobStart'), 'IsAnsiNullsOn') nulls,"
+            sql &= "objectproperty(object_id('dbo.jobStart'), 'IsQuotedIdentOn') quoted"
+        Else
+            sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted from sys.sql_modules"
+            sql &= " where object_id=object_id('" & Name & "')"
         End If
-
-        sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted from sys.sql_modules"
-        sql &= " where object_id=object_id('" & Name & "')"
 
         Return GetTable(sql)
     End Function
@@ -391,6 +427,24 @@ Public Class sql
         sql &= "where SPECIFIC_NAME='" & Name
         sql &= "' order by ORDINAL_POSITION"
 
+        Return GetTable(sql)
+    End Function
+
+    Public Function ProcPermissions(ByVal Name As String) As DataTable
+        Dim sql As String
+
+        openConnect()
+
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select user_name(p.uid) grantee,case p.protecttype "
+            sql &= "when 204 then 'W' when 205 then 'G' when 206 then 'D' else '' end state "
+            sql &= "from dbo.sysprotects p "
+            sql &= "where p.action = 224 and object_name(p.id) = '" & Name & "'"
+        Else
+            sql = "select user_name(grantee_principal_id) grantee,state "
+            sql &= "from sys.database_permissions "
+            sql &= "where type = 'EX' and object_name(major_id) = '" & Name & "'"
+        End If
         Return GetTable(sql)
     End Function
 
@@ -631,6 +685,9 @@ Public Class sql
         Dim Details As New DataSet
 
         psAdapt = New SqlDataAdapter(sql, psConn)
+        If iTimeOut > 0 Then
+            psAdapt.SelectCommand.CommandTimeout = iTimeOut
+        End If
         psAdapt.SelectCommand.CommandType = CommandType.Text
 
         psAdapt.Fill(Details)
