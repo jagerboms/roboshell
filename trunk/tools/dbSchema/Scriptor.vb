@@ -30,6 +30,7 @@ Module Scriptor
 
     Dim sType As String = ""
     Dim ConsName As Boolean = True
+    Dim IncludePerm As Boolean = False
     Dim sObject As String = ""
     Dim mode As String = "S"
     Dim LogFile As String = ""
@@ -64,7 +65,7 @@ Module Scriptor
 
             If GetSwitch("-?") Or Trim(Microsoft.VisualBasic.Command()) = "" Then
                 SendMessage("usage: dbSchema [-sServer] [-dDatabase] [-uUserID [-pPassword]] [-iTimeOut]", "T")
-                SendMessage("                [-tType] [-oObject] [-f] [-c] [-?] [-l] [-gLogFile] [-v]", "T")
+                SendMessage("                [-tType] [-oObject] [-f] [-c] [-m] [-?] [-l] [-gLogFile] [-v]", "T")
                 SendMessage(" where:", "T")
                 SendMessage("   -sServer is the name of the SQL server to access.", "T")
                 SendMessage("     provided the local machine is used.", "T")
@@ -110,8 +111,11 @@ Module Scriptor
                 SendMessage("      I - intermediate has no existance checks but separate component files", "T")
                 SendMessage("      S - summary has no existance checks and all components are in a single file.", "T")
                 SendMessage("", "T")
-                SendMessage("   -c ignore constraint name switch. If provided", "T")
-                SendMessage("     names are not included in the generated scripts.", "T")
+                SendMessage("   -c ignore constraint name switch. If provided, constraint names are not", "T")
+                SendMessage("     included in the generated scripts.", "T")
+                SendMessage("", "T")
+                SendMessage("   -m include permissions switch. If provided, permissions are included with", "T")
+                SendMessage("     the generated scripts.", "T")
                 SendMessage("", "T")
                 SendMessage("   -w where clause filter for data scripting. eg. -w""Status<>'dl'""", "T")
                 SendMessage("", "T")
@@ -174,6 +178,10 @@ Module Scriptor
             sObject = GetCommandParameter("-o")
             If GetSwitch("-c") Then
                 ConsName = False
+            End If
+
+            If GetSwitch("-m") Then
+                IncludePerm = True
             End If
 
             If LogFile <> "" Then
@@ -510,6 +518,7 @@ Module Scriptor
     End Function
 
     Private Function GetText(ByVal Name As String, ByVal Type As String, ByVal Parent As String) As Integer
+        Dim sPerm As String = ""
         Dim sText As String
         Dim sHead As String
         Dim Settings As String = ""
@@ -525,13 +534,49 @@ Module Scriptor
             Case "P"
                 Pre = "proc."
                 sHead &= "procedure"
+                If IncludePerm Then
+                    sPerm = ProcPermissions(Name)
+                    If sPerm <> "" Then
+                        Select Case mode
+                            Case "F", "I"
+                                sPerm &= "go" & vbCrLf
+                                PutFile("perm." & Name & ".sql", sPerm)
+
+                            Case Else
+                                sText &= "go" & vbCrLf
+                                sText &= vbCrLf
+                                sText &= sPerm
+                        End Select
+                    End If
+                End If
                 If mode = "F" Then
                     Settings = GetSetings(Name)
                 End If
             Case "V"
                 Pre = "view."
                 sHead &= "view"
-            Case "FN", "TF"
+            Case "FN" 'scalar returning function
+                Pre = "udf."
+                sHead &= "function"
+                If IncludePerm Then
+                    sPerm = ProcPermissions(Name)
+                    If sPerm <> "" Then
+                        Select Case mode
+                            Case "F", "I"
+                                sPerm &= "go" & vbCrLf
+                                PutFile("perm." & Name & ".sql", sPerm)
+
+                            Case Else
+                                sText &= "go" & vbCrLf
+                                sText &= vbCrLf
+                                sText &= sPerm
+                        End Select
+                    End If
+                End If
+                If mode = "F" Then
+                    Settings = GetSetings(Name)
+                End If
+            Case "TF" 'table returning function
                 Pre = "udf."
                 sHead &= "function"
                 If mode = "F" Then
@@ -627,6 +672,31 @@ Module Scriptor
             End If
         End If
 
+        Return sText
+    End Function
+
+    Private Function ProcPermissions(ByVal Name As String) As String
+        Dim sText As String = ""
+        Dim dt As DataTable
+        Dim dr As DataRow
+
+        dt = sqllib.ProcPermissions(Name)
+
+        If Not dt Is Nothing Then
+            For Each dr In dt.Rows
+                Select Case sqllib.GetString(dr("state"))
+                    Case "G"
+                        sText &= "grant execute on dbo." & Name & " to " _
+                              & sqllib.GetString(dr("grantee")) & vbCrLf
+                    Case "W"
+                        sText &= "grant execute on dbo." & Name & " to " _
+                              & sqllib.GetString(dr("grantee")) & " with grant option" & vbCrLf
+                    Case "D"
+                        sText &= "deny execute on dbo." & Name & " to " _
+                              & sqllib.GetString(dr("grantee")) & vbCrLf
+                End Select
+            Next
+        End If
         Return sText
     End Function
 
