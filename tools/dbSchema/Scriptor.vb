@@ -659,10 +659,10 @@ Module Scriptor
             If dt.Rows.Count > 0 Then
                 dr = dt.Rows(0)
 
-                If CInt(dr("nulls")) = 0 Then
+                If sqllib.GetInteger(dr("nulls"), -1) = 0 Then
                     sText &= "set ansi_nulls off" & vbCrLf
                 End If
-                If CInt(dr("quoted")) = 0 Then
+                If sqllib.GetInteger(dr("quoted"), -1) = 0 Then
                     sText &= "set quoted_identifier off" & vbCrLf
                 End If
 
