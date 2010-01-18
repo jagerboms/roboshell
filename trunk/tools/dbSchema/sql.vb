@@ -228,8 +228,8 @@ Public Class sql
 
         openConnect()
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select objectproperty(object_id('dbo.jobStart'), 'IsAnsiNullsOn') nulls,"
-            sql &= "objectproperty(object_id('dbo.jobStart'), 'IsQuotedIdentOn') quoted"
+            sql = "select objectproperty(object_id('" & Name & "'), 'IsAnsiNullsOn') nulls,"
+            sql &= "objectproperty(object_id('" & Name & "'), 'IsQuotedIdentOn') quoted"
         Else
             sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted from sys.sql_modules"
             sql &= " where object_id=object_id('" & Name & "')"
@@ -610,6 +610,20 @@ Public Class sql
                 Return CType(objValue, String).TrimEnd
             Catch ex As Exception
                 Return objValue.ToString
+            End Try
+        End If
+    End Function
+
+    Public Function GetInteger(ByVal objValue As Object, ByVal iDefault As Integer) As Integer
+        If IsDBNull(objValue) Then
+            Return 0
+        ElseIf objValue Is Nothing Then
+            Return 0
+        Else
+            Try
+                Return CInt(objValue)
+            Catch ex As Exception
+                Return 0
             End Try
         End If
     End Function
