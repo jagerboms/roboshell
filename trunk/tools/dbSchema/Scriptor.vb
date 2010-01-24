@@ -1,9 +1,6 @@
 Option Explicit On
 Option Strict On
 
-'To Do
-' Permissions
-
 #Region "copyright Russell Hansen, Tolbeam Pty Limited"
 'dbSchema is free software issued as open source;
 ' you can redistribute it and/or modify it under the terms of the
@@ -31,6 +28,7 @@ Module Scriptor
     Dim sType As String = ""
     Dim ConsName As Boolean = True
     Dim IncludePerm As Boolean = False
+    Dim JobSQL As Boolean = False
     Dim sObject As String = ""
     Dim mode As String = "S"
     Dim LogFile As String = ""
@@ -91,10 +89,14 @@ Module Scriptor
                 SendMessage("   -tType is the type of object to retrieve. If not provided all", "T")
                 SendMessage("     types except jobs, script permissions and data are returned.", "T")
                 SendMessage("     Can be one of:", "T")
-                SendMessage("      P - stored procedure        U - user table", "T")
-                SendMessage("      F - user defined function   V - view", "T")
-                SendMessage("      T - trigger                 J - job", "T")
-                SendMessage("      S - script permissions      D - data", "T")
+                SendMessage("      P - stored procedure", "T")
+                SendMessage("      U - user table", "T")
+                SendMessage("      F - user defined function", "T")
+                SendMessage("      V - view", "T")
+                SendMessage("      T - trigger", "T")
+                SendMessage("      J - job", "T")
+                SendMessage("      D - data", "T")
+                SendMessage("      S - script permissions", "T")
                 SendMessage("     Stored procedures, tables, functions, views and triggers types", "T")
                 SendMessage("     can be combined.", "T")
                 SendMessage("", "T")
@@ -109,13 +111,17 @@ Module Scriptor
                 SendMessage("   -fType determines the type of script to be generated. Can be one of:", "T")
                 SendMessage("      F - full includes existance checks and separate component files", "T")
                 SendMessage("      I - intermediate has no existance checks but separate component files", "T")
-                SendMessage("      S - summary has no existance checks and all components are in a single file.", "T")
+                SendMessage("      S - summary has no existance checks and all components are in a single", "T")
+                SendMessage("          file.", "T")
                 SendMessage("", "T")
                 SendMessage("   -c ignore constraint name switch. If provided, constraint names are not", "T")
-                SendMessage("     included in the generated scripts.", "T")
+                SendMessage("      included in the generated scripts.", "T")
                 SendMessage("", "T")
-                SendMessage("   -m include permissions switch. If provided, permissions are included with", "T")
-                SendMessage("     the generated scripts.", "T")
+                SendMessage("   -m include permissions switch. If provided, permissions are included along", "T")
+                SendMessage("      with the job creation scripts.", "T")
+                SendMessage("", "T")
+                SendMessage("   -j extract job scrips switch. If provided, job step sql scripts are extracted", "T")
+                SendMessage("      otherwise job creation scripts are generated.", "T")
                 SendMessage("", "T")
                 SendMessage("   -w where clause filter for data scripting. eg. -w""Status<>'dl'""", "T")
                 SendMessage("", "T")
@@ -182,6 +188,10 @@ Module Scriptor
 
             If GetSwitch("-m") Then
                 IncludePerm = True
+            End If
+
+            If GetSwitch("-j") Then
+                JobSQL = True
             End If
 
             If LogFile <> "" Then
@@ -302,7 +312,6 @@ Module Scriptor
 
     Private Sub ProcessAllDBs()
         Dim s As String
-        Dim dbVersion As Integer
         Dim sBack As String
         Dim sDir As String
         Dim dt As DataTable
@@ -316,7 +325,6 @@ Module Scriptor
 
             For Each dr In dt.Rows
                 s = sqllib.GetString(dr.Item("name"))
-                dbVersion = CInt(dr("cmptlevel"))
 
                 If System.IO.Directory.Exists(s) Then
                     Environment.CurrentDirectory = s
@@ -331,7 +339,7 @@ Module Scriptor
                     MkDir(s)
                     Environment.CurrentDirectory = s
                 End If
-                If s = "msdb" And dbVersion > 80 Then
+                If s = "msdb" Then
                     ProcessJobs(s)
                 Else
                     ProcessDB(s)
@@ -455,6 +463,14 @@ Module Scriptor
             End If
         Next
 
+        If IncludePerm Then
+            s = ts.PermissionText
+            If s <> "" Then
+                sOut &= s
+                sOut &= "go" & vbCrLf
+            End If
+        End If
+
         PutFile("table." & sTable & ".sql", sOut)
         Return 0
     End Function
@@ -485,6 +501,15 @@ Module Scriptor
             End If
         Next
 
+        If IncludePerm Then
+            s = ts.PermissionText
+            If s <> "" Then
+                sOut = s
+                sOut &= "go" & vbCrLf
+                PutFile("perm." & sTable & ".sql", sOut)
+            End If
+        End If
+
         Return 0
     End Function
 
@@ -513,6 +538,15 @@ Module Scriptor
                 PutFile("fkey." & sTable & "." & ts.LinkedTable(s) & "." & s & ".sql", sOut)
             End If
         Next
+
+        If IncludePerm Then
+            s = ts.PermissionText
+            If s <> "" Then
+                sOut = s
+                sOut &= "go" & vbCrLf
+                PutFile("perm." & sTable & ".sql", sOut)
+            End If
+        End If
 
         Return 0
     End Function
@@ -552,9 +586,11 @@ Module Scriptor
                 If mode = "F" Then
                     Settings = GetSetings(Name)
                 End If
+
             Case "V"
                 Pre = "view."
                 sHead &= "view"
+
             Case "FN" 'scalar returning function
                 Pre = "udf."
                 sHead &= "function"
@@ -576,12 +612,29 @@ Module Scriptor
                 If mode = "F" Then
                     Settings = GetSetings(Name)
                 End If
+
             Case "TF" 'table returning function
                 Pre = "udf."
                 sHead &= "function"
+                If IncludePerm Then
+                    sPerm = TFNPermissions(Name)
+                    If sPerm <> "" Then
+                        Select Case mode
+                            Case "F", "I"
+                                sPerm &= "go" & vbCrLf
+                                PutFile("perm." & Name & ".sql", sPerm)
+
+                            Case Else
+                                sText &= "go" & vbCrLf
+                                sText &= vbCrLf
+                                sText &= sPerm
+                        End Select
+                    End If
+                End If
                 If mode = "F" Then
                     Settings = GetSetings(Name)
                 End If
+
             Case "TR"
                 Pre = "trigger." & Parent & "."
                 sHead &= "trigger"
@@ -700,6 +753,63 @@ Module Scriptor
         Return sText
     End Function
 
+    Private Function TFNPermissions(ByVal Name As String) As String
+        Dim dt As DataTable
+        Dim dc As DataTable = Nothing
+        Dim dr As DataRow
+        Dim i As Integer
+        Dim j As Integer
+        Dim sOut As String = ""
+        Dim s As String
+        Dim sC As String
+
+        dt = sqllib.TablePermissions(Name)
+
+        If dt Is Nothing Then
+            Return ""
+        End If
+
+        If dt.Rows.Count = 0 Then
+            Return ""
+        End If
+
+        For Each r As DataRow In dt.Rows
+            s = LCase(sqllib.GetString(r.Item("permission_name")))
+            j = CInt(r.Item("columns"))
+            If j > 1 Then
+                If dc Is Nothing Then
+                    dc = sqllib.FunctionColumns(Name)
+                End If
+                sC = ""
+                s &= " ("
+                i = 1
+                For Each dr In dc.Rows
+                    If (j And CInt(2 ^ i)) <> 0 Then
+                        s &= sC & sqllib.GetString(dr("name"))
+                        sC = ", "
+                    End If
+                    i += 1
+                Next
+                s &= ")"
+            End If
+            s &= " on dbo." & sqllib.QuoteIdentifier(Name)
+            s &= " to " & sqllib.GetString(r.Item("grantee"))
+            Select Case sqllib.GetString(r.Item("state"))
+                Case "GRANT_WITH_GRANT_OPTION"
+                    sOut &= "grant " & s & " with grant option" & vbCrLf
+
+                Case "GRANT"
+                    sOut &= "grant " & s & vbCrLf
+
+                Case "DENY"
+                    sOut &= "deny " & s & vbCrLf
+
+            End Select
+        Next
+
+        Return sOut
+    End Function
+
     Private Function GetJob(ByVal sJobID As String, ByVal mode As String) As Integer
         Dim js As New Job(sJobID, sqllib)
         Dim sOut As String = ""
@@ -711,15 +821,22 @@ Module Scriptor
         s = Replace(s, ":", "_")
         s = Replace(s, "\", "_")
         s = Replace(s, "/", "_")
-        If mode = "F" Then
-            sOut = js.FullText
+        If JobSQL Then
+            sOut = js.StepSQL
+            If sOut <> "" Then
+                PutFile("jobsql." & s & ".sql", sOut)
+            End If
         Else
-            sOut = js.CommonText
-        End If
-        sOut &= "go" & vbCrLf
-        sOut &= vbCrLf
+            If mode = "F" Then
+                sOut = js.FullText
+            Else
+                sOut = js.CommonText
+            End If
+            sOut &= "go" & vbCrLf
+            sOut &= vbCrLf
 
-        PutFile("job." & s & ".sql", sOut)
+            PutFile("job." & s & ".sql", sOut)
+        End If
         Return 0
     End Function
 
