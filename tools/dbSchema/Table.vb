@@ -229,6 +229,7 @@ Public Class TableColumns
     'Private xTriggers(0) As String
     Private dtIndexs As DataTable
     Private dtFKeys As DataTable
+    Private dtPerms As DataTable
 
     Private Values As New Hashtable
     Private Keys(0) As String
@@ -501,6 +502,54 @@ Public Class TableColumns
         End Get
     End Property
 
+    Public ReadOnly Property PermissionText() As String
+        Get
+            Dim i As Integer
+            Dim j As Integer
+            Dim sOut As String = ""
+            Dim s As String
+            Dim sC As String
+
+            If dtPerms Is Nothing Then
+                Return ""
+            End If
+
+            If dtPerms.Rows.Count = 0 Then
+                Return ""
+            End If
+
+            For Each r As DataRow In dtPerms.Rows
+                s = LCase(slib.GetString(r.Item("permission_name")))
+                j = CInt(r.Item("columns"))
+                If j > 1 Then
+                    sC = ""
+                    s &= " ("
+                    For i = 0 To Keys.GetUpperBound(0)
+                        If (j And CInt(2 ^ (i + 1))) <> 0 Then
+                            s &= sC & Keys(i)
+                            sC = ", "
+                        End If
+                    Next
+                    s &= ")"
+                End If
+                s &= " on dbo." & qTable
+                s &= " to " & slib.GetString(r.Item("grantee"))
+                Select Case slib.GetString(r.Item("state"))
+                    Case "GRANT_WITH_GRANT_OPTION"
+                        sOut &= "grant " & s & " with grant option" & vbCrLf
+
+                    Case "GRANT"
+                        sOut &= "grant " & s & vbCrLf
+
+                    Case "DENY"
+                        sOut &= "deny " & s & vbCrLf
+
+                End Select
+            Next
+            Return sOut
+        End Get
+    End Property
+
     Public ReadOnly Property LinkedTable(ByVal sFKeyName As String) As String
         Get
             Dim sFTable As String = ""
@@ -738,6 +787,8 @@ Public Class TableColumns
                 xFKeys(i) = sName
             End If
         Next
+
+        dtPerms = slib.TablePermissions(sTable)
 
         'dt = slib.TableTriggers(sTable)
         'For Each r As DataRow In dt.Rows
