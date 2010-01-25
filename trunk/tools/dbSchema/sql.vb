@@ -407,7 +407,7 @@ Public Class sql
         If Version < 90 Then            'SQL 2000 compatible
             sql = "select user_name(p.uid) grantee,x.permission_name"
             sql &= ",case p.protecttype when 204 then 'GRANT_WITH_GRANT_OPTION' when 205 then 'GRANT' when 206 then 'DENY' else '' end state"
-            sql &= ",p.columns from dbo.sysprotects p "
+            sql &= ",cast(p.columns as integer) columns from dbo.sysprotects p "
             sql &= "join (select 193 id,'SELECT' permission_name union select 195, 'INSERT' union select 196, 'DELETE' union select 197, 'UPDATE') x "
             sql &= "on x.id = p.action where object_name(p.id) = '" & Name & "'"
         Else
