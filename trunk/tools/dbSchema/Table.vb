@@ -520,7 +520,7 @@ Public Class TableColumns
 
             For Each r As DataRow In dtPerms.Rows
                 s = LCase(slib.GetString(r.Item("permission_name")))
-                j = CInt(r.Item("columns"))
+                j = slib.GetInteger(r.Item("columns"), 0)  ' insert/delete return null
                 If j > 1 Then
                     sC = ""
                     s &= " ("

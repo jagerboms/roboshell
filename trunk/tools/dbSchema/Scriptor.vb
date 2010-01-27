@@ -775,7 +775,7 @@ Module Scriptor
 
         For Each r As DataRow In dt.Rows
             s = LCase(sqllib.GetString(r.Item("permission_name")))
-            j = CInt(r.Item("columns"))
+            j = sqllib.GetInteger(r.Item("columns"), 0)
             If j > 1 Then
                 If dc Is Nothing Then
                     dc = sqllib.FunctionColumns(Name)
