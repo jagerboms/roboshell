@@ -382,8 +382,22 @@ Public Class SQLCompliler
         Dim b As Boolean = True
         Dim c As String
 
+        Dim psConn As SqlConnection
+        Dim psAdapt As SqlDataAdapter
+        Dim cn As Connect
+
         Try
             CompileSQL = False
+
+            cn = Cons.Item(DataBase)
+            If cn Is Nothing Then
+                SaveOutput("CompileIt: Error retreving connsection string for Database '" & DataBase & "'.", "E")
+                Return False
+            End If
+            psConn = New SqlConnection(cn.ConnectString)
+            AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
+            psConn.Open()
+            psAdapt = New SqlDataAdapter("", psConn)
 
             sText &= vbCrLf & "go" & vbCrLf
             For i = 1 To Len(sText)
@@ -493,9 +507,10 @@ Public Class SQLCompliler
                 If Mode = 99 Then
                     If k > j Then
                         sCommands = Mid(sText, j, k - j)
-                        If Not CompileIt(sCommands) Then
-                            b = False
-                        End If
+
+                        psAdapt.SelectCommand.CommandText = sCommands
+                        psAdapt.SelectCommand.ExecuteNonQuery()
+
                     End If
                     Mode = 0
                     j = i + 1
@@ -504,8 +519,11 @@ Public Class SQLCompliler
 
             CompileSQL = b
 
+            psConn.Close()
+
         Catch ex As Exception
             SaveOutput(ex.Message, "E")
+            CompileSQL = False
         End Try
     End Function
 
@@ -513,17 +531,17 @@ Public Class SQLCompliler
         Dim b As Boolean = True
         Dim psConn As SqlConnection
         Dim psAdapt As SqlDataAdapter
-        Dim c As Connect
+        Dim cn As Connect
 
         CompileIt = False
         Try
             If Trim(sText) <> "" Then
-                c = Cons.Item(DataBase)
-                If c Is Nothing Then
+                cn = Cons.Item(DataBase)
+                If cn Is Nothing Then
                     SaveOutput("CompileIt: Error retreving connsection string for Database '" & DataBase & "'.", "E")
                     Return False
                 End If
-                psConn = New SqlConnection(c.ConnectString)
+                psConn = New SqlConnection(cn.ConnectString)
                 AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
                 psConn.Open()
                 psAdapt = New SqlDataAdapter("", psConn)
