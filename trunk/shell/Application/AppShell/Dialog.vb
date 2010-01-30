@@ -1831,6 +1831,7 @@ Public Class Dialog
                 Case "D"            'Dropdownlist
                     If GetString(Value) = "" Then
                         CType(cc, ComboBox).SelectedIndex = -1
+                        CType(cc, ComboBox).SelectedIndex = -1
                         d.Value = Nothing
                     Else
                         Dim cb As ComboBox = CType(cc, ComboBox)
