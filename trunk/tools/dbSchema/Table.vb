@@ -83,7 +83,7 @@ Public Class TableColumn
         Get
             Dim i As Integer
             Select Case sType
-                Case "char", "varchar", "nvarchar", "datetime", "smalldatetime", "sysname"
+                Case "char", "varchar", "nchar", "nvarchar", "datetime", "smalldatetime", "sysname"
                     i = 0
                 Case Else
                     i = iPrecision
@@ -99,7 +99,7 @@ Public Class TableColumn
         Get
             Dim i As Integer
             Select Case sType
-                Case "char", "varchar", "nvarchar", "datetime", "smalldatetime", "sysname"
+                Case "char", "varchar", "nchar", "nvarchar", "datetime", "smalldatetime", "sysname"
                     i = 0
                 Case Else
                     i = iScale
@@ -115,7 +115,7 @@ Public Class TableColumn
         Get
             Dim s As String
             Select Case sType
-                Case "char", "varchar", "nvarchar", "sysname"
+                Case "char", "varchar", "nchar", "nvarchar", "sysname"
                     s = "string"
                 Case "decimal", "numeric"
                     s = "double"
@@ -137,7 +137,7 @@ Public Class TableColumn
             Dim s As String
             s = sType
             Select Case sType
-                Case "char", "varchar", "nvarchar"
+                Case "char", "varchar", "nchar", "nvarchar"
                     s &= "(" & iLength & ")"
                 Case "decimal", "numeric"
                     s &= "(" & iPrecision & "," & iScale & ")"
