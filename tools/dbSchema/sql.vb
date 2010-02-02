@@ -567,7 +567,7 @@ Public Class sql
             sql &= "j.on_fail_action,j.on_fail_step_id,j.server,j.database_name,"
             sql &= "j.database_user_name,j.retry_attempts,j.retry_interval,j.os_run_priority,"
             sql &= "j.output_file_name,j.flags,null proxy "
-            sql &= "from dbo.sysjobsteps j where where j.job_id='" & ID & "'"
+            sql &= "from dbo.sysjobsteps j where j.job_id='" & ID & "'"
         Else
             sql = "select j.step_id,j.step_name,j.subsystem,j.command,j.additional_parameters,"
             sql &= "j.cmdexec_success_code,j.on_success_action,j.on_success_step_id,"
