@@ -354,7 +354,6 @@ Module Scriptor
 
     Private Sub ProcessAllDB()
         Dim s As String
-        Dim dbVersion As Integer
         Dim OK As Boolean
         Dim dt As DataTable
         Dim dr As DataRow
@@ -367,7 +366,6 @@ Module Scriptor
 
             For Each dr In dt.Rows
                 s = sqllib.GetString(dr.Item("name"))
-                dbVersion = CInt(dr("cmptlevel"))
 
                 If System.IO.Directory.Exists(s) Then
                     Environment.CurrentDirectory = s
@@ -377,7 +375,7 @@ Module Scriptor
                     Environment.CurrentDirectory = s
                 End If
 
-                If s = "msdb" And dbVersion > 80 Then
+                If s = "msdb" Then
                     OK = ProcessJobs(s)
                 Else
                     OK = ProcessDB(s)
