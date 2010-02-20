@@ -83,7 +83,8 @@ Public Class TableColumn
         Get
             Dim i As Integer
             Select Case sType
-                Case "char", "varchar", "nchar", "nvarchar", "datetime", "smalldatetime", "sysname"
+                Case "char", "varchar", "nchar", "nvarchar", _
+                     "datetime", "smalldatetime", "sysname", "integer"
                     i = 0
                 Case Else
                     i = iPrecision
@@ -99,7 +100,8 @@ Public Class TableColumn
         Get
             Dim i As Integer
             Select Case sType
-                Case "char", "varchar", "nchar", "nvarchar", "datetime", "smalldatetime", "sysname"
+                Case "char", "varchar", "nchar", "nvarchar", "datetime", _
+                     "smalldatetime", "sysname"
                     i = 0
                 Case Else
                     i = iScale
@@ -421,6 +423,9 @@ Public Class TableColumns
                             sRest &= " index " & qName & vbCrLf
                             sRest &= "      on dbo." & qTable & " ("
                             sRest &= slib.QuoteIdentifier(r.Item("ColumnName"))
+                            If CInt(r.Item("is_descending_key")) <> 0 Then
+                                sRest &= " desc"
+                            End If
                         Else
                             sOut &= "        union select  " & slib.GetString(r.Item("key_ordinal"))
                             sOut &= ", '" & slib.GetString(r.Item("ColumnName")) & "', "
@@ -438,8 +443,14 @@ Public Class TableColumns
 
                             If CInt(r.Item("is_included_column")) = 0 Then
                                 sRest &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
+                                If CInt(r.Item("is_descending_key")) <> 0 Then
+                                    sRest &= " desc"
+                                End If
                             Else
                                 sInc &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
+                                If CInt(r.Item("is_descending_key")) <> 0 Then
+                                    sInc &= " desc"
+                                End If
                             End If
                         End If
                         i += 1
@@ -486,6 +497,9 @@ Public Class TableColumns
                             Else
                                 sInc &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
                             End If
+                        End If
+                        If CInt(r.Item("is_descending_key")) <> 0 Then
+                            sOut &= " desc"
                         End If
                         i += 1
                     End If
@@ -688,6 +702,141 @@ Public Class TableColumns
             Return sOut
         End Get
     End Property
+
+    Public ReadOnly Property XML() As String
+        Get
+            Dim sOut As String
+            Dim tc As TableColumn
+            Dim s As String
+            Dim ss As String
+            Dim st As String
+            Dim b As Boolean
+
+            sOut = "<?xml version='1.0'?>" & vbCrLf
+            sOut &= "<sqldef>" & vbCrLf
+            sOut &= "  <table name='" & sTable & "' owner='dbo'>" & vbCrLf
+
+            sOut &= "    <columns>" & vbCrLf
+            For Each s In Keys
+                tc = DirectCast(Values.Item(s), TableColumn)
+                ss = "      <column name='" & tc.Name & "' type='" & tc.Type & "'"
+                If tc.Length > 0 Then
+                    ss &= " length='" & tc.Length & "'"
+                End If
+                If tc.Precision > 0 Then
+                    ss &= " precision='" & tc.Precision & "'"
+                    ss &= " scale='" & tc.Scale & "'"
+                End If
+                ss &= " allownulls='" & tc.Nullable & "'"
+                If tc.Identity Then
+                    ss &= " seed='1' increment='1'"
+                End If
+                If tc.DefaultName <> "" Then
+                    ss &= ">" & vbCrLf
+                    ss &= "        <default "
+                    If bConsName Then
+                        ss &= "name='" & tc.DefaultName & "'"
+                    End If
+                    st = tc.DefaultValue
+                    If Mid(st, 1, 1) = "(" And Right(st, 1) = ")" Then
+                        st = Mid(st, 2, Len(st) - 2)
+                    End If
+                    ss &= "><![CDATA[" & st & "]]></default>" & vbCrLf
+                    ss &= "      </column>" & vbCrLf
+                Else
+                    ss &= " />"
+                End If
+                sOut &= ss & vbCrLf
+            Next
+            sOut &= "    </columns>" & vbCrLf
+
+            If sPKey <> "" Then
+                ss = "    <primarykey "
+                If bConsName Then
+                    ss &= "name='" & sPKey & "' "
+                End If
+                ss &= "clustered='" & slib.GetString(IIf(bPKClust, "Y", "N")) & "'>" & vbCrLf
+                For Each s In xPKeys
+                    tc = DirectCast(Values.Item(s), TableColumn)
+                    ss &= "      <column name='" & tc.Name & "'"
+                    If tc.Descend Then
+                        ss &= " direction='desc'"
+                    End If
+                    ss &= " />" & vbCrLf
+                Next
+                ss &= "    </primarykey>" & vbCrLf
+                sOut &= ss
+            End If
+
+            ss = ""
+            For Each s In xIndexs
+                If s <> "" And s <> sPKey Then
+                    If ss = "" Then
+                        ss = "    <indexes>" & vbCrLf
+                    End If
+                    ss &= "      <index name='" & s & "'"
+                    b = True
+                    For Each r As DataRow In dtIndexs.Rows
+                        If s = slib.GetString(r.Item("name")) Then
+                            If b Then
+                                b = False
+                                If CInt(r.Item("type")) = 1 Then
+                                    ss &= " clustered='Y'"
+                                End If
+                                If CInt(r.Item("is_unique")) <> 0 Then
+                                    ss &= " unique='Y'" & vbCrLf
+                                End If
+                                ss &= ">" & vbCrLf
+                            End If
+                            ss &= "        <column name='" & slib.GetString(r.Item("ColumnName")) & "'"
+                            If CInt(r.Item("is_included_column")) <> 0 Then
+                                ss &= " included='Y'"
+                            End If
+                            If CInt(r.Item("is_descending_key")) <> 0 Then
+                                ss &= " direction='desc'"
+                            End If
+                            ss &= " />" & vbCrLf
+                        End If
+                    Next
+                    ss &= "      </index>" & vbCrLf
+                End If
+            Next
+            If ss <> "" Then
+                ss &= "    </indexes>" & vbCrLf
+                sOut &= ss
+            End If
+
+            ss = ""
+            For Each s In xFKeys
+                If s <> "" Then
+                    If ss = "" Then
+                        ss = "    <foreignkeys>" & vbCrLf
+                    End If
+                    ss &= "      <foreignkey name='" & s & "' references='"
+
+                    b = True
+                    For Each r As DataRow In dtFKeys.Rows
+                        If s = slib.GetString(r.Item("ConstraintName")) Then
+                            If b Then
+                                b = False
+                                ss &= slib.GetString(r.Item("LinkedTable")) & "'>" & vbCrLf
+                            End If
+                            ss &= "        <column name='" & slib.GetString(r.Item("ColumnName")) & "'"
+                            ss &= " linksto='" & slib.GetString(r.Item("LinkedColumn")) & "' />" & vbCrLf
+                        End If
+                    Next
+                    ss &= "      </foreignkey>" & vbCrLf
+                End If
+            Next
+            If ss <> "" Then
+                ss &= "    </foreignkeys>" & vbCrLf
+                sOut &= ss
+            End If
+            sOut &= "  </table>" & vbCrLf
+            sOut &= "</sqldef>" & vbCrLf
+            XML = sOut
+        End Get
+    End Property
 #End Region
 
 #Region "Methods"
@@ -755,7 +904,7 @@ Public Class TableColumns
                     b = True
                 End If
                 sPK = sqllib.GetString(dr.Item("ColumnName"))
-                If CInt(dr.Item("is_descending_key")) = 1 Then
+                If CInt(dr.Item("is_descending_key")) <> 0 Then
                     AddPKey(sPK, True)
                 Else
                     AddPKey(sPK, False)
