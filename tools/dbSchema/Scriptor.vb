@@ -31,6 +31,7 @@ Module Scriptor
     Dim JobSQL As Boolean = False
     Dim sObject As String = ""
     Dim mode As String = "S"
+    Dim bXML As Boolean = False
     Dim LogFile As String = ""
     Dim verbose As Boolean = False
 
@@ -110,6 +111,7 @@ Module Scriptor
                 SendMessage("", "T")
                 SendMessage("   -fType determines the type of script to be generated. Can be one of:", "T")
                 SendMessage("      F - full includes existance checks and separate component files", "T")
+                SendMessage("      X - table components in XML existance checks for code files", "T")
                 SendMessage("      I - intermediate has no existance checks but separate component files", "T")
                 SendMessage("      S - summary has no existance checks and all components are in a single", "T")
                 SendMessage("          file.", "T")
@@ -173,6 +175,9 @@ Module Scriptor
             sqllib.Network = GetCommandParameter("-n")
             s = GetCommandParameter("-f")
             Select Case UCase(Mid(s, 1, 1))
+                Case "X"
+                    mode = "F"
+                    bXML = True
                 Case "F"
                     mode = "F"
                 Case "I"
@@ -413,14 +418,18 @@ Module Scriptor
                 s = sqllib.GetString(dr.Item("name"))
                 st = sqllib.GetString(dr.Item("type"))
                 If sqllib.GetString(dr.Item("type")) = "U" Then
-                    Select Case mode
-                        Case "F"
-                            GetTableFull(s, ConsName)
-                        Case "I"
-                            GetTableIntermediate(s, ConsName)
-                        Case Else
-                            GetTable(s, ConsName)
-                    End Select
+                    If bXML Then
+                        GetTableXML(s, ConsName)
+                    Else
+                        Select Case mode
+                            Case "F"
+                                GetTableFull(s, ConsName)
+                            Case "I"
+                                GetTableIntermediate(s, ConsName)
+                            Case Else
+                                GetTable(s, ConsName)
+                        End Select
+                    End If
                 Else
                     GetText(s, st, sqllib.GetString(dr.Item("parent")))
                 End If
@@ -536,6 +545,27 @@ Module Scriptor
                 PutFile("fkey." & sTable & "." & ts.LinkedTable(s) & "." & s & ".sql", sOut)
             End If
         Next
+
+        If IncludePerm Then
+            s = ts.PermissionText
+            If s <> "" Then
+                sOut = s
+                sOut &= "go" & vbCrLf
+                PutFile("perm." & sTable & ".sql", sOut)
+            End If
+        End If
+
+        Return 0
+    End Function
+
+    Private Function GetTableXML(ByVal sTable As String, ByVal ConsName As Boolean) As Integer
+        Dim ts As New TableColumns(sTable, sqllib, fixdef)
+        Dim sOut As String
+        Dim s As String
+
+        If Not ConsName Then ts.ScriptConstraints = False
+        sOut = ts.XML
+        PutFile("table." & sTable & ".xml", sOut)
 
         If IncludePerm Then
             s = ts.PermissionText
