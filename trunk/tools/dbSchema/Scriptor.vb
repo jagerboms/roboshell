@@ -26,6 +26,7 @@ Module Scriptor
     Dim UniCode As Boolean = False
 
     Dim sType As String = ""
+    Dim Collation As Boolean = False
     Dim ConsName As Boolean = True
     Dim IncludePerm As Boolean = False
     Dim JobSQL As Boolean = False
@@ -119,6 +120,9 @@ Module Scriptor
                 SendMessage("   -c ignore constraint name switch. If provided, constraint names are not", "T")
                 SendMessage("      included in the generated scripts.", "T")
                 SendMessage("", "T")
+                SendMessage("   -a switch to include column collation in table scripts. If not provided,", "T")
+                SendMessage("      column collations are not included in the generated scripts.", "T")
+                SendMessage("", "T")
                 SendMessage("   -m include permissions switch. If provided, permissions are included along", "T")
                 SendMessage("      with the job creation scripts.", "T")
                 SendMessage("", "T")
@@ -187,6 +191,9 @@ Module Scriptor
             UniCode = GetSwitch("-y")
             sType = GetCommandParameter("-t")
             sObject = GetCommandParameter("-o")
+            If GetSwitch("-a") Then
+                Collation = True
+            End If
             If GetSwitch("-c") Then
                 ConsName = False
             End If
@@ -450,6 +457,7 @@ Module Scriptor
         Dim s As String
 
         If Not ConsName Then ts.ScriptConstraints = False
+        If Collation Then ts.ScriptCollations = True
         sOut = ts.TableText
         sOut &= "go" & vbCrLf
         sOut &= vbCrLf
@@ -488,6 +496,7 @@ Module Scriptor
         Dim s As String
 
         If Not ConsName Then ts.ScriptConstraints = False
+        If Collation Then ts.ScriptCollations = True
         sOut = ts.TableText
         sOut &= "go" & vbCrLf
         PutFile("table." & sTable & ".sql", sOut)
@@ -526,6 +535,7 @@ Module Scriptor
         Dim s As String
 
         If Not ConsName Then ts.ScriptConstraints = False
+        If Collation Then ts.ScriptCollations = True
         sOut = ts.FullTableText
         sOut &= "go" & vbCrLf
         PutFile("table." & sTable & ".sql", sOut)
@@ -564,6 +574,7 @@ Module Scriptor
         Dim s As String
 
         If Not ConsName Then ts.ScriptConstraints = False
+        If Collation Then ts.ScriptCollations = True
         sOut = ts.XML
         PutFile("table." & sTable & ".xml", sOut)
 

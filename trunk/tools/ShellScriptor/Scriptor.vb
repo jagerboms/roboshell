@@ -742,9 +742,9 @@ Module Scriptor
                     aDefn.AddColumn(tc)
                 End If
             Next
-            aDefn.AddColumn("ActionType", "char", 1, 0, 0, "N", False, "", "")
-            aDefn.AddColumn("AuditTime", "datetime", 0, 0, 0, "N", False, sName & "AuditTime", "(getdate())")
-            aDefn.AddColumn("UserID", "sysname", 0, 0, 0, "N", False, sName & "UserID", "(suser_sname())")
+            aDefn.AddColumn("ActionType", "char", 1, 0, 0, "N", "", "", "")
+            aDefn.AddColumn("AuditTime", "datetime", 0, 0, 0, "N", sName & "AuditTime", "(getdate())", "")
+            aDefn.AddColumn("UserID", "sysname", 0, 0, 0, "N", sName & "UserID", "(suser_sname())", "")
         End If
 
         sOut = Header("") & vbCrLf & aDefn.FullTableText & Footer(True)
