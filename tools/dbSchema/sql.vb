@@ -253,6 +253,8 @@ Public Class sql
             sql &= ",c.xscale NUMERIC_SCALE"
             sql &= ",s.name DEFAULT_NAME"
             sql &= ",cm.text DEFAULT_TEXT "
+            sql &= ",i.COLLATION_NAME"
+            sql &= ",case when c.colstat & 2 = 0 then 'NO' else 'YES' end ROWGUID "
             sql &= "from dbo.syscolumns c "
             sql &= "left join dbo.sysobjects s "
             sql &= "on s.id = c.cdefault "
@@ -262,6 +264,10 @@ Public Class sql
             sql &= "join dbo.systypes t "
             sql &= "on t.xtype = c.xtype "
             sql &= "and t.xusertype = c.xusertype "
+            sql &= "join INFORMATION_SCHEMA.COLUMNS i "
+            sql &= "on i.TABLE_NAME=object_name(c.id) "
+            sql &= "and i.TABLE_SCHEMA='dbo' "
+            sql &= "and i.COLUMN_NAME=c.name "
             sql &= "where c.id = object_id('dbo." & Name & "') "
             sql &= "order by c.colorder"
         Else
@@ -273,7 +279,9 @@ Public Class sql
             sql &= ",i.NUMERIC_PRECISION"
             sql &= ",i.NUMERIC_SCALE"
             sql &= ",s.name DEFAULT_NAME"
-            sql &= ",i.COLUMN_DEFAULT DEFAULT_TEXT "
+            sql &= ",i.COLUMN_DEFAULT DEFAULT_TEXT"
+            sql &= ",i.COLLATION_NAME"
+            sql &= ",case c.is_rowguidcol when 0 then 'NO' else 'YES' end ROWGUID "
             sql &= "from INFORMATION_SCHEMA.COLUMNS i "
             sql &= "join sys.columns c "
             sql &= "on c.object_id = object_id('" & Name & "') "
@@ -288,55 +296,66 @@ Public Class sql
         Return GetTable(sql)
     End Function
 
-    Public Function TableIdentity(ByVal Name As String) As String
+    Public Function TableIdentity(ByVal Name As String) As DataRow
         Dim sql As String
-        Dim dr As DataRow
 
         openConnect()
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select name from syscolumns where id = object_id('" & Name & "') and colstat & 1 = 1"
-
+            sql = "select name,ident_seed('" & Name & "') seed,ident_incr('" & Name & "') increment from syscolumns where id = object_id('" & Name & "') and colstat & 1 = 1"
         Else
-            sql = "select name from sys.columns where object_id = object_id('" & Name & "') and is_identity = 1"
+            sql = "select name,ident_seed('" & Name & "') seed,ident_incr('" & Name & "') increment from sys.columns where object_id = object_id('" & Name & "') and is_identity = 1"
         End If
-        dr = GetRow(sql)
-        If Not dr Is Nothing Then
-            Return GetString(dr.Item("name"))
-        End If
-        Return ""
+        Return GetRow(sql)
     End Function
 
     Public Function TableFKeys(ByVal Name As String) As DataTable
         Dim sql As String
+        Dim sSchema As String = "dbo"
 
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select object_name(k.constid) ConstraintName"
+            sql = "select c.CONSTRAINT_NAME ConstraintName"
             sql &= ",k.keyno Sequence"
             sql &= ",col_name(k.fkeyid, k.fkey) ColumnName"
+            sql &= ",user_name(o1.uid) LinkedSchema"
             sql &= ",object_name(k.rkeyid) LinkedTable"
             sql &= ",col_name(k.rkeyid, k.rkey) LinkedColumn "
+            sql &= ",c.MATCH_OPTION"
+            sql &= ",c.UPDATE_RULE"
+            sql &= ",c.DELETE_RULE"
             sql &= "from dbo.sysforeignkeys k "
-            sql &= "where k.fkeyid = object_id('" & Name & "') "
+            sql &= "join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
+            sql &= "on c.CONSTRAINT_NAME = object_name(k.constid) "
+            sql &= "join sysobjects o "
+            sql &= "on o.id=k.fkeyid "
+            sql &= "join sysobjects o1 "
+            sql &= "on o1.id=k.rkeyid "
+            sql &= "where o.name='" & Name & "' "
+            sql &= "and user_name(o.uid)='" & sSchema & "' "
             sql &= "order by 1, 2"
         Else
             sql = "select c.CONSTRAINT_NAME ConstraintName"
             sql &= ",u1.ORDINAL_POSITION Sequence"
             sql &= ",u1.COLUMN_NAME ColumnName"
+            sql &= ",u2.TABLE_SCHEMA LinkedSchema"
             sql &= ",u2.TABLE_NAME LinkedTable"
-            sql &= ",u2.COLUMN_NAME LinkedColumn "
+            sql &= ",u2.COLUMN_NAME LinkedColumn"
+            sql &= ",c.MATCH_OPTION"
+            sql &= ",c.UPDATE_RULE"
+            sql &= ",c.DELETE_RULE "
             sql &= "from INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
             sql &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u1 "
-            sql &= "on u1.CONSTRAINT_CATALOG = c.CONSTRAINT_CATALOG "
-            sql &= "and u1.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA "
-            sql &= "and u1.CONSTRAINT_NAME = c.CONSTRAINT_NAME "
+            sql &= "on u1.CONSTRAINT_CATALOG=c.CONSTRAINT_CATALOG "
+            sql &= "and u1.CONSTRAINT_SCHEMA=c.CONSTRAINT_SCHEMA "
+            sql &= "and u1.CONSTRAINT_NAME=c.CONSTRAINT_NAME "
             sql &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u2 "
-            sql &= "on u2.CONSTRAINT_CATALOG = c.UNIQUE_CONSTRAINT_CATALOG "
-            sql &= "and u2.CONSTRAINT_SCHEMA = c.UNIQUE_CONSTRAINT_SCHEMA "
-            sql &= "and u2.CONSTRAINT_NAME = c.UNIQUE_CONSTRAINT_NAME "
-            sql &= "and u2.ORDINAL_POSITION = u1.ORDINAL_POSITION "
-            sql &= "where u1.TABLE_NAME = '" & Name & "' "
+            sql &= "on u2.CONSTRAINT_CATALOG=c.UNIQUE_CONSTRAINT_CATALOG "
+            sql &= "and u2.CONSTRAINT_SCHEMA=c.UNIQUE_CONSTRAINT_SCHEMA "
+            sql &= "and u2.CONSTRAINT_NAME=c.UNIQUE_CONSTRAINT_NAME "
+            sql &= "and u2.ORDINAL_POSITION=u1.ORDINAL_POSITION "
+            sql &= "where u1.TABLE_NAME='" & Name & "' "
+            sql &= "and u1.TABLE_SCHEMA='" & sSchema & "' "
             sql &= "order by 1, 2"
         End If
 
@@ -356,7 +375,13 @@ Public Class sql
             sql &= ",case when indexproperty(x.id, x.name, 'IsClustered') = 1 then 1 else 2 end type"
             sql &= ",case when s.name is not null then 1 else 0 end is_primary_key"
             sql &= ",case when indexproperty(x.id, x.name, 'IsUnique') = 1 then 1 else 0 end is_unique"
-            sql &= ",0 is_included_column "
+            sql &= ",0 is_included_column"
+            sql &= ",'PRIMARY' filegroup"
+            sql &= ",x.OrigFillFactor FILL_FACTOR"
+            sql &= ",'NO' PAD_INDEX"
+            sql &= ",'NO' IGNORE_DUP_KEY"
+            sql &= ",'YES' ALLOW_ROW_LOCKS"
+            sql &= ",case x.lockflags & 2 when 0 then 'YES' else 'NO' end ALLOW_PAGE_LOCKS "
             sql &= "from dbo.sysindexes x "
             sql &= "join dbo.sysindexkeys i "
             sql &= "on i.id = x.id "
@@ -372,7 +397,13 @@ Public Class sql
             sql = "select ic.key_ordinal,i.name,c.name ColumnName,"
             sql &= "ic.is_descending_key,i.type,"
             sql &= "i.is_primary_key,"
-            sql &= "i.is_unique,ic.is_included_column "
+            sql &= "i.is_unique,ic.is_included_column,"
+            sql &= "d.name filegroup,"
+            sql &= "i.fill_factor FILL_FACTOR,"
+            sql &= "case i.is_padded when 0 then 'NO' else 'YES' end PAD_INDEX,"
+            sql &= "case i.ignore_dup_key when 0 then 'NO' else 'YES' end IGNORE_DUP_KEY,"
+            sql &= "case i.allow_row_locks when 0 then 'NO' else 'YES' end ALLOW_ROW_LOCKS,"
+            sql &= "case i.allow_page_locks when 0 then 'NO' else 'YES' end ALLOW_PAGE_LOCKS "
             sql &= "from sys.indexes i "
             sql &= "join sys.index_columns ic "
             sql &= "on ic.object_id = i.object_id "
@@ -380,6 +411,8 @@ Public Class sql
             sql &= "join sys.columns c "
             sql &= "on c.object_id = i.object_id "
             sql &= "and c.column_id = ic.column_id "
+            sql &= "join sys.data_spaces d "
+            sql &= "on d.data_space_id = i.data_space_id "
             sql &= "where i.object_id = object_id('" & Name & "') "
             sql &= "order by 2, 1, 3"
         End If

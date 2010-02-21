@@ -228,8 +228,8 @@ Public Class sql
 
         openConnect()
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select objectproperty(object_id('dbo.jobStart'), 'IsAnsiNullsOn') nulls,"
-            sql &= "objectproperty(object_id('dbo.jobStart'), 'IsQuotedIdentOn') quoted"
+            sql = "select objectproperty(object_id('" & Name & "'), 'IsAnsiNullsOn') nulls,"
+            sql &= "objectproperty(object_id('" & Name & "'), 'IsQuotedIdentOn') quoted"
         Else
             sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted from sys.sql_modules"
             sql &= " where object_id=object_id('" & Name & "')"
@@ -253,6 +253,8 @@ Public Class sql
             sql &= ",c.xscale NUMERIC_SCALE"
             sql &= ",s.name DEFAULT_NAME"
             sql &= ",cm.text DEFAULT_TEXT "
+            sql &= ",i.COLLATION_NAME"
+            sql &= ",case when c.colstat & 2 = 0 then 'NO' else 'YES' end ROWGUID "
             sql &= "from dbo.syscolumns c "
             sql &= "left join dbo.sysobjects s "
             sql &= "on s.id = c.cdefault "
@@ -262,6 +264,10 @@ Public Class sql
             sql &= "join dbo.systypes t "
             sql &= "on t.xtype = c.xtype "
             sql &= "and t.xusertype = c.xusertype "
+            sql &= "join INFORMATION_SCHEMA.COLUMNS i "
+            sql &= "on i.TABLE_NAME=object_name(c.id) "
+            sql &= "and i.TABLE_SCHEMA='dbo' "
+            sql &= "and i.COLUMN_NAME=c.name "
             sql &= "where c.id = object_id('dbo." & Name & "') "
             sql &= "order by c.colorder"
         Else
@@ -273,7 +279,9 @@ Public Class sql
             sql &= ",i.NUMERIC_PRECISION"
             sql &= ",i.NUMERIC_SCALE"
             sql &= ",s.name DEFAULT_NAME"
-            sql &= ",i.COLUMN_DEFAULT DEFAULT_TEXT "
+            sql &= ",i.COLUMN_DEFAULT DEFAULT_TEXT"
+            sql &= ",i.COLLATION_NAME"
+            sql &= ",case c.is_rowguidcol when 0 then 'NO' else 'YES' end ROWGUID "
             sql &= "from INFORMATION_SCHEMA.COLUMNS i "
             sql &= "join sys.columns c "
             sql &= "on c.object_id = object_id('" & Name & "') "
@@ -288,55 +296,66 @@ Public Class sql
         Return GetTable(sql)
     End Function
 
-    Public Function TableIdentity(ByVal Name As String) As String
+    Public Function TableIdentity(ByVal Name As String) As DataRow
         Dim sql As String
-        Dim dr As DataRow
 
         openConnect()
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select name from syscolumns where id = object_id('" & Name & "') and colstat & 1 = 1"
-
+            sql = "select name,ident_seed('" & Name & "') seed,ident_incr('" & Name & "') increment from syscolumns where id = object_id('" & Name & "') and colstat & 1 = 1"
         Else
-            sql = "select name from sys.columns where object_id = object_id('" & Name & "') and is_identity = 1"
+            sql = "select name,ident_seed('" & Name & "') seed,ident_incr('" & Name & "') increment from sys.columns where object_id = object_id('" & Name & "') and is_identity = 1"
         End If
-        dr = GetRow(sql)
-        If Not dr Is Nothing Then
-            Return GetString(dr.Item("name"))
-        End If
-        Return ""
+        Return GetRow(sql)
     End Function
 
     Public Function TableFKeys(ByVal Name As String) As DataTable
         Dim sql As String
+        Dim sSchema As String = "dbo"
 
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select object_name(k.constid) ConstraintName"
+            sql = "select c.CONSTRAINT_NAME ConstraintName"
             sql &= ",k.keyno Sequence"
             sql &= ",col_name(k.fkeyid, k.fkey) ColumnName"
+            sql &= ",user_name(o1.uid) LinkedSchema"
             sql &= ",object_name(k.rkeyid) LinkedTable"
             sql &= ",col_name(k.rkeyid, k.rkey) LinkedColumn "
+            sql &= ",c.MATCH_OPTION"
+            sql &= ",c.UPDATE_RULE"
+            sql &= ",c.DELETE_RULE"
             sql &= "from dbo.sysforeignkeys k "
-            sql &= "where k.fkeyid = object_id('" & Name & "') "
+            sql &= "join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
+            sql &= "on c.CONSTRAINT_NAME = object_name(k.constid) "
+            sql &= "join sysobjects o "
+            sql &= "on o.id=k.fkeyid "
+            sql &= "join sysobjects o1 "
+            sql &= "on o1.id=k.rkeyid "
+            sql &= "where o.name='" & Name & "' "
+            sql &= "and user_name(o.uid)='" & sSchema & "' "
             sql &= "order by 1, 2"
         Else
             sql = "select c.CONSTRAINT_NAME ConstraintName"
             sql &= ",u1.ORDINAL_POSITION Sequence"
             sql &= ",u1.COLUMN_NAME ColumnName"
+            sql &= ",u2.TABLE_SCHEMA LinkedSchema"
             sql &= ",u2.TABLE_NAME LinkedTable"
-            sql &= ",u2.COLUMN_NAME LinkedColumn "
+            sql &= ",u2.COLUMN_NAME LinkedColumn"
+            sql &= ",c.MATCH_OPTION"
+            sql &= ",c.UPDATE_RULE"
+            sql &= ",c.DELETE_RULE "
             sql &= "from INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
             sql &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u1 "
-            sql &= "on u1.CONSTRAINT_CATALOG = c.CONSTRAINT_CATALOG "
-            sql &= "and u1.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA "
-            sql &= "and u1.CONSTRAINT_NAME = c.CONSTRAINT_NAME "
+            sql &= "on u1.CONSTRAINT_CATALOG=c.CONSTRAINT_CATALOG "
+            sql &= "and u1.CONSTRAINT_SCHEMA=c.CONSTRAINT_SCHEMA "
+            sql &= "and u1.CONSTRAINT_NAME=c.CONSTRAINT_NAME "
             sql &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u2 "
-            sql &= "on u2.CONSTRAINT_CATALOG = c.UNIQUE_CONSTRAINT_CATALOG "
-            sql &= "and u2.CONSTRAINT_SCHEMA = c.UNIQUE_CONSTRAINT_SCHEMA "
-            sql &= "and u2.CONSTRAINT_NAME = c.UNIQUE_CONSTRAINT_NAME "
-            sql &= "and u2.ORDINAL_POSITION = u1.ORDINAL_POSITION "
-            sql &= "where u1.TABLE_NAME = '" & Name & "' "
+            sql &= "on u2.CONSTRAINT_CATALOG=c.UNIQUE_CONSTRAINT_CATALOG "
+            sql &= "and u2.CONSTRAINT_SCHEMA=c.UNIQUE_CONSTRAINT_SCHEMA "
+            sql &= "and u2.CONSTRAINT_NAME=c.UNIQUE_CONSTRAINT_NAME "
+            sql &= "and u2.ORDINAL_POSITION=u1.ORDINAL_POSITION "
+            sql &= "where u1.TABLE_NAME='" & Name & "' "
+            sql &= "and u1.TABLE_SCHEMA='" & sSchema & "' "
             sql &= "order by 1, 2"
         End If
 
@@ -356,7 +375,13 @@ Public Class sql
             sql &= ",case when indexproperty(x.id, x.name, 'IsClustered') = 1 then 1 else 2 end type"
             sql &= ",case when s.name is not null then 1 else 0 end is_primary_key"
             sql &= ",case when indexproperty(x.id, x.name, 'IsUnique') = 1 then 1 else 0 end is_unique"
-            sql &= ",0 is_included_column "
+            sql &= ",0 is_included_column"
+            sql &= ",'PRIMARY' filegroup"
+            sql &= ",x.OrigFillFactor FILL_FACTOR"
+            sql &= ",'NO' PAD_INDEX"
+            sql &= ",'NO' IGNORE_DUP_KEY"
+            sql &= ",'YES' ALLOW_ROW_LOCKS"
+            sql &= ",case x.lockflags & 2 when 0 then 'YES' else 'NO' end ALLOW_PAGE_LOCKS "
             sql &= "from dbo.sysindexes x "
             sql &= "join dbo.sysindexkeys i "
             sql &= "on i.id = x.id "
@@ -372,7 +397,13 @@ Public Class sql
             sql = "select ic.key_ordinal,i.name,c.name ColumnName,"
             sql &= "ic.is_descending_key,i.type,"
             sql &= "i.is_primary_key,"
-            sql &= "i.is_unique,ic.is_included_column "
+            sql &= "i.is_unique,ic.is_included_column,"
+            sql &= "d.name filegroup,"
+            sql &= "i.fill_factor FILL_FACTOR,"
+            sql &= "case i.is_padded when 0 then 'NO' else 'YES' end PAD_INDEX,"
+            sql &= "case i.ignore_dup_key when 0 then 'NO' else 'YES' end IGNORE_DUP_KEY,"
+            sql &= "case i.allow_row_locks when 0 then 'NO' else 'YES' end ALLOW_ROW_LOCKS,"
+            sql &= "case i.allow_page_locks when 0 then 'NO' else 'YES' end ALLOW_PAGE_LOCKS "
             sql &= "from sys.indexes i "
             sql &= "join sys.index_columns ic "
             sql &= "on ic.object_id = i.object_id "
@@ -380,20 +411,10 @@ Public Class sql
             sql &= "join sys.columns c "
             sql &= "on c.object_id = i.object_id "
             sql &= "and c.column_id = ic.column_id "
+            sql &= "join sys.data_spaces d "
+            sql &= "on d.data_space_id = i.data_space_id "
             sql &= "where i.object_id = object_id('" & Name & "') "
             sql &= "order by 2, 1, 3"
-        End If
-
-        Return GetTable(sql)
-    End Function
-
-    Public Function TableData(ByVal Name As String, ByVal Filter As String) As DataTable
-        Dim sql As String
-
-        openConnect()
-        sql = "select * from dbo." & Me.QuoteIdentifier(Name)
-        If Filter <> "" Then
-            sql &= " where " & Filter
         End If
 
         Return GetTable(sql)
@@ -407,6 +428,56 @@ Public Class sql
         sql &= "from dbo.sysobjects o "
         sql &= "where o.type = 'TR' "
         sql &= "and o.parent_obj = object_id('" & Name & "')"
+
+        Return GetTable(sql)
+    End Function
+
+    Public Function TablePermissions(ByVal Name As String) As DataTable
+        Dim sql As String
+
+        openConnect()
+
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select user_name(p.uid) grantee,x.permission_name"
+            sql &= ",case p.protecttype when 204 then 'GRANT_WITH_GRANT_OPTION' when 205 then 'GRANT' when 206 then 'DENY' else '' end state"
+            sql &= ",cast(p.columns as integer) columns from dbo.sysprotects p "
+            sql &= "join (select 193 id,'SELECT' permission_name union select 195, 'INSERT' union select 196, 'DELETE' union select 197, 'UPDATE') x "
+            sql &= "on x.id = p.action where object_name(p.id) = '" & Name & "'"
+        Else
+            sql = "select user_name(grantee_principal_id) grantee,permission_name,state_desc state,sum(power(2, minor_id)) columns "
+            sql &= "from sys.database_permissions "
+            sql &= "where  permission_name in ('SELECT','INSERT','DELETE','UPDATE','REFERENCES') "
+            sql &= "and object_name(major_id) = '" & Name & "' "
+            sql &= "group by object_name(major_id),user_name(grantee_principal_id),permission_name,state_desc"
+        End If
+
+        Return GetTable(sql)
+    End Function
+
+    Public Function FunctionColumns(ByVal Name As String) As DataTable
+        Dim sql As String
+
+        openConnect()
+
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select name from dbo.syscolumns where id = object_id('" & Name & "') "
+            sql &= "and substring(name,1,1) <> '@' order by colid"
+        Else
+            sql = "select name from sys.columns where object_id = object_id('" & Name & "') "
+            sql &= "and substring(name,1,1) <> '@' order by column_id"
+        End If
+
+        Return GetTable(sql)
+    End Function
+
+    Public Function TableData(ByVal Name As String, ByVal Filter As String) As DataTable
+        Dim sql As String
+
+        openConnect()
+        sql = "select * from dbo." & Me.QuoteIdentifier(Name)
+        If Filter <> "" Then
+            sql &= " where " & Filter
+        End If
 
         Return GetTable(sql)
     End Function
@@ -465,19 +536,38 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select j.*,suser_sname(j.owner_sid) owner,c.name category,"
-        sql &= "o1.name email,o2.name netsend,o3.name page "
-        sql &= "from dbo.sysjobs j "
-        sql &= "join dbo.syscategories c "
-        sql &= "on c.category_id=j.category_id "
-        sql &= "left join dbo.sysoperators o1 "
-        sql &= "on o1.id = j.notify_email_operator_id "
-        sql &= "left join dbo.sysoperators o2 "
-        sql &= "on o2.id = j.notify_netsend_operator_id "
-        sql &= "left join dbo.sysoperators o3 "
-        sql &= "on o3.id = j.notify_page_operator_id "
-        sql &= "where job_id='" & ID & "'"
 
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select j.name,j.notify_level_eventlog,j.notify_level_email,"
+            sql &= "j.notify_level_netsend,j.notify_level_page,j.delete_level,"
+            sql &= "o1.name email,o2.name netsend,o3.name page,j.description,"
+            sql &= "c.name category,suser_sname(j.owner_sid) owner "
+            sql &= "from dbo.sysjobs j "
+            sql &= "join dbo.syscategories c "
+            sql &= "on c.category_id=j.category_id "
+            sql &= "left join dbo.sysoperators o1 "
+            sql &= "on o1.id = j.notify_email_operator_id "
+            sql &= "left join dbo.sysoperators o2 "
+            sql &= "on o2.id = j.notify_netsend_operator_id "
+            sql &= "left join dbo.sysoperators o3 "
+            sql &= "on o3.id = j.notify_page_operator_id "
+            sql &= "where job_id='" & ID & "'"
+        Else
+            sql = "select j.name,j.notify_level_eventlog,j.notify_level_email,"
+            sql &= "j.notify_level_netsend,j.notify_level_page,j.delete_level,"
+            sql &= "o1.name email,o2.name netsend,o3.name page,j.description,"
+            sql &= "c.name category,suser_sname(j.owner_sid) owner "
+            sql &= "from dbo.sysjobs j "
+            sql &= "join dbo.syscategories c "
+            sql &= "on c.category_id=j.category_id "
+            sql &= "left join dbo.sysoperators o1 "
+            sql &= "on o1.id = j.notify_email_operator_id "
+            sql &= "left join dbo.sysoperators o2 "
+            sql &= "on o2.id = j.notify_netsend_operator_id "
+            sql &= "left join dbo.sysoperators o3 "
+            sql &= "on o3.id = j.notify_page_operator_id "
+            sql &= "where job_id='" & ID & "'"
+        End If
         Return GetRow(sql)
     End Function
 
@@ -485,11 +575,17 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select j.*,s.name server "
-        sql &= "from dbo.sysjobservers j "
-        sql &= "join master.sys.servers s on j.server_id=s.server_id "
-        sql &= "where job_id='" & ID & "'"
-
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select j.server_id,s.srvname server "
+            sql &= "from dbo.sysjobservers j "
+            sql &= "join master.dbo.sysservers s on j.server_id=s.srvid "
+            sql &= "where job_id='" & ID & "'"
+        Else
+            sql = "select j.server_id,s.name server "
+            sql &= "from dbo.sysjobservers j "
+            sql &= "join master.sys.servers s on j.server_id=s.server_id "
+            sql &= "where job_id='" & ID & "'"
+        End If
         Return GetRow(sql)
     End Function
 
@@ -497,9 +593,23 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select j.*,p.name proxy from dbo.sysjobsteps j "
-        sql &= "left join dbo.sysproxies p on p.proxy_id = j.proxy_id "
-        sql &= "where job_id='" & ID & "'"
+
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select j.step_id,j.step_name,j.subsystem,j.command,j.additional_parameters,"
+            sql &= "j.cmdexec_success_code,j.on_success_action,j.on_success_step_id,"
+            sql &= "j.on_fail_action,j.on_fail_step_id,j.server,j.database_name,"
+            sql &= "j.database_user_name,j.retry_attempts,j.retry_interval,j.os_run_priority,"
+            sql &= "j.output_file_name,j.flags,null proxy "
+            sql &= "from dbo.sysjobsteps j where j.job_id='" & ID & "'"
+        Else
+            sql = "select j.step_id,j.step_name,j.subsystem,j.command,j.additional_parameters,"
+            sql &= "j.cmdexec_success_code,j.on_success_action,j.on_success_step_id,"
+            sql &= "j.on_fail_action,j.on_fail_step_id,j.server,j.database_name,"
+            sql &= "j.database_user_name,j.retry_attempts,j.retry_interval,j.os_run_priority,"
+            sql &= "j.output_file_name,j.flags,p.name proxy "
+            sql &= "from dbo.sysjobsteps j left join dbo.sysproxies p on p.proxy_id = j.proxy_id "
+            sql &= "where j.job_id='" & ID & "'"
+        End If
 
         Return GetTable(sql)
     End Function
@@ -508,10 +618,21 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select * from dbo.sysjobschedules j "
-        sql &= "join dbo.sysschedules s on s.Schedule_id = j.schedule_id "
-        sql &= "where j.job_id='" & ID & "' and s.enabled=1"
 
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select j.name,j.freq_type,j.freq_interval,j.freq_subday_type,"
+            sql &= "j.freq_subday_interval,j.freq_relative_interval,j.freq_recurrence_factor,"
+            sql &= "j.active_end_date, j.active_start_time, j.active_end_time "
+            sql &= "from dbo.sysjobschedules j "
+            sql &= "where j.job_id='" & ID & "' and j.enabled=1"
+        Else
+            sql = "select s.name,s.freq_type,s.freq_interval,s.freq_subday_type,"
+            sql &= "s.freq_subday_interval,s.freq_relative_interval,s.freq_recurrence_factor,"
+            sql &= "s.active_end_date, s.active_start_time, s.active_end_time "
+            sql &= "from dbo.sysjobschedules j "
+            sql &= "join dbo.sysschedules s on s.Schedule_id = j.schedule_id "
+            sql &= "where j.job_id='" & ID & "' and s.enabled=1"
+        End If
         Return GetTable(sql)
     End Function
 
@@ -557,7 +678,12 @@ Public Class sql
 
             Case "msdb"
                 If Version < 90 Then            'SQL 2000 compatible
-                    sql = ""
+                    sql = "grant select on dbo.sysjobs to " & Logon & vbCrLf
+                    sql &= "grant select on dbo.sysoperators to " & Logon & vbCrLf
+                    sql &= "grant select on dbo.syscategories to " & Logon & vbCrLf
+                    sql &= "grant select on dbo.sysjobservers to " & Logon & vbCrLf
+                    sql &= "grant select on dbo.sysjobsteps to " & Logon & vbCrLf
+                    sql &= "grant select on dbo.sysjobschedules to " & Logon
                 Else
                     sql = "grant select on dbo.sysjobs to " & Logon & vbCrLf
                     sql &= "grant select on dbo.sysoperators to " & Logon & vbCrLf
@@ -610,6 +736,20 @@ Public Class sql
                 Return CType(objValue, String).TrimEnd
             Catch ex As Exception
                 Return objValue.ToString
+            End Try
+        End If
+    End Function
+
+    Public Function GetInteger(ByVal objValue As Object, ByVal iDefault As Integer) As Integer
+        If IsDBNull(objValue) Then
+            Return 0
+        ElseIf objValue Is Nothing Then
+            Return 0
+        Else
+            Try
+                Return CInt(objValue)
+            Catch ex As Exception
+                Return 0
             End Try
         End If
     End Function
