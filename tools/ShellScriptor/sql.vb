@@ -323,7 +323,7 @@ Public Class sql
             sql &= ",col_name(k.rkeyid, k.rkey) LinkedColumn "
             sql &= ",c.MATCH_OPTION"
             sql &= ",c.UPDATE_RULE"
-            sql &= ",c.DELETE_RULE"
+            sql &= ",c.DELETE_RULE "
             sql &= "from dbo.sysforeignkeys k "
             sql &= "join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
             sql &= "on c.CONSTRAINT_NAME = object_name(k.constid) "
