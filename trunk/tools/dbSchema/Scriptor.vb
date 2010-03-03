@@ -698,6 +698,7 @@ Module Scriptor
 
     Private Function GetdbText(ByVal Name As String, ByVal Type As String) As String
         Dim s As String
+        Dim o As Object
         Dim sText As String
         Dim dr As DataRow
         Dim b As Boolean = True
@@ -711,7 +712,14 @@ Module Scriptor
         End If
 
         For Each dr In dt.Rows        ' Columns
-            s = CType(dr.Item("Text"), String)
+            o = dr.Item("Text")
+            If IsDBNull(o) Then
+                s = ""
+            ElseIf o Is Nothing Then
+                s = ""
+            Else
+                s = CType(o, String)
+            End If
             If Len(s) < 4000 Then s &= vbCrLf
             sText &= s ' & vbCrLf
         Next
