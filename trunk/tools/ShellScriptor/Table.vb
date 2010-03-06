@@ -31,6 +31,7 @@ Public Class TableColumn
     Private iPrecision As Integer = 0
     Private iScale As Integer = 0
     Private sCollation As String = ""
+    Private bANSIPadded As Boolean = True
     Private sqllib As New sql
 
 #Region "Properties"
@@ -168,6 +169,32 @@ Public Class TableColumn
         End Set
     End Property
 
+    Public Property ANSIPadded() As String
+        Get
+            Dim s As String
+            Select Case sType
+                Case "varchar", "char", "nvarchar", "nchar", _
+                     "binary", "varbinary", "sql_variant"
+                    If bANSIPadded Then
+                        s = "Y"
+                    Else
+                        s = "N"
+                    End If
+
+                Case Else
+                    s = "X"
+            End Select
+            ANSIPadded = s
+        End Get
+        Set(ByVal value As String)
+            If value = "Y" Then
+                bANSIPadded = True
+            Else
+                bANSIPadded = False
+            End If
+        End Set
+    End Property
+
     Public ReadOnly Property vbType() As String
         Get
             Dim s As String
@@ -295,43 +322,44 @@ Public Class TableColumns
     'Private xTriggers(0) As String
     Private dtIndexs As DataTable
     Private dtFKeys As DataTable
+    Private dtCheck As DataTable
     Private dtPerms As DataTable
 
     Private Values As New Hashtable
     Private Keys(0) As String
     Private slib As New sql
 
-    ' CREATE TABLE 
-    '     [ [ database_name . ] [ schema_name . ] table_name 
+    ' CREATE TABLE
+    '     [ [ database_name . ] [ schema_name . ] table_name
     '         ( { <column_definition> | <computed_column_definition> }
-    '         [ <table_constraint> ] [ ,...n ] ) 
+    '         [ <table_constraint> ] [ ,...n ] )
     '     [ ON { filegroup
     'x         | partition_scheme_name ( partition_column_name )
-    '-         | "default" } ] 
-    'x    [ { TEXTIMAGE_ON { filegroup | "default" } ] 
-    ' 
+    '-         | "default" } ]
+    'x    [ { TEXTIMAGE_ON { filegroup | "default" } ]
+    '
     ' <column_definition> ::=
     ' column_name <data_type>
-    '     [ COLLATE collation_name ] 
+    '     [ COLLATE collation_name ]
     '     [ NULL | NOT NULL ]
     '     [
     '         [ IDENTITY [ ( seed , increment ) ]]
-    'x        [ NOT FOR REPLICATION ] 
+    'x        [ NOT FOR REPLICATION ]
     '     ]
     '     [ ROWGUIDCOL ]
-    '     [ <column_constraint> [ ...n ] ] 
+    '     [ <column_constraint> [ ...n ] ]
     ' 
-    ' <data type> ::= 
-    ' [ type_schema_name . ] type_name 
-    '     [ ( precision [ , scale ] | max | 
-    'x        [ { CONTENT | DOCUMENT } ] xml_schema_collection ) ] 
-    ' 
-    ' <column_constraint> ::= 
-    ' [ CONSTRAINT constraint_name ] 
+    ' <data type> ::=
+    ' [ type_schema_name . ] type_name
+    '     [ ( precision [ , scale ] | max |
+    'x        [ { CONTENT | DOCUMENT } ] xml_schema_collection ) ]
+    '
+    ' <column_constraint> ::=
+    ' [ CONSTRAINT constraint_name ]
     ' {     { PRIMARY KEY |
-    'x        UNIQUE } 
-    '         [ CLUSTERED | NONCLUSTERED ] 
-    '         [ 
+    '-        UNIQUE }
+    '         [ CLUSTERED | NONCLUSTERED ]
+    '         [
     '             WITH ( < index_option > [ , ...n ] )
     '         ]
     '         [ ON { filegroup
@@ -347,55 +375,55 @@ Public Class TableColumns
     ' }
     '
     ' <computed_column_definition> ::=
-    'x column_name AS computed_column_expression 
+    'x column_name AS computed_column_expression
     'x [ PERSISTED [ NOT NULL ] ]
     '  [
     '     [ CONSTRAINT constraint_name ]
     '     { PRIMARY KEY |
-    'x      UNIQUE }
+    '-      UNIQUE }
     '         [ CLUSTERED | NONCLUSTERED ]
-    '         [ 
+    '         [
     '             WITH ( <index_option> [ , ...n ] )
     '         ]
-    '         [ ON { filegroup 
+    '         [ ON { filegroup
     'x            | partition_scheme_name ( partition_column_name ) | "default" } ]
-    '     | [ FOREIGN KEY ] 
-    '         REFERENCES referenced_table_name [ ( ref_column ) ] 
-    '         [ ON DELETE { NO ACTION | CASCADE } ] 
-    '         [ ON UPDATE { NO ACTION } ] 
-    'x        [ NOT FOR REPLICATION ] 
-    'x    | CHECK [ NOT FOR REPLICATION ] ( logical_expression ) 
-    ' ] 
+    '     | [ FOREIGN KEY ]
+    '         REFERENCES referenced_table_name [ ( ref_column ) ]
+    '         [ ON DELETE { NO ACTION | CASCADE } ]
+    '         [ ON UPDATE { NO ACTION } ]
+    'x        [ NOT FOR REPLICATION ]
+    'x    | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
+    ' ]
     '
     ' < table_constraint > ::=
-    ' [ CONSTRAINT constraint_name ] 
-    ' { 
+    ' [ CONSTRAINT constraint_name ]
+    ' {
     '     { PRIMARY KEY |
-    'x      UNIQUE } 
-    '         [ CLUSTERED | NONCLUSTERED ] 
-    '                 (column [ ASC | DESC ] [ ,...n ] ) 
-    '         [ 
-    '             WITH ( <index_option> [ , ...n ] ) 
+    '-      UNIQUE }
+    '         [ CLUSTERED | NONCLUSTERED ]
+    '                 (column [ ASC | DESC ] [ ,...n ] )
+    '         [
+    '             WITH ( <index_option> [ , ...n ] )
     '         ]
     '         [ ON { filegroup
-    'x            | partition_scheme_name (partition_column_name) | "default" } ] 
-    '     | FOREIGN KEY 
-    '                 ( column [ ,...n ] ) 
-    '         REFERENCES referenced_table_name [ ( ref_column [ ,...n ] ) ] 
-    '         [ ON DELETE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ] 
-    '         [ ON UPDATE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ] 
-    'x        [ NOT FOR REPLICATION ] 
-    'x    | CHECK [ NOT FOR REPLICATION ] ( logical_expression ) 
+    'x            | partition_scheme_name (partition_column_name) | "default" } ]
+    '     | FOREIGN KEY
+    '                 ( column [ ,...n ] )
+    '         REFERENCES referenced_table_name [ ( ref_column [ ,...n ] ) ]
+    '         [ ON DELETE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
+    '         [ ON UPDATE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
+    'x        [ NOT FOR REPLICATION ]
+    'x    | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
     ' }
     '
     ' <index_option> ::=
     ' {
-    '    PAD_INDEX = { ON | OFF } 
-    '   | FILLFACTOR = fillfactor 
-    '   | IGNORE_DUP_KEY = { ON | OFF } 
-    'x  | STATISTICS_NORECOMPUTE = { ON | OFF } 
-    '   | ALLOW_ROW_LOCKS = { ON | OFF} 
-    '   | ALLOW_PAGE_LOCKS ={ ON | OFF} 
+    '    PAD_INDEX = { ON | OFF }
+    '   | FILLFACTOR = fillfactor
+    '   | IGNORE_DUP_KEY = { ON | OFF }
+    'x  | STATISTICS_NORECOMPUTE = { ON | OFF }
+    '   | ALLOW_ROW_LOCKS = { ON | OFF}
+    '   | ALLOW_PAGE_LOCKS ={ ON | OFF}
     ' }
 
 #Region "Properties"
@@ -1047,6 +1075,9 @@ Public Class TableColumns
                 If tc.RowGuid Then
                     ss &= " rowguid='Y'"
                 End If
+                If tc.ANSIPadded = "N" Then
+                    ss &= " ansipadded='N'"
+                End If
                 If bCollation And tc.Collation <> "" Then
                     ss &= " collation='" & tc.Collation & "'"
                 End If
@@ -1061,7 +1092,7 @@ Public Class TableColumns
                         st = Mid(st, 2, Len(st) - 2)
                     End If
                     ss &= "><![CDATA[" & st & "]]></default>" & vbCrLf
-                    ss &= "      </column>" & vbCrLf
+                    ss &= "      </column>"
                 Else
                     ss &= " />"
                 End If
@@ -1103,7 +1134,7 @@ Public Class TableColumns
                                     ss &= " clustered='Y'"
                                 End If
                                 If CInt(r.Item("is_unique")) <> 0 Then
-                                    ss &= " unique='Y'" & vbCrLf
+                                    ss &= " unique='Y'"
                                 End If
                                 i = slib.GetInteger(r.Item("FILL_FACTOR"), 0)
                                 If i > 0 Then
@@ -1146,6 +1177,30 @@ Public Class TableColumns
             Next
             If ss <> "" Then
                 ss &= "    </indexes>" & vbCrLf
+                sOut &= ss
+            End If
+
+            ss = ""
+            For Each dr As DataRow In dtCheck.Rows
+                If ss = "" Then
+                    ss = "    <constraints>" & vbCrLf
+                End If
+                ss &= "      <constraint "
+                If bConsName Then
+                    ss &= "name='" & slib.QuoteIdentifier(dr("CONSTRAINT_NAME")) & "' "
+                End If
+                ss &= "type='check'>" & vbCrLf
+                ss &= "        <![CDATA["
+                s = slib.GetString(dr("CHECK_CLAUSE"))
+                If fixdef Then
+                    s = FixCheckText(s)
+                End If
+                ss &= s
+                ss &= "]]>" & vbCrLf
+                ss &= "      </constraint>" & vbCrLf
+            Next
+            If ss <> "" Then
+                ss &= "    </constraints>" & vbCrLf
                 sOut &= ss
             End If
 
@@ -1197,6 +1252,16 @@ Public Class TableColumns
     End Sub
 
     Public Sub New(ByVal sTableName As String, ByVal sqllib As sql, ByVal bDef As Boolean)
+        LoadTable(sTableName, "dbo", sqllib, bDef)
+    End Sub
+
+    Public Sub New(ByVal sTableName As String, ByVal Schema As String, _
+                                ByVal sqllib As sql, ByVal bDef As Boolean)
+        LoadTable(sTableName, Schema, sqllib, bDef)
+    End Sub
+
+    Private Sub LoadTable(ByVal sTableName As String, ByVal Sch As String, _
+                                ByVal sqllib As sql, ByVal bDef As Boolean)
         Dim s As String = "a"
         Dim b As Boolean = False
         Dim sdn As String
@@ -1206,17 +1271,20 @@ Public Class TableColumns
         Dim sType As String
         Dim sNull As String
         Dim sColl As String
+        Dim sAP As String
         Dim dt As DataTable
         Dim dr As DataRow
         Dim i As Integer
         Dim iSeed As Integer
         Dim iIncr As Integer
 
+        sSchema = Sch
+        qSchema = slib.QuoteIdentifier(Sch)
         slib = sqllib
         fixdef = bDef
         PreLoad = 2
 
-        dt = slib.TableColumns(sTableName)
+        dt = slib.TableColumns(sTableName, sSchema)
         If dt.Rows.Count = 0 Then
             PreLoad = 3
             Return
@@ -1224,7 +1292,7 @@ Public Class TableColumns
 
         sTable = sqllib.GetString(dt.Rows(0).Item("TableName"))
         qTable = sqllib.QuoteIdentifier(sTable)
-        dr = slib.TableIdentity(sTable)
+        dr = slib.TableIdentity(sTable, sSchema)
         If Not dr Is Nothing Then
             sIdentity = slib.GetString(dr.Item("name"))
             iSeed = slib.GetInteger(dr.Item("seed"), 1)
@@ -1238,25 +1306,26 @@ Public Class TableColumns
             sdn = sqllib.GetString(dr.Item("DEFAULT_NAME"))
             sdv = FixDefaultText(sqllib.GetString(dr.Item("DEFAULT_TEXT")))
             sColl = sqllib.GetString(dr.Item("COLLATION_NAME"))
+            sAP = Mid(sqllib.GetString(dr.Item("ANSIPadded")), 1, 1)
             If sName = sIdentity Then
                 AddIdentityColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
                     dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, _
-                    iSeed, iIncr, sdn, sdv, sColl)
+                    iSeed, iIncr, sdn, sdv, sColl, sAP)
             Else
                 s = sqllib.GetString(dr.Item("ROWGUID"))
                 If s = "NO" Then
                     AddColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
                         dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, _
-                        sdn, sdv, sColl)
+                        sdn, sdv, sColl, sAP)
                 Else
                     AddRowGuidColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
                         dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, _
-                        sdn, sdv)
+                        sdn, sdv, sAP)
                 End If
             End If
         Next
 
-        dtIndexs = slib.TableIndexes(sTable)
+        dtIndexs = slib.TableIndexes(sTable, sSchema)
 
         b = False
         sName = ""
@@ -1295,7 +1364,9 @@ Public Class TableColumns
             End If
         Next
 
-        dtFKeys = slib.TableFKeys(sTable)
+        dtCheck = slib.TableCheckConstraints(sTable, sSchema)
+
+        dtFKeys = slib.TableFKeys(sTable, sSchema)
         sName = ""
         For Each r As DataRow In dtFKeys.Rows
             s = sqllib.GetString(r.Item("ConstraintName"))
@@ -1310,7 +1381,7 @@ Public Class TableColumns
             End If
         Next
 
-        dtPerms = slib.TablePermissions(sTable)
+        dtPerms = slib.TablePermissions(sTable, sSchema)
 
         'dt = slib.TableTriggers(sTable)
         'For Each r As DataRow In dt.Rows
@@ -1332,7 +1403,8 @@ Public Class TableColumns
         ByVal bNullable As String, _
         ByVal sDefaultName As String, _
         ByVal sDefaultValue As String, _
-        ByVal sCollation As String)
+        ByVal sCollation As String, _
+        ByVal sANSIPadded As String)
 
         Dim parm As New TableColumn
 
@@ -1352,6 +1424,7 @@ Public Class TableColumns
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
             .Collation = sCollation
+            .ANSIPadded = sANSIPadded
         End With
 
         AddColumn(parm)
@@ -1365,7 +1438,8 @@ Public Class TableColumns
         ByVal oScale As Object, _
         ByVal bNullable As String, _
         ByVal sDefaultName As String, _
-        ByVal sDefaultValue As String)
+        ByVal sDefaultValue As String, _
+        ByVal sANSIPadded As String)
 
         Dim parm As New TableColumn
 
@@ -1385,6 +1459,7 @@ Public Class TableColumns
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
             .RowGuid = True
+            .ANSIPadded = sANSIPadded
         End With
 
         AddColumn(parm)
@@ -1401,7 +1476,8 @@ Public Class TableColumns
         ByVal iIncr As Integer, _
         ByVal sDefaultName As String, _
         ByVal sDefaultValue As String, _
-        ByVal sCollation As String)
+        ByVal sCollation As String, _
+        ByVal sANSIPadded As String)
 
         Dim parm As New TableColumn
 
@@ -1424,6 +1500,7 @@ Public Class TableColumns
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
             .Collation = sCollation
+            .ANSIPadded = sANSIPadded
         End With
 
         AddColumn(parm)
@@ -1510,7 +1587,7 @@ Public Class TableColumns
         sHead &= "(" & vbCrLf
 
         i = 0
-        dt = slib.TableData(sTable, sFilter)
+        dt = slib.TableData(sTable, sSchema, sFilter)
         For Each r As DataRow In dt.Rows
             If i = 0 Then
                 sOut &= sTail
@@ -1565,6 +1642,8 @@ Public Class TableColumns
         Dim s As String
         Dim sTab As String
         Dim tc As TableColumn
+        Dim bANSI As Boolean = False
+        Dim bNonANSI As Boolean = False
 
         If bFull Then
             sTab = "    "
@@ -1573,6 +1652,27 @@ Public Class TableColumns
             sOut &= "    print 'creating " & sSchema & "." & sTable & "'" & vbCrLf
         Else
             sTab = ""
+        End If
+
+        For Each s In Keys
+            tc = DirectCast(Values.Item(s), TableColumn)
+            Select Case tc.ANSIPadded
+                Case "Y"
+                    bANSI = True
+                Case "N"
+                    bNonANSI = True
+            End Select
+        Next
+
+        If bNonANSI Then  'not ANSI padding
+            sOut &= vbCrLf
+            If Not bANSI Then
+                sOut &= sTab & "set ansi_padding off" & vbCrLf
+            Else
+                sOut &= "  -- columns exist with different ansi_padding settings" & vbCrLf
+                sOut &= "  -- that have not been correctly scripted." & vbCrLf
+            End If
+            sOut &= vbCrLf
         End If
 
         sOut &= sTab & "create table " & qSchema & "." & qTable & vbCrLf
@@ -1606,8 +1706,11 @@ Public Class TableColumns
                 sOut &= " default " & tc.DefaultValue
             End If
 
-            Comma = ","
+            If tc.ANSIPadded = "N" And bANSI Then
+                sOut &= "   -- not ANSI"
+            End If
             sOut &= vbCrLf
+            Comma = ","
         Next
 
         If sPKey <> "" Then
@@ -1639,6 +1742,18 @@ Public Class TableColumns
                 sOut &= " on " & sFileGroup
             End If
             sOut &= vbCrLf
+        End If
+
+        If Not dtCheck Is Nothing Then
+            For Each dr As DataRow In dtCheck.Rows
+                sOut &= sTab & "   ,constraint "
+                If bConsName Then
+                    sOut &= slib.QuoteIdentifier(dr("CONSTRAINT_NAME")) & " "
+                End If
+                s = slib.GetString(dr("CHECK_CLAUSE"))
+                s = FixCheckText(s)
+                sOut &= "check (" & s & ")" & vbCrLf
+            Next
         End If
 
         sOut &= sTab & ")" & vbCrLf
@@ -1755,6 +1870,74 @@ Public Class TableColumns
             End Select
         Next
         If Mid(s, 1, 1) <> "(" Then s = "(" & s & ")"
+        Return s
+    End Function
+
+    Private Function FixCheckText(ByVal sCheck As String) As String
+        Dim s As String = ""
+        Dim ss As String
+        Dim sSave As String = ""
+        Dim i As Integer
+        Dim mode As Integer = 0
+        Dim bc As Integer = 0
+
+        For i = 1 To Len(sCheck)
+            ss = Mid(sCheck, i, 1)
+            Select Case mode
+                Case 0
+                    Select Case ss
+                        Case "["
+                            bc = 1
+                            sSave = ""
+                            mode = 3
+
+                        Case "'"
+                            mode = 1
+                            s &= ss
+
+                        Case """"
+                            mode = 2
+                            s &= ss
+
+                        Case Else
+                            s &= ss
+
+                    End Select
+
+                Case 1
+                    If ss = "'" Then mode = 0
+                    s &= ss
+
+                Case 2
+                    If ss = """" Then mode = 0
+                    s &= ss
+
+                Case 3
+                    Select Case ss
+                        Case "]"
+                            bc -= 1
+                            If bc = 0 Then
+                                s &= slib.QuoteIdentifier(sSave)
+                                mode = 0
+                            Else
+                                sSave &= ss
+                            End If
+
+                        Case "["
+                            sSave &= ss
+                            bc += 1
+
+                        Case Else
+                            sSave &= ss
+
+                    End Select
+            End Select
+        Next
+
+        If Mid(s, 1, 1) = "(" And Right(s, 1) = ")" Then
+            s = Mid(s, 2, Len(s) - 2)
+        End If
+
         Return s
     End Function
 #End Region

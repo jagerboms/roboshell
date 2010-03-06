@@ -1,4 +1,3 @@
-'mssqlsystemresource
 Option Explicit On
 Option Strict On
 
@@ -133,7 +132,8 @@ Public Class sql
         Return GetTable(sql)
     End Function
 
-    Public Function DatabaseObject(ByVal Name As String, ByVal Type As String) As DataTable
+    Public Function DatabaseObject(ByVal Name As String, ByVal Schema As String, _
+                                ByVal Type As String) As DataTable
         Dim sql As String
         Dim s As String = ""
         Dim bT As Boolean = False
@@ -168,7 +168,7 @@ Public Class sql
 
         openConnect()
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select type,name,object_name(parent_obj) parent "
+            sql = "select type,name,object_name(parent_obj) parent,user_name(uid) sch "
             sql &= "from dbo.sysobjects "
             sql &= "where type in (" & s & ") "
             If Name <> "" Then
@@ -178,6 +178,9 @@ Public Class sql
                 End If
                 sql &= ") "
             End If
+            If Schema <> "" Then
+                sql &= "and user_name(uid)='" & Schema & "' "
+            End If
             sql &= "and uid = 1 "
             sql &= "and name not like 'dt_%' "
             sql &= "and name not in ('syssegments','sysconstraints','sysdiagrams',"
@@ -186,16 +189,18 @@ Public Class sql
             sql &= "'sp_renamediagram','sp_upgraddiagrams','fn_diagramobjects') "
             sql &= "order by type, name"
         Else
-            sql = "select type,name,object_name(parent_object_id) parent "
+            sql = "select type,name,object_name(parent_object_id) parent,schema_name(schema_id) sch "
             sql &= "from sys.objects "
             sql &= "where type in (" & s & ") "
-
             If Name <> "" Then
                 sql &= "and (name like '" & Name & "'"
                 If bT Then
                     sql &= " or object_name(parent_object_id) like '" & Name & "'"
                 End If
                 sql &= ") "
+            End If
+            If Schema <> "" Then
+                sql &= "and schema_name(schema_id)='" & Schema & "' "
             End If
             sql &= "and name not like 'dt_%' "
             sql &= "and name not in ('syssegments','sysconstraints','sysdiagrams',"
@@ -208,43 +213,49 @@ Public Class sql
         Return GetTable(sql)
     End Function
 
-    Public Function ObjectText(ByVal Name As String) As DataTable
+    Public Function ObjectText(ByVal Name As String, ByVal Schema As String) As DataTable
         Dim sql As String
+        Dim s As String
 
         openConnect()
+
+        s = Schema & "." & Name
         If Version < 90 Then            'SQL 2000 compatible
             sql = "select text from syscomments "
-            sql &= "where id = object_id('" & Name & "') order by number, colid"
+            sql &= "where id = object_id('" & s & "') order by number, colid"
         Else
             sql = "select text from sys.syscomments "
-            sql &= "where id = object_id('" & Name & "') order by number, colid"
+            sql &= "where id = object_id('" & s & "') order by number, colid"
         End If
 
         Return GetTable(sql)
     End Function
 
-    Public Function ObjectSettings(ByVal Name As String) As DataTable
+    Public Function ObjectSettings(ByVal Name As String, ByVal Schema As String) As DataTable
         Dim sql As String
+        Dim s As String
 
         openConnect()
+
+        s = Schema & "." & Name
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select objectproperty(object_id('" & Name & "'), 'IsAnsiNullsOn') nulls,"
-            sql &= "objectproperty(object_id('" & Name & "'), 'IsQuotedIdentOn') quoted"
+            sql = "select objectproperty(object_id('" & s & "'), 'IsAnsiNullsOn') nulls,"
+            sql &= "objectproperty(object_id('" & s & "'), 'IsQuotedIdentOn') quoted"
         Else
             sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted from sys.sql_modules"
-            sql &= " where object_id=object_id('" & Name & "')"
+            sql &= " where object_id=object_id('" & s & "')"
         End If
 
         Return GetTable(sql)
     End Function
 
-    Public Function TableColumns(ByVal Name As String) As DataTable
+    Public Function TableColumns(ByVal TableName As String, ByVal Schema As String) As DataTable
         Dim sql As String
 
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select object_name(c.id) TableName"
+            sql = "select i.TABLE_NAME TableName"
             sql &= ",c.name COLUMN_NAME"
             sql &= ",t.name DATA_TYPE"
             sql &= ",c.prec CHARACTER_MAXIMUM_LENGTH"
@@ -254,6 +265,8 @@ Public Class sql
             sql &= ",s.name DEFAULT_NAME"
             sql &= ",cm.text DEFAULT_TEXT "
             sql &= ",i.COLLATION_NAME"
+            sql &= ",case when c.status & 128 = 0 then 'YES' else 'NO' end ANSIPadded"
+            sql &= ",'NO' Replicate"
             sql &= ",case when c.colstat & 2 = 0 then 'NO' else 'YES' end ROWGUID "
             sql &= "from dbo.syscolumns c "
             sql &= "left join dbo.sysobjects s "
@@ -266,12 +279,12 @@ Public Class sql
             sql &= "and t.xusertype = c.xusertype "
             sql &= "join INFORMATION_SCHEMA.COLUMNS i "
             sql &= "on i.TABLE_NAME=object_name(c.id) "
-            sql &= "and i.TABLE_SCHEMA='dbo' "
+            sql &= "and i.TABLE_SCHEMA='" & schema & "' "
             sql &= "and i.COLUMN_NAME=c.name "
-            sql &= "where c.id = object_id('dbo." & Name & "') "
+            sql &= "where c.id = object_id('" & schema & "." & TableName & "') "
             sql &= "order by c.colorder"
         Else
-            sql = "select TABLE_NAME TableName"
+            sql = "select i.TABLE_NAME TableName"
             sql &= ",i.COLUMN_NAME"
             sql &= ",i.DATA_TYPE"
             sql &= ",i.CHARACTER_MAXIMUM_LENGTH"
@@ -281,36 +294,46 @@ Public Class sql
             sql &= ",s.name DEFAULT_NAME"
             sql &= ",i.COLUMN_DEFAULT DEFAULT_TEXT"
             sql &= ",i.COLLATION_NAME"
+            sql &= ",case c.is_ansi_padded when 0 then 'NO' else 'YES' end ANSIPadded"
+            sql &= ",case c.is_replicated when 0 then 'NO' else 'YES' end Replicate"
             sql &= ",case c.is_rowguidcol when 0 then 'NO' else 'YES' end ROWGUID "
             sql &= "from INFORMATION_SCHEMA.COLUMNS i "
             sql &= "join sys.columns c "
-            sql &= "on c.object_id = object_id('" & Name & "') "
+            sql &= "on c.object_id = object_id(i.TABLE_SCHEMA+'.'+i.TABLE_NAME) "
             sql &= "and c.name = i.COLUMN_NAME "
             sql &= "left join sys.objects s "
             sql &= "on s.object_id = c.default_object_id "
-            sql &= "where TABLE_NAME = '" & Name & "' "
-            sql &= "and TABLE_SCHEMA = 'dbo' "
-            sql &= "order by ORDINAL_POSITION"
+            sql &= "where i.TABLE_NAME = '" & TableName & "' "
+            sql &= "and i.TABLE_SCHEMA = '" & schema & "' "
+            sql &= "order by i.ORDINAL_POSITION"
         End If
 
         Return GetTable(sql)
     End Function
 
-    Public Function TableIdentity(ByVal Name As String) As DataRow
+    Public Function TableIdentity(ByVal TableName As String, ByVal Schema As String) As DataRow
         Dim sql As String
+        Dim s As String
 
         openConnect()
+
+        s = Schema & "." & TableName
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select name,ident_seed('" & Name & "') seed,ident_incr('" & Name & "') increment from syscolumns where id = object_id('" & Name & "') and colstat & 1 = 1"
+            sql = "select name,ident_seed('" & s & _
+                  "') seed,ident_incr('" & s & _
+                  "') increment from syscolumns where id = object_id('" & s & _
+                  "') and colstat & 1 = 1"
         Else
-            sql = "select name,ident_seed('" & Name & "') seed,ident_incr('" & Name & "') increment from sys.columns where object_id = object_id('" & Name & "') and is_identity = 1"
+            sql = "select name,ident_seed('" & s & _
+                  "') seed,ident_incr('" & s & _
+                  "') increment from sys.columns where object_id = object_id('" & s & _
+                  "') and is_identity = 1"
         End If
         Return GetRow(sql)
     End Function
 
-    Public Function TableFKeys(ByVal Name As String) As DataTable
+    Public Function TableFKeys(ByVal TableName As String, ByVal Schema As String) As DataTable
         Dim sql As String
-        Dim sSchema As String = "dbo"
 
         openConnect()
 
@@ -331,8 +354,8 @@ Public Class sql
             sql &= "on o.id=k.fkeyid "
             sql &= "join sysobjects o1 "
             sql &= "on o1.id=k.rkeyid "
-            sql &= "where o.name='" & Name & "' "
-            sql &= "and user_name(o.uid)='" & sSchema & "' "
+            sql &= "where o.name='" & TableName & "' "
+            sql &= "and user_name(o.uid)='" & schema & "' "
             sql &= "order by 1, 2"
         Else
             sql = "select c.CONSTRAINT_NAME ConstraintName"
@@ -354,15 +377,15 @@ Public Class sql
             sql &= "and u2.CONSTRAINT_SCHEMA=c.UNIQUE_CONSTRAINT_SCHEMA "
             sql &= "and u2.CONSTRAINT_NAME=c.UNIQUE_CONSTRAINT_NAME "
             sql &= "and u2.ORDINAL_POSITION=u1.ORDINAL_POSITION "
-            sql &= "where u1.TABLE_NAME='" & Name & "' "
-            sql &= "and u1.TABLE_SCHEMA='" & sSchema & "' "
+            sql &= "where u1.TABLE_NAME='" & TableName & "' "
+            sql &= "and u1.TABLE_SCHEMA='" & schema & "' "
             sql &= "order by 1, 2"
         End If
 
         Return GetTable(sql)
     End Function
 
-    Public Function TableIndexes(ByVal Name As String) As DataTable
+    Public Function TableIndexes(ByVal TableName As String, ByVal Schema As String) As DataTable
         Dim sql As String
 
         openConnect()
@@ -390,7 +413,7 @@ Public Class sql
             sql &= "on s.name = x.name "
             sql &= "and s.parent_obj = x.id "
             sql &= "and s.xtype = 'PK' "
-            sql &= "where x.id = object_id('" & Name & "') "
+            sql &= "where x.id = object_id('" & schema & "." & TableName & "') "
             sql &= "and x.name not like '_WA_%' "
             sql &= "order by 2, 1, 3"
         Else
@@ -413,28 +436,47 @@ Public Class sql
             sql &= "and c.column_id = ic.column_id "
             sql &= "join sys.data_spaces d "
             sql &= "on d.data_space_id = i.data_space_id "
-            sql &= "where i.object_id = object_id('" & Name & "') "
+            sql &= "where i.object_id = object_id('" & schema & "." & TableName & "') "
             sql &= "order by 2, 1, 3"
         End If
 
         Return GetTable(sql)
     End Function
 
-    Public Function TableTriggers(ByVal Name As String) As DataTable
+    Public Function TableCheckConstraints(ByVal TableName As String, ByVal Schema As String) As DataTable
+        Dim sql As String
+
+        openConnect()
+
+        sql = "select c.CONSTRAINT_CATALOG"
+        sql &= ",c.CONSTRAINT_SCHEMA"
+        sql &= ",c.CONSTRAINT_NAME"
+        sql &= ",c.CHECK_CLAUSE "
+        sql &= "from INFORMATION_SCHEMA.check_Constraints c "
+        sql &= "join INFORMATION_SCHEMA.Constraint_table_usage t "
+        sql &= "on t.CONSTRAINT_CATALOG=c.CONSTRAINT_CATALOG "
+        sql &= "and t.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA "
+        sql &= "and t.CONSTRAINT_NAME = c.CONSTRAINT_NAME "
+        sql &= "where t.TABLE_NAME = '" & TableName & "' "
+        sql &= "and t.TABLE_SCHEMA = '" & Schema & "'"
+
+        Return GetTable(sql)
+    End Function
+
+    Public Function TableTriggers(ByVal TableName As String, ByVal Schema As String) As DataTable
         Dim sql As String
 
         openConnect()
         sql = "select o.name TriggerName "
         sql &= "from dbo.sysobjects o "
         sql &= "where o.type = 'TR' "
-        sql &= "and o.parent_obj = object_id('" & Name & "')"
+        sql &= "and o.parent_obj = object_id('" & Schema & "." & TableName & "')"
 
         Return GetTable(sql)
     End Function
 
-    Public Function TablePermissions(ByVal Name As String) As DataTable
+    Public Function TablePermissions(ByVal TableName As String, ByVal Schema As String) As DataTable
         Dim sql As String
-
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
@@ -442,39 +484,39 @@ Public Class sql
             sql &= ",case p.protecttype when 204 then 'GRANT_WITH_GRANT_OPTION' when 205 then 'GRANT' when 206 then 'DENY' else '' end state"
             sql &= ",cast(p.columns as integer) columns from dbo.sysprotects p "
             sql &= "join (select 193 id,'SELECT' permission_name union select 195, 'INSERT' union select 196, 'DELETE' union select 197, 'UPDATE') x "
-            sql &= "on x.id = p.action where object_name(p.id) = '" & Name & "'"
+            sql &= "on x.id = p.action where p.id=object_id('" & schema & "." & TableName & "')"
         Else
             sql = "select user_name(grantee_principal_id) grantee,permission_name,state_desc state,sum(power(2, minor_id)) columns "
             sql &= "from sys.database_permissions "
             sql &= "where  permission_name in ('SELECT','INSERT','DELETE','UPDATE','REFERENCES') "
-            sql &= "and object_name(major_id) = '" & Name & "' "
+            sql &= "and major_id=object_id('" & schema & "." & TableName & "') "
             sql &= "group by object_name(major_id),user_name(grantee_principal_id),permission_name,state_desc"
         End If
 
         Return GetTable(sql)
     End Function
 
-    Public Function FunctionColumns(ByVal Name As String) As DataTable
+    Public Function FunctionColumns(ByVal Name As String, ByVal Schema As String) As DataTable
         Dim sql As String
 
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select name from dbo.syscolumns where id = object_id('" & Name & "') "
+            sql = "select name from dbo.syscolumns where id = object_id('" & Schema & "." & Name & "') "
             sql &= "and substring(name,1,1) <> '@' order by colid"
         Else
-            sql = "select name from sys.columns where object_id = object_id('" & Name & "') "
+            sql = "select name from sys.columns where object_id = object_id('" & Schema & "." & Name & "') "
             sql &= "and substring(name,1,1) <> '@' order by column_id"
         End If
 
         Return GetTable(sql)
     End Function
 
-    Public Function TableData(ByVal Name As String, ByVal Filter As String) As DataTable
+    Public Function TableData(ByVal Name As String, ByVal Schema As String, ByVal Filter As String) As DataTable
         Dim sql As String
 
         openConnect()
-        sql = "select * from dbo." & Me.QuoteIdentifier(Name)
+        sql = "select * from " & Schema & "." & Me.QuoteIdentifier(Name)
         If Filter <> "" Then
             sql &= " where " & Filter
         End If
@@ -482,7 +524,7 @@ Public Class sql
         Return GetTable(sql)
     End Function
 
-    Public Function ProcParms(ByVal Name As String) As DataTable
+    Public Function ProcParms(ByVal Name As String, ByVal Schema As String) As DataTable
         Dim sql As String
 
         openConnect()
@@ -495,13 +537,14 @@ Public Class sql
         sql &= ",NUMERIC_SCALE"
         sql &= ",PARAMETER_MODE "
         sql &= "from INFORMATION_SCHEMA.PARAMETERS "
-        sql &= "where SPECIFIC_NAME='" & Name
-        sql &= "' order by ORDINAL_POSITION"
+        sql &= "where SPECIFIC_NAME='" & Name & "' "
+        sql &= "and SPECIFIC_SCHEMA='" & Schema & "' "
+        sql &= "order by ORDINAL_POSITION"
 
         Return GetTable(sql)
     End Function
 
-    Public Function ProcPermissions(ByVal Name As String) As DataTable
+    Public Function ProcPermissions(ByVal Name As String, ByVal Schema As String) As DataTable
         Dim sql As String
 
         openConnect()
@@ -510,11 +553,11 @@ Public Class sql
             sql = "select user_name(p.uid) grantee,case p.protecttype "
             sql &= "when 204 then 'W' when 205 then 'G' when 206 then 'D' else '' end state "
             sql &= "from dbo.sysprotects p "
-            sql &= "where p.action = 224 and object_name(p.id) = '" & Name & "'"
+            sql &= "where p.action = 224 and p.id=object_id('" & Schema & "." & Name & "')"
         Else
             sql = "select user_name(grantee_principal_id) grantee,state "
             sql &= "from sys.database_permissions "
-            sql &= "where type = 'EX' and object_name(major_id) = '" & Name & "'"
+            sql &= "where type = 'EX' and major_id=object_id('" & Schema & "." & Name & "')"
         End If
         Return GetTable(sql)
     End Function
