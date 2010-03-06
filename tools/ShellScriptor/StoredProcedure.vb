@@ -191,7 +191,7 @@ Public Class StoredProcedure
         Dim dr As DataRow
 
         PreLoad = 2
-        dt = sqllib.ProcParms(Name)
+        dt = sqllib.ProcParms(Name, "dbo")
         If dt.Rows.Count = 0 Then
             pName = Name
             qName = slib.QuoteIdentifier(pName)
@@ -201,21 +201,21 @@ Public Class StoredProcedure
 
         For Each dr In dt.Rows        ' Columns
             If pName = "" Then
-                pName = GetString(dr.Item("SPECIFIC_NAME"))
+                pName = sqllib.GetString(dr.Item("SPECIFIC_NAME"))
                 qName = slib.QuoteIdentifier(pName)
             End If
-            sName = GetString(dr.Item("PARAMETER_NAME"))
-            sType = GetString(dr.Item("DATA_TYPE"))
+            sName = sqllib.GetString(dr.Item("PARAMETER_NAME"))
+            sType = sqllib.GetString(dr.Item("DATA_TYPE"))
             AddParameter(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
                 dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), _
-                    LCase(GetString(dr.Item("PARAMETER_MODE"))))
+                    LCase(sqllib.GetString(dr.Item("PARAMETER_MODE"))))
         Next
 
         dt = Nothing
-        dt = sqllib.ObjectText(Name)
+        dt = sqllib.ObjectText(Name, "dbo")
         sText = ""
         For Each dr In dt.Rows        ' Columns
-            s = GetString(dr.Item("text"))
+            s = sqllib.GetString(dr.Item("text"))
             If Len(s) < 4000 Then s &= vbCrLf
             sText &= s ' & vbCrLf
         Next
@@ -427,19 +427,5 @@ Public Class StoredProcedure
             ByVal e As System.Data.SqlClient.SqlInfoMessageEventArgs)
         Console.WriteLine(e.Message)
     End Sub
-
-    Private Function GetString(ByVal objValue As Object) As String
-        If IsDBNull(objValue) Then
-            Return ""
-        ElseIf objValue Is Nothing Then
-            Return ""
-        Else
-            Try
-                Return CType(objValue, String).TrimEnd
-            Catch ex As Exception
-                Return objValue.ToString
-            End Try
-        End If
-    End Function
 #End Region
 End Class

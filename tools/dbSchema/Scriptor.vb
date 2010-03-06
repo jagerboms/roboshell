@@ -31,6 +31,7 @@ Module Scriptor
     Dim IncludePerm As Boolean = False
     Dim JobSQL As Boolean = False
     Dim sObject As String = ""
+    Dim sSchema As String = ""
     Dim mode As String = "S"
     Dim bXML As Boolean = False
     Dim LogFile As String = ""
@@ -109,6 +110,9 @@ Module Scriptor
                 SendMessage("     the data to be scripted.", "T")
                 SendMessage("     When the type is 'S' the object parameter contains the user", "T")
                 SendMessage("     the permissions are to be scripted.", "T")
+                SendMessage("", "T")
+                SendMessage("   -hSchema is schema to retrieve. If not provided", "T")
+                SendMessage("     objects from all schemas are retrieved.", "T")
                 SendMessage("", "T")
                 SendMessage("   -fType determines the type of script to be generated. Can be one of:", "T")
                 SendMessage("      F - full includes existance checks and separate component files", "T")
@@ -191,6 +195,7 @@ Module Scriptor
             UniCode = GetSwitch("-y")
             sType = GetCommandParameter("-t")
             sObject = GetCommandParameter("-o")
+            sSchema = GetCommandParameter("-h")
             If GetSwitch("-a") Then
                 Collation = True
             End If
@@ -219,7 +224,7 @@ Module Scriptor
             If Mid(LCase(sType), 1, 1) = "j" Then
                 ProcessJobs(Database)
             ElseIf Mid(LCase(sType), 1, 1) = "d" Then
-                ProcessData(Database, sObject)
+                ProcessData(Database, sObject, "dbo")
             ElseIf Mid(LCase(sType), 1, 1) = "s" Then
                 ProcessPermissions(sObject)
             ElseIf Database = "*" Then
@@ -306,16 +311,22 @@ Module Scriptor
         End Try
     End Sub
 
-    Private Sub ProcessData(ByVal Database As String, ByVal Table As String)
+    Private Sub ProcessData(ByVal Database As String, ByVal Table As String, ByVal Schema As String)
         Dim sOut As String = ""
         Dim s As String
 
         Try
             sqllib.Database = Database
             s = GetCommandParameter("-w")
-            Dim tdefn As New TableColumns(Table, sqllib, True)
+            Dim tdefn As New TableColumns(Table, Schema, sqllib, True)
             sOut = tdefn.DataScript(s)
-            PutFile("data." & Table & ".sql", sOut)
+            If Schema <> "dbo" Then
+                s = "data." & Schema & "." & Table & ".sql"
+            Else
+                s = "data." & Table & ".sql"
+            End If
+
+            PutFile(s, sOut)
 
         Catch ex As Exception
             SendMessage(ex.ToString, "E")
@@ -412,6 +423,7 @@ Module Scriptor
     Private Function ProcessDB(ByVal Database As String) As Boolean
         Dim s As String
         Dim st As String
+        Dim ss As String
         Dim dt As DataTable
         Dim dr As DataRow
 
@@ -419,26 +431,27 @@ Module Scriptor
             SendMessage("", "N")
             SendMessage("Retrieving schema for '" & Database & "'.", "T")
             sqllib.Database = Database
-            dt = sqllib.DatabaseObject(sObject, sType)
+            dt = sqllib.DatabaseObject(sObject, sSchema, sType)
 
             For Each dr In dt.Rows
                 s = sqllib.GetString(dr.Item("name"))
                 st = sqllib.GetString(dr.Item("type"))
+                ss = sqllib.GetString(dr.Item("sch"))
                 If sqllib.GetString(dr.Item("type")) = "U" Then
                     If bXML Then
-                        GetTableXML(s, ConsName)
+                        GetTableXML(s, ss, ConsName)
                     Else
                         Select Case mode
                             Case "F"
-                                GetTableFull(s, ConsName)
+                                GetTableFull(s, ss, ConsName)
                             Case "I"
-                                GetTableIntermediate(s, ConsName)
+                                GetTableIntermediate(s, ss, ConsName)
                             Case Else
-                                GetTable(s, ConsName)
+                                GetTable(s, ss, ConsName)
                         End Select
                     End If
                 Else
-                    GetText(s, st, sqllib.GetString(dr.Item("parent")))
+                    GetText(s, ss, st, sqllib.GetString(dr.Item("parent")))
                 End If
             Next
 
@@ -451,8 +464,8 @@ Module Scriptor
     End Function
 
 #Region "common functions"
-    Private Function GetTable(ByVal sTable As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableColumns(sTable, sqllib, fixdef)
+    Private Function GetTable(ByVal sTable As String, ByVal Schema As String, ByVal ConsName As Boolean) As Integer
+        Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
 
@@ -486,26 +499,40 @@ Module Scriptor
             End If
         End If
 
-        PutFile("table." & sTable & ".sql", sOut)
+        If Schema <> "dbo" Then
+            s = "table." & Schema & "." & sTable & ".sql"
+        Else
+            s = "table." & sTable & ".sql"
+        End If
+
+        PutFile(s, sOut)
         Return 0
     End Function
 
-    Private Function GetTableIntermediate(ByVal sTable As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableColumns(sTable, sqllib, fixdef)
+    Private Function GetTableIntermediate(ByVal sTable As String, _
+                    ByVal Schema As String, ByVal ConsName As Boolean) As Integer
+        Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
+        Dim st As String
+
+        If Schema <> "dbo" Then
+            st = Schema & "." & sTable
+        Else
+            st = sTable
+        End If
 
         If Not ConsName Then ts.ScriptConstraints = False
         If Collation Then ts.ScriptCollations = True
         sOut = ts.TableText
         sOut &= "go" & vbCrLf
-        PutFile("table." & sTable & ".sql", sOut)
+        PutFile("table." & st & ".sql", sOut)
 
         For Each s In ts.IKeys
             If s <> "" Then
                 sOut = ts.IndexShort(s)
                 sOut &= "go" & vbCrLf
-                PutFile("index." & sTable & "." & s & ".sql", sOut)
+                PutFile("index." & st & "." & s & ".sql", sOut)
             End If
         Next
 
@@ -513,7 +540,7 @@ Module Scriptor
             If s <> "" Then
                 sOut = ts.FKeyShort(s)
                 sOut &= "go" & vbCrLf
-                PutFile("fkey." & sTable & "." & ts.LinkedTable(s) & "." & s & ".sql", sOut)
+                PutFile("fkey." & st & "." & ts.LinkedTable(s) & "." & s & ".sql", sOut)
             End If
         Next
 
@@ -522,29 +549,36 @@ Module Scriptor
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
-                PutFile("perm." & sTable & ".sql", sOut)
+                PutFile("perm." & st & ".sql", sOut)
             End If
         End If
 
         Return 0
     End Function
 
-    Private Function GetTableFull(ByVal sTable As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableColumns(sTable, sqllib, fixdef)
+    Private Function GetTableFull(ByVal sTable As String, ByVal Schema As String, ByVal ConsName As Boolean) As Integer
+        Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
+        Dim st As String
+
+        If Schema <> "dbo" Then
+            st = Schema & "." & sTable
+        Else
+            st = sTable
+        End If
 
         If Not ConsName Then ts.ScriptConstraints = False
         If Collation Then ts.ScriptCollations = True
         sOut = ts.FullTableText
         sOut &= "go" & vbCrLf
-        PutFile("table." & sTable & ".sql", sOut)
+        PutFile("table." & st & ".sql", sOut)
 
         For Each s In ts.IKeys
             If s <> "" Then
                 sOut = ts.IndexText(s)
                 sOut &= "go" & vbCrLf
-                PutFile("index." & sTable & "." & s & ".sql", sOut)
+                PutFile("index." & st & "." & s & ".sql", sOut)
             End If
         Next
 
@@ -552,7 +586,7 @@ Module Scriptor
             If s <> "" Then
                 sOut = ts.FKeyText(s)
                 sOut &= "go" & vbCrLf
-                PutFile("fkey." & sTable & "." & ts.LinkedTable(s) & "." & s & ".sql", sOut)
+                PutFile("fkey." & st & "." & ts.LinkedTable(s) & "." & s & ".sql", sOut)
             End If
         Next
 
@@ -561,45 +595,59 @@ Module Scriptor
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
-                PutFile("perm." & sTable & ".sql", sOut)
+                PutFile("perm." & st & ".sql", sOut)
             End If
         End If
 
         Return 0
     End Function
 
-    Private Function GetTableXML(ByVal sTable As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableColumns(sTable, sqllib, fixdef)
+    Private Function GetTableXML(ByVal sTable As String, ByVal Schema As String, ByVal ConsName As Boolean) As Integer
+        Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
+        Dim st As String
+
+        If Schema <> "dbo" Then
+            st = Schema & "." & sTable
+        Else
+            st = sTable
+        End If
 
         If Not ConsName Then ts.ScriptConstraints = False
         If Collation Then ts.ScriptCollations = True
         sOut = ts.XML
-        PutFile("table." & sTable & ".xml", sOut)
+        PutFile("table." & st & ".tdef", sOut)
 
         If IncludePerm Then
             s = ts.PermissionText
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
-                PutFile("perm." & sTable & ".sql", sOut)
+                PutFile("perm." & st & ".sql", sOut)
             End If
         End If
 
         Return 0
     End Function
 
-    Private Function GetText(ByVal Name As String, ByVal Type As String, ByVal Parent As String) As Integer
+    Private Function GetText(ByVal Name As String, ByVal Schema As String, ByVal Type As String, ByVal Parent As String) As Integer
         Dim sPerm As String = ""
         Dim sText As String
         Dim sHead As String
         Dim Settings As String = ""
         Dim Pre As String = ""
+        Dim st As String
 
-        sText = GetdbText(Name, Type)
+        If Schema <> "dbo" Then
+            st = Schema & "." & Name
+        Else
+            st = Name
+        End If
 
-        sHead = "if object_id('dbo." & Name & "') is not null" & vbCrLf
+        sText = GetdbText(Name, Schema, Type)
+
+        sHead = "if object_id('" & Schema & "." & Name & "') is not null" & vbCrLf
         sHead &= "begin" & vbCrLf
         sHead &= "    drop "
 
@@ -608,12 +656,12 @@ Module Scriptor
                 Pre = "proc."
                 sHead &= "procedure"
                 If IncludePerm Then
-                    sPerm = ProcPermissions(Name)
+                    sPerm = ProcPermissions(Name, Schema)
                     If sPerm <> "" Then
                         Select Case mode
                             Case "F", "I"
                                 sPerm &= "go" & vbCrLf
-                                PutFile("perm." & Name & ".sql", sPerm)
+                                PutFile("perm." & st & ".sql", sPerm)
 
                             Case Else
                                 sText &= "go" & vbCrLf
@@ -623,7 +671,7 @@ Module Scriptor
                     End If
                 End If
                 If mode = "F" Then
-                    Settings = GetSetings(Name)
+                    Settings = GetSetings(Name, Schema)
                 End If
 
             Case "V"
@@ -634,12 +682,12 @@ Module Scriptor
                 Pre = "udf."
                 sHead &= "function"
                 If IncludePerm Then
-                    sPerm = ProcPermissions(Name)
+                    sPerm = ProcPermissions(Name, Schema)
                     If sPerm <> "" Then
                         Select Case mode
                             Case "F", "I"
                                 sPerm &= "go" & vbCrLf
-                                PutFile("perm." & Name & ".sql", sPerm)
+                                PutFile("perm." & st & ".sql", sPerm)
 
                             Case Else
                                 sText &= "go" & vbCrLf
@@ -649,19 +697,19 @@ Module Scriptor
                     End If
                 End If
                 If mode = "F" Then
-                    Settings = GetSetings(Name)
+                    Settings = GetSetings(Name, Schema)
                 End If
 
             Case "TF" 'table returning function
                 Pre = "udf."
                 sHead &= "function"
                 If IncludePerm Then
-                    sPerm = TFNPermissions(Name)
+                    sPerm = TFNPermissions(Name, Schema)
                     If sPerm <> "" Then
                         Select Case mode
                             Case "F", "I"
                                 sPerm &= "go" & vbCrLf
-                                PutFile("perm." & Name & ".sql", sPerm)
+                                PutFile("perm." & st & ".sql", sPerm)
 
                             Case Else
                                 sText &= "go" & vbCrLf
@@ -671,18 +719,18 @@ Module Scriptor
                     End If
                 End If
                 If mode = "F" Then
-                    Settings = GetSetings(Name)
+                    Settings = GetSetings(Name, Schema)
                 End If
 
             Case "TR"
                 Pre = "trigger." & Parent & "."
                 sHead &= "trigger"
                 If mode = "F" Then
-                    Settings = GetSetings(Name)
+                    Settings = GetSetings(Name, Schema)
                 End If
         End Select
 
-        sHead &= " dbo." & Name & vbCrLf
+        sHead &= " " & Schema & "." & st & vbCrLf
         sHead &= "end" & vbCrLf
         sHead &= "go" & vbCrLf
         sHead &= Settings
@@ -692,11 +740,11 @@ Module Scriptor
             sText &= "go" & vbCrLf
         End If
 
-        PutFile(Pre & Name & ".sql", sText)
+        PutFile(Pre & st & ".sql", sText)
         Return 0
     End Function
 
-    Private Function GetdbText(ByVal Name As String, ByVal Type As String) As String
+    Private Function GetdbText(ByVal Name As String, ByVal Schema As String, ByVal Type As String) As String
         Dim s As String
         Dim o As Object
         Dim sText As String
@@ -704,7 +752,7 @@ Module Scriptor
         Dim b As Boolean = True
         Dim dt As New DataTable
 
-        dt = sqllib.ObjectText(Name)
+        dt = sqllib.ObjectText(Name, Schema)
 
         sText = ""
         If Type <> "P" And Type <> "FN" And Type <> "TF" Then
@@ -748,12 +796,12 @@ Module Scriptor
         Return sText
     End Function
 
-    Private Function GetSetings(ByVal Name As String) As String
+    Private Function GetSetings(ByVal Name As String, ByVal Schema As String) As String
         Dim sText As String = ""
         Dim dt As DataTable
         Dim dr As DataRow
 
-        dt = sqllib.ObjectSettings(Name)
+        dt = sqllib.ObjectSettings(Name, Schema)
 
         If Not dt Is Nothing Then
             If dt.Rows.Count > 0 Then
@@ -775,24 +823,24 @@ Module Scriptor
         Return sText
     End Function
 
-    Private Function ProcPermissions(ByVal Name As String) As String
+    Private Function ProcPermissions(ByVal Name As String, ByVal Schema As String) As String
         Dim sText As String = ""
         Dim dt As DataTable
         Dim dr As DataRow
 
-        dt = sqllib.ProcPermissions(Name)
+        dt = sqllib.ProcPermissions(Name, Schema)
 
         If Not dt Is Nothing Then
             For Each dr In dt.Rows
                 Select Case sqllib.GetString(dr("state"))
                     Case "G"
-                        sText &= "grant execute on dbo." & Name & " to " _
+                        sText &= "grant execute on " & Schema & "." & Name & " to " _
                               & sqllib.GetString(dr("grantee")) & vbCrLf
                     Case "W"
-                        sText &= "grant execute on dbo." & Name & " to " _
+                        sText &= "grant execute on " & Schema & "." & Name & " to " _
                               & sqllib.GetString(dr("grantee")) & " with grant option" & vbCrLf
                     Case "D"
-                        sText &= "deny execute on dbo." & Name & " to " _
+                        sText &= "deny execute on " & Schema & "." & Name & " to " _
                               & sqllib.GetString(dr("grantee")) & vbCrLf
                 End Select
             Next
@@ -800,7 +848,7 @@ Module Scriptor
         Return sText
     End Function
 
-    Private Function TFNPermissions(ByVal Name As String) As String
+    Private Function TFNPermissions(ByVal Name As String, ByVal Schema As String) As String
         Dim dt As DataTable
         Dim dc As DataTable = Nothing
         Dim dr As DataRow
@@ -810,7 +858,7 @@ Module Scriptor
         Dim s As String
         Dim sC As String
 
-        dt = sqllib.TablePermissions(Name)
+        dt = sqllib.TablePermissions(Name, Schema)
 
         If dt Is Nothing Then
             Return ""
@@ -825,7 +873,7 @@ Module Scriptor
             j = sqllib.GetInteger(r.Item("columns"), 0)
             If j > 1 Then
                 If dc Is Nothing Then
-                    dc = sqllib.FunctionColumns(Name)
+                    dc = sqllib.FunctionColumns(Name, Schema)
                 End If
                 sC = ""
                 s &= " ("
@@ -839,7 +887,7 @@ Module Scriptor
                 Next
                 s &= ")"
             End If
-            s &= " on dbo." & sqllib.QuoteIdentifier(Name)
+            s &= " on " & Schema & "." & sqllib.QuoteIdentifier(Name)
             s &= " to " & sqllib.GetString(r.Item("grantee"))
             Select Case sqllib.GetString(r.Item("state"))
                 Case "GRANT_WITH_GRANT_OPTION"
