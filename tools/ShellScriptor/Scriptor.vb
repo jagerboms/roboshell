@@ -733,12 +733,19 @@ Module Scriptor
             For Each tc In tDefn        ' Columns
                 If tc.Name = "AuditID" Or tc.Primary Then
                     tc.Identity = False
+                    tc.RowGuid = False
+                    tc.DefaultValue = ""
+                    tc.DefaultName = ""
                     aDefn.AddColumn(tc)
                     aDefn.AddPKey(tc.Name, tc.Descend)
                 End If
             Next
             For Each tc In tDefn        ' Columns
                 If tc.Name <> "AuditID" And Not tc.Primary Then
+                    tc.Identity = False
+                    tc.RowGuid = False
+                    tc.DefaultValue = ""
+                    tc.DefaultName = ""
                     aDefn.AddColumn(tc)
                 End If
             Next
