@@ -304,7 +304,7 @@ Module Scriptor
                     sOut &= "go" & vbCrLf
                 End If
             Next
-            PutFile("script.dbSchema-Permission.sql", sOut)
+            WriteFile("script", "", "dbSchema-Permission", "", "sql", sOut)
 
         Catch ex As Exception
             SendMessage(ex.ToString, "E")
@@ -320,13 +320,8 @@ Module Scriptor
             s = GetCommandParameter("-w")
             Dim tdefn As New TableColumns(Table, Schema, sqllib, True)
             sOut = tdefn.DataScript(s)
-            If Schema <> "dbo" Then
-                s = "data." & Schema & "." & Table & ".sql"
-            Else
-                s = "data." & Table & ".sql"
-            End If
 
-            PutFile(s, sOut)
+            WriteFile("data", Schema, Table, "", "sql", sOut)
 
         Catch ex As Exception
             SendMessage(ex.ToString, "E")
@@ -469,6 +464,11 @@ Module Scriptor
         Dim sOut As String
         Dim s As String
 
+        If ts.State = 3 Then
+            SendMessage("Table " & Schema & "." & sTable & " was not found and not scripted.", "T")
+            Return 0
+        End If
+
         If Not ConsName Then ts.ScriptConstraints = False
         If Collation Then ts.ScriptCollations = True
         sOut = ts.TableText
@@ -499,13 +499,7 @@ Module Scriptor
             End If
         End If
 
-        If Schema <> "dbo" Then
-            s = "table." & Schema & "." & sTable & ".sql"
-        Else
-            s = "table." & sTable & ".sql"
-        End If
-
-        PutFile(s, sOut)
+        WriteFile("table", Schema, sTable, "", "sql", sOut)
         Return 0
     End Function
 
@@ -514,25 +508,18 @@ Module Scriptor
         Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
-        Dim st As String
-
-        If Schema <> "dbo" Then
-            st = Schema & "." & sTable
-        Else
-            st = sTable
-        End If
 
         If Not ConsName Then ts.ScriptConstraints = False
         If Collation Then ts.ScriptCollations = True
         sOut = ts.TableText
         sOut &= "go" & vbCrLf
-        PutFile("table." & st & ".sql", sOut)
+        WriteFile("table", Schema, sTable, "", "sql", sOut)
 
         For Each s In ts.IKeys
             If s <> "" Then
                 sOut = ts.IndexShort(s)
                 sOut &= "go" & vbCrLf
-                PutFile("index." & st & "." & s & ".sql", sOut)
+                WriteFile("index", Schema, sTable, s, "sql", sOut)
             End If
         Next
 
@@ -540,7 +527,7 @@ Module Scriptor
             If s <> "" Then
                 sOut = ts.FKeyShort(s)
                 sOut &= "go" & vbCrLf
-                PutFile("fkey." & st & "." & ts.LinkedTable(s) & "." & s & ".sql", sOut)
+                WriteFile("fkey", Schema, sTable, ts.LinkedTable(s) & "." & s, "sql", sOut)
             End If
         Next
 
@@ -549,7 +536,7 @@ Module Scriptor
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
-                PutFile("perm." & st & ".sql", sOut)
+                WriteFile("perm", Schema, sTable, "", "sql", sOut)
             End If
         End If
 
@@ -560,25 +547,18 @@ Module Scriptor
         Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
-        Dim st As String
-
-        If Schema <> "dbo" Then
-            st = Schema & "." & sTable
-        Else
-            st = sTable
-        End If
 
         If Not ConsName Then ts.ScriptConstraints = False
         If Collation Then ts.ScriptCollations = True
         sOut = ts.FullTableText
         sOut &= "go" & vbCrLf
-        PutFile("table." & st & ".sql", sOut)
+        WriteFile("table", Schema, sTable, "", "sql", sOut)
 
         For Each s In ts.IKeys
             If s <> "" Then
                 sOut = ts.IndexText(s)
                 sOut &= "go" & vbCrLf
-                PutFile("index." & st & "." & s & ".sql", sOut)
+                WriteFile("index", Schema, sTable, s, "sql", sOut)
             End If
         Next
 
@@ -586,7 +566,7 @@ Module Scriptor
             If s <> "" Then
                 sOut = ts.FKeyText(s)
                 sOut &= "go" & vbCrLf
-                PutFile("fkey." & st & "." & ts.LinkedTable(s) & "." & s & ".sql", sOut)
+                WriteFile("fkey", Schema, sTable, ts.LinkedTable(s) & "." & s, "sql", sOut)
             End If
         Next
 
@@ -595,7 +575,7 @@ Module Scriptor
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
-                PutFile("perm." & st & ".sql", sOut)
+                WriteFile("perm", Schema, sTable, "", "sql", sOut)
             End If
         End If
 
@@ -606,25 +586,18 @@ Module Scriptor
         Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
-        Dim st As String
-
-        If Schema <> "dbo" Then
-            st = Schema & "." & sTable
-        Else
-            st = sTable
-        End If
 
         If Not ConsName Then ts.ScriptConstraints = False
         If Collation Then ts.ScriptCollations = True
         sOut = ts.XML
-        PutFile("table." & st & ".tdef", sOut)
+        WriteFile("table", Schema, sTable, "", "tdef", sOut)
 
         If IncludePerm Then
             s = ts.PermissionText
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
-                PutFile("perm." & st & ".sql", sOut)
+                WriteFile("perm", Schema, sTable, "", "sql", sOut)
             End If
         End If
 
@@ -637,15 +610,29 @@ Module Scriptor
         Dim sHead As String
         Dim Settings As String = ""
         Dim Pre As String = ""
-        Dim st As String
-
-        If Schema <> "dbo" Then
-            st = Schema & "." & Name
-        Else
-            st = Name
-        End If
+        Dim sName As String
 
         sText = GetdbText(Name, Schema, Type)
+        sName = sqllib.getName(sText)
+
+        If sqllib.QuoteIdentifier(Name) <> sName _
+        And sqllib.QuoteIdentifier(Schema) & "." & sqllib.QuoteIdentifier(Name) <> sName Then
+            Select Case Type
+                Case "P"
+                    Pre = "Procedure"
+                Case "V"
+                    Pre = "View"
+                Case "FN", "TF"
+                    Pre = "Function"
+                Case "TR"
+                    Pre = "Trigger"
+                Case Else
+                    Pre = "Object"
+            End Select
+
+            SendMessage(Pre & " " & Schema & "." & Name & " was renamed " & sName & " not scripted.", "T")
+            Return 0
+        End If
 
         sHead = "if object_id('" & Schema & "." & Name & "') is not null" & vbCrLf
         sHead &= "begin" & vbCrLf
@@ -653,7 +640,7 @@ Module Scriptor
 
         Select Case Type
             Case "P"
-                Pre = "proc."
+                Pre = "proc"
                 sHead &= "procedure"
                 If IncludePerm Then
                     sPerm = ProcPermissions(Name, Schema)
@@ -661,7 +648,7 @@ Module Scriptor
                         Select Case mode
                             Case "F", "I"
                                 sPerm &= "go" & vbCrLf
-                                PutFile("perm." & st & ".sql", sPerm)
+                                WriteFile("perm", Schema, Name, "", "sql", sPerm)
 
                             Case Else
                                 sText &= "go" & vbCrLf
@@ -675,11 +662,11 @@ Module Scriptor
                 End If
 
             Case "V"
-                Pre = "view."
+                Pre = "view"
                 sHead &= "view"
 
             Case "FN" 'scalar returning function
-                Pre = "udf."
+                Pre = "udf"
                 sHead &= "function"
                 If IncludePerm Then
                     sPerm = ProcPermissions(Name, Schema)
@@ -687,7 +674,7 @@ Module Scriptor
                         Select Case mode
                             Case "F", "I"
                                 sPerm &= "go" & vbCrLf
-                                PutFile("perm." & st & ".sql", sPerm)
+                                WriteFile("perm", Schema, Name, "", "sql", sPerm)
 
                             Case Else
                                 sText &= "go" & vbCrLf
@@ -701,7 +688,7 @@ Module Scriptor
                 End If
 
             Case "TF" 'table returning function
-                Pre = "udf."
+                Pre = "udf"
                 sHead &= "function"
                 If IncludePerm Then
                     sPerm = TFNPermissions(Name, Schema)
@@ -709,7 +696,7 @@ Module Scriptor
                         Select Case mode
                             Case "F", "I"
                                 sPerm &= "go" & vbCrLf
-                                PutFile("perm." & st & ".sql", sPerm)
+                                WriteFile("perm", Schema, Name, "", "sql", sPerm)
 
                             Case Else
                                 sText &= "go" & vbCrLf
@@ -723,14 +710,14 @@ Module Scriptor
                 End If
 
             Case "TR"
-                Pre = "trigger." & Parent & "."
+                Pre = "trigger" & Parent & "."
                 sHead &= "trigger"
                 If mode = "F" Then
                     Settings = GetSetings(Name, Schema)
                 End If
         End Select
 
-        sHead &= " " & Schema & "." & st & vbCrLf
+        sHead &= " " & Schema & "." & Name & vbCrLf
         sHead &= "end" & vbCrLf
         sHead &= "go" & vbCrLf
         sHead &= Settings
@@ -740,7 +727,7 @@ Module Scriptor
             sText &= "go" & vbCrLf
         End If
 
-        PutFile(Pre & st & ".sql", sText)
+        WriteFile(Pre, Schema, Name, "", "sql", sText)
         Return 0
     End Function
 
@@ -749,16 +736,11 @@ Module Scriptor
         Dim o As Object
         Dim sText As String
         Dim dr As DataRow
-        Dim b As Boolean = True
         Dim dt As New DataTable
 
         dt = sqllib.ObjectText(Name, Schema)
 
         sText = ""
-        If Type <> "P" And Type <> "FN" And Type <> "TF" Then
-            b = False
-        End If
-
         For Each dr In dt.Rows        ' Columns
             o = dr.Item("Text")
             If IsDBNull(o) Then
@@ -769,7 +751,7 @@ Module Scriptor
                 s = CType(o, String)
             End If
             If Len(s) < 4000 Then s &= vbCrLf
-            sText &= s ' & vbCrLf
+            sText &= s
         Next
         sText = sText.Replace(vbCrLf, Chr(13))
         sText = sText.Replace(Chr(10), Chr(13))
@@ -919,7 +901,7 @@ Module Scriptor
         If JobSQL Then
             sOut = js.StepSQL
             If sOut <> "" Then
-                PutFile("jobsql." & s & ".sql", sOut)
+                WriteFile("jobsql", "", s, "", "sql", sOut)
             End If
         Else
             If mode = "F" Then
@@ -930,23 +912,64 @@ Module Scriptor
             sOut &= "go" & vbCrLf
             sOut &= vbCrLf
 
-            PutFile("job." & s & ".sql", sOut)
+            WriteFile("job", "", s, "", "sql", sOut)
         End If
         Return 0
     End Function
 
-    Private Function PutFile(ByVal sName As String, ByVal sContent As String) As Boolean
-        Dim file As System.IO.StreamWriter
+    Private Function WriteFile(ByVal Pre As String, ByVal Schema As String, _
+                          ByVal ObjectName As String, ByVal Post As String, _
+                          ByVal Ext As String, ByVal Content As String) As Boolean
+        Dim i As Integer
+        Dim s As String = ""
+        Dim ss As String = ""
+        Dim sd As String = ""
 
-        If UniCode Then
-            file = New System.IO.StreamWriter(sName, False, System.Text.Encoding.Unicode)
+        If Pre <> "" Then
+            s = Pre
+            sd = "."
+        End If
+        If Schema <> "" And Schema <> "dbo" Then
+            s &= sd & Schema
+            sd = "."
+        End If
+        If ObjectName <> "" Then
+            s &= sd & ObjectName
+            sd = "."
+        End If
+        If Post <> "" Then
+            s &= sd & Post
+            sd = "."
+        End If
+        If Ext = "" Then
+            s &= sd & "sql"
         Else
-            file = New System.IO.StreamWriter(sName)
+            s &= sd & Ext
         End If
 
-        file.Write(sContent)
+        If s = "" Then
+            SendMessage("No FileName provided.", "E")
+            Return False
+        End If
+
+        Dim file As System.IO.StreamWriter
+
+        For i = 1 To Len(s)
+            ss = LCase(Mid(s, i, 1))
+            If InStr(System.IO.Path.GetInvalidPathChars(), ss, CompareMethod.Text) <> 0 Then
+                s = Replace(s, ss, "#0x" & Hex(Asc(ss)) & "#")
+            End If
+        Next
+
+        If UniCode Then
+            file = New System.IO.StreamWriter(s, False, System.Text.Encoding.Unicode)
+        Else
+            file = New System.IO.StreamWriter(s)
+        End If
+
+        file.Write(Content)
         file.Close()
-        SendMessage(sName, "N")
+        SendMessage(s, "N")
         Return True
     End Function
 
