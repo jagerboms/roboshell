@@ -2,6 +2,8 @@ Option Explicit On
 Option Strict On
 
 'todo
+' check constraint (column and table)
+' unique constraint
 ' partition scheme
 ' computed column
 
@@ -224,8 +226,8 @@ Public Class TableColumn
                 Case "decimal", "numeric"
                     s &= "(" & iPrecision & "," & iScale & ")"
                 Case "float"
-                    If iLength <> 53 Then
-                        s &= "(" & iLength & ")"
+                    If iPrecision <> 53 Then
+                        s &= "(" & iPrecision & ")"
                     End If
             End Select
             TypeText = s
@@ -1282,7 +1284,7 @@ Public Class TableColumns
         fixdef = bDef
         PreLoad = 2
 
-        dt = slib.TableColumns(sTableName, sSchema)
+        dt = slib.TableColumns(slib.QuoteIdentifier(sTableName), qSchema)
         If dt.Rows.Count = 0 Then
             PreLoad = 3
             Return
@@ -1872,66 +1874,9 @@ Public Class TableColumns
     End Function
 
     Private Function FixCheckText(ByVal sCheck As String) As String
-        Dim s As String = ""
-        Dim ss As String
-        Dim sSave As String = ""
-        Dim i As Integer
-        Dim mode As Integer = 0
-        Dim bc As Integer = 0
+        Dim s As String
 
-        For i = 1 To Len(sCheck)
-            ss = Mid(sCheck, i, 1)
-            Select Case mode
-                Case 0
-                    Select Case ss
-                        Case "["
-                            bc = 1
-                            sSave = ""
-                            mode = 3
-
-                        Case "'"
-                            mode = 1
-                            s &= ss
-
-                        Case """"
-                            mode = 2
-                            s &= ss
-
-                        Case Else
-                            s &= ss
-
-                    End Select
-
-                Case 1
-                    If ss = "'" Then mode = 0
-                    s &= ss
-
-                Case 2
-                    If ss = """" Then mode = 0
-                    s &= ss
-
-                Case 3
-                    Select Case ss
-                        Case "]"
-                            bc -= 1
-                            If bc = 0 Then
-                                s &= slib.QuoteIdentifier(sSave)
-                                mode = 0
-                            Else
-                                sSave &= ss
-                            End If
-
-                        Case "["
-                            sSave &= ss
-                            bc += 1
-
-                        Case Else
-                            sSave &= ss
-
-                    End Select
-            End Select
-        Next
-
+        s = slib.RemoveSquares(sCheck)
         If Mid(s, 1, 1) = "(" And Right(s, 1) = ")" Then
             s = Mid(s, 2, Len(s) - 2)
         End If
