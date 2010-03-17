@@ -951,8 +951,13 @@ Public Class sql
 
                 Case 2
                     If ss = """" Then
-                        s &= QuoteIdentifier(sSave)
-                        mode = 0
+                        If Mid(sText, i + 1, 1) = """" Then
+                            sSave &= """"
+                            i += 1
+                        Else
+                            s &= QuoteIdentifier(sSave)
+                            mode = 0
+                        End If
                     Else
                         sSave &= ss
                     End If
@@ -1124,8 +1129,12 @@ Public Class sql
                     End If
                 Case 4              ' 4 = getting parameter double quote
                     ls &= Mid(sSQL, Start, 1)
-                    If Mid$(sSQL, Start, 1) = Chr(34) Then
-                        Exit Do
+                    If Mid(sSQL, Start, 1) = Chr(34) Then
+                        If Mid(sSQL, Start + 1, 1) = Chr(34) Then
+                            Start += 1
+                        Else
+                            Exit Do
+                        End If
                     End If
                 Case 5              ' 5 = block comment
                     If Mid(sSQL, Start, 2) = "*/" Then

@@ -611,12 +611,15 @@ Module Scriptor
         Dim Settings As String = ""
         Dim Pre As String = ""
         Dim sName As String
+        Dim qName As String
+        Dim qSchema As String
 
-        sText = GetdbText(Name, Schema, Type)
+        qName = sqllib.QuoteIdentifier(Name)
+        qSchema = sqllib.QuoteIdentifier(Schema)
+        sText = GetdbText(qName, qSchema, Type)
         sName = sqllib.getName(sText)
 
-        If sqllib.QuoteIdentifier(Name) <> sName _
-        And sqllib.QuoteIdentifier(Schema) & "." & sqllib.QuoteIdentifier(Name) <> sName Then
+        If qName <> sName And qSchema & "." & qName <> sName Then
             Select Case Type
                 Case "P"
                     Pre = "Procedure"
@@ -634,7 +637,7 @@ Module Scriptor
             Return 0
         End If
 
-        sHead = "if object_id('" & Schema & "." & Name & "') is not null" & vbCrLf
+        sHead = "if object_id('" & qSchema & "." & qName & "') is not null" & vbCrLf
         sHead &= "begin" & vbCrLf
         sHead &= "    drop "
 
@@ -643,7 +646,7 @@ Module Scriptor
                 Pre = "proc"
                 sHead &= "procedure"
                 If IncludePerm Then
-                    sPerm = ProcPermissions(Name, Schema)
+                    sPerm = ProcPermissions(qName, qSchema)
                     If sPerm <> "" Then
                         Select Case mode
                             Case "F", "I"
@@ -658,7 +661,7 @@ Module Scriptor
                     End If
                 End If
                 If mode = "F" Then
-                    Settings = GetSetings(Name, Schema)
+                    Settings = GetSetings(qName, qSchema)
                 End If
 
             Case "V"
@@ -669,7 +672,7 @@ Module Scriptor
                 Pre = "udf"
                 sHead &= "function"
                 If IncludePerm Then
-                    sPerm = ProcPermissions(Name, Schema)
+                    sPerm = ProcPermissions(qName, qSchema)
                     If sPerm <> "" Then
                         Select Case mode
                             Case "F", "I"
@@ -684,14 +687,14 @@ Module Scriptor
                     End If
                 End If
                 If mode = "F" Then
-                    Settings = GetSetings(Name, Schema)
+                    Settings = GetSetings(qName, qSchema)
                 End If
 
             Case "TF" 'table returning function
                 Pre = "udf"
                 sHead &= "function"
                 If IncludePerm Then
-                    sPerm = TFNPermissions(Name, Schema)
+                    sPerm = TFNPermissions(qName, qSchema)
                     If sPerm <> "" Then
                         Select Case mode
                             Case "F", "I"
@@ -706,18 +709,18 @@ Module Scriptor
                     End If
                 End If
                 If mode = "F" Then
-                    Settings = GetSetings(Name, Schema)
+                    Settings = GetSetings(qName, qSchema)
                 End If
 
             Case "TR"
                 Pre = "trigger" & Parent & "."
                 sHead &= "trigger"
                 If mode = "F" Then
-                    Settings = GetSetings(Name, Schema)
+                    Settings = GetSetings(qName, qSchema)
                 End If
         End Select
 
-        sHead &= " " & Schema & "." & Name & vbCrLf
+        sHead &= " " & qSchema & "." & qName & vbCrLf
         sHead &= "end" & vbCrLf
         sHead &= "go" & vbCrLf
         sHead &= Settings

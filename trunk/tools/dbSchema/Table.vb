@@ -1325,7 +1325,7 @@ Public Class TableColumns
             End If
         Next
 
-        dtIndexs = slib.TableIndexes(sTable, sSchema)
+        dtIndexs = slib.TableIndexes(qTable, qSchema)
 
         b = False
         sName = ""
@@ -1364,9 +1364,9 @@ Public Class TableColumns
             End If
         Next
 
-        dtCheck = slib.TableCheckConstraints(sTable, sSchema)
+        dtCheck = slib.TableCheckConstraints(qTable, qSchema)
 
-        dtFKeys = slib.TableFKeys(sTable, sSchema)
+        dtFKeys = slib.TableFKeys(qTable, qSchema)
         sName = ""
         For Each r As DataRow In dtFKeys.Rows
             s = sqllib.GetString(r.Item("ConstraintName"))
@@ -1381,7 +1381,7 @@ Public Class TableColumns
             End If
         Next
 
-        dtPerms = slib.TablePermissions(sTable, sSchema)
+        dtPerms = slib.TablePermissions(qTable, qSchema)
 
         'dt = slib.TableTriggers(sTable)
         'For Each r As DataRow In dt.Rows
