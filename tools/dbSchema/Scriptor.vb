@@ -713,7 +713,7 @@ Module Scriptor
                 End If
 
             Case "TR"
-                Pre = "trigger" & Parent & "."
+                Pre = "trigger." & Parent & "."
                 sHead &= "trigger"
                 If mode = "F" Then
                     Settings = GetSetings(qName, qSchema)
