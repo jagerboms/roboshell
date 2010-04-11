@@ -132,6 +132,25 @@ Public Class sql
         Return GetTable(sql)
     End Function
 
+    Public Function CheckAccess() As String
+        Dim sql As String
+        Dim dr As DataRow
+
+        openConnect()
+        sql = "select case when is_member('db_owner')=1 then 'Y' " & _
+              "when is_member('db_ddladmin')= 1 then 'Y' " & _
+              "when is_srvrolemember('sysadmin')=1 then 'Y' else 'N' end"
+
+        dr = GetRow(sql)
+
+        If Not dr Is Nothing Then
+            If dr.Item(0).ToString = "Y" Then
+                Return "OK"
+            End If
+        End If
+        Return "NOK"
+    End Function
+
     Public Function DatabaseObject(ByVal Name As String, ByVal Schema As String, _
                                 ByVal Type As String) As DataTable
         Dim sql As String
@@ -263,11 +282,13 @@ Public Class sql
             sql &= ",c.xprec NUMERIC_PRECISION"
             sql &= ",c.xscale NUMERIC_SCALE"
             sql &= ",s.name DEFAULT_NAME"
-            sql &= ",cm.text DEFAULT_TEXT "
+            sql &= ",cm.text DEFAULT_TEXT"
             sql &= ",i.COLLATION_NAME"
             sql &= ",case when c.status & 128 = 0 then 'YES' else 'NO' end ANSIPadded"
             sql &= ",'NO' Replicate"
-            sql &= ",case when c.colstat & 2 = 0 then 'NO' else 'YES' end ROWGUID "
+            sql &= ",case when c.colstat & 2 = 0 then 'NO' else 'YES' end ROWGUID"
+            sql &= ",m.text Computed"
+            sql &= ",'NO' Persisted "
             sql &= "from dbo.syscolumns c "
             sql &= "left join dbo.sysobjects s "
             sql &= "on s.id = c.cdefault "
@@ -279,33 +300,45 @@ Public Class sql
             sql &= "and t.xusertype = c.xusertype "
             sql &= "join INFORMATION_SCHEMA.COLUMNS i "
             sql &= "on i.TABLE_NAME=object_name(c.id) "
-            sql &= "and i.TABLE_SCHEMA='" & schema & "' "
+            sql &= "and i.TABLE_SCHEMA='" & Schema & "' "
             sql &= "and i.COLUMN_NAME=c.name "
-            sql &= "where c.id = object_id('" & schema & "." & TableName & "') "
+            sql &= "left join dbo.syscomments m "
+            sql &= "on m.id = c.id "
+            sql &= "and m.number = c.colid "
+            sql &= "where c.id = object_id('" & Schema & "." & TableName & "') "
             sql &= "order by c.colorder"
         Else
-            sql = "select i.TABLE_NAME TableName"
-            sql &= ",i.COLUMN_NAME"
-            sql &= ",i.DATA_TYPE"
-            sql &= ",i.CHARACTER_MAXIMUM_LENGTH"
-            sql &= ",i.IS_NULLABLE"
-            sql &= ",i.NUMERIC_PRECISION"
-            sql &= ",i.NUMERIC_SCALE"
+            sql = "select i.name TableName"
+            sql &= ",c.name COLUMN_NAME"
+            sql &= ",t.name DATA_TYPE"
+            sql &= ",c.max_length / (case when t.name in ('nchar','nvarchar') then 2 else 1 end) CHARACTER_MAXIMUM_LENGTH"
+            sql &= ",case c.is_nullable when 0 then 'NO' else 'YES' end IS_NULLABLE"
+            sql &= ",c.precision NUMERIC_PRECISION"
+            sql &= ",c.scale NUMERIC_SCALE"
             sql &= ",s.name DEFAULT_NAME"
-            sql &= ",i.COLUMN_DEFAULT DEFAULT_TEXT"
-            sql &= ",i.COLLATION_NAME"
+            sql &= ",cm.text DEFAULT_TEXT"
+            sql &= ",c.collation_name COLLATION_NAME"
             sql &= ",case c.is_ansi_padded when 0 then 'NO' else 'YES' end ANSIPadded"
             sql &= ",case c.is_replicated when 0 then 'NO' else 'YES' end Replicate"
-            sql &= ",case c.is_rowguidcol when 0 then 'NO' else 'YES' end ROWGUID "
-            sql &= "from INFORMATION_SCHEMA.COLUMNS i "
+            sql &= ",case c.is_rowguidcol when 0 then 'NO' else 'YES' end ROWGUID"
+            sql &= ",m.definition Computed"
+            sql &= ",case coalesce(m.is_persisted, 0) when 0 then 'NO' else 'YES' end Persisted "
+            sql &= "from sys.objects i "
             sql &= "join sys.columns c "
-            sql &= "on c.object_id = object_id(i.TABLE_SCHEMA+'.'+i.TABLE_NAME) "
-            sql &= "and c.name = i.COLUMN_NAME "
+            sql &= "on c.object_id = i.object_id "
             sql &= "left join sys.objects s "
             sql &= "on s.object_id = c.default_object_id "
-            sql &= "where i.TABLE_NAME = '" & TableName & "' "
-            sql &= "and i.TABLE_SCHEMA = '" & schema & "' "
-            sql &= "order by i.ORDINAL_POSITION"
+            sql &= "left join dbo.syscomments cm "
+            sql &= "on cm.id = s.object_id "
+            sql &= "and cm.colid = 1 "
+            sql &= "join dbo.systypes t "
+            sql &= "on t.xtype = c.system_type_id "
+            sql &= "and t.xusertype = c.user_type_id "
+            sql &= "left join sys.computed_columns m "
+            sql &= "on m.object_id = c.object_id "
+            sql &= "and m.column_id = c.column_id "
+            sql &= "where i.object_id = object_id('" & Schema & "." & TableName & "') "
+            sql &= "order by c.column_id"
         End If
 
         Return GetTable(sql)
@@ -755,6 +788,28 @@ Public Class sql
         Return sql
     End Function
 
+    Public Function getName(ByVal sText As String) As String
+        Dim sOut As String
+        Dim Posn As Integer = 1
+
+        sOut = GetNextToken(sText, Posn)
+        Select Case LCase(sOut)
+            Case "create", "alter"
+                sOut = LCase(GetNextToken(sText, Posn))
+                If sOut = "procedure" Or sOut = "proc" _
+                Or sOut = "function" Or sOut = "func" _
+                Or sOut = "view" Or sOut = "trigger" Then
+                    sOut = GetNextToken(sText, Posn)
+                Else
+                    sOut = ""
+                End If
+
+            Case Else
+                sOut = ""
+        End Select
+        Return RemoveSquares(sOut)
+    End Function
+
     Public Function ShellName() As String
         Dim sql As String
         Dim s As String = ""
@@ -803,6 +858,9 @@ Public Class sql
 
     Public Function QuoteIdentifier(ByVal objValue As Object) As String
         Dim s As String = GetString(objValue)
+        Dim ss As String
+        Dim b As Boolean
+        Dim i As Integer
 
         Select Case LCase(s)
             Case "encryption", "order", "add", "end", "outer", "all", "errlvl", "over", "alter", _
@@ -832,11 +890,109 @@ Public Class sql
                  "option", "with", "else", "or", "writetext"
                 s = """" & s & """"
             Case Else
-                If InStr(s, " ", CompareMethod.Text) > 0 Then
+                b = False
+                For i = 1 To Len(s)
+                    ss = LCase(Mid(s, i, 1))
+                    If InStr("abcdefghijklmnopqrstuvwxyz@_$#0123456789", ss, CompareMethod.Text) = 0 Then
+                        b = True
+                        Exit For
+                    End If
+                Next
+                If b Then
+                    s = Replace(s, """", """""")
                     s = """" & s & """"
                 End If
+
+                'The first character must be one of the following: 
+                'A letter as defined by the Unicode Standard 3.2. The Unicode definition of letters includes Latin characters from a through z, from A through Z, and also letter characters from other languages.
+                'The _, @, or #. 
+                'Certain symbols at the beginning of an identifier have special meaning in SQL Server. A regular identifier that starts with the at sign always denotes a local variable or parameter and cannot be used as the name of any other type of object. An identifier that starts with a number sign denotes a temporary table or procedure. An identifier that starts with double number signs (##) denotes a global temporary object. Although the number sign or double number sign characters can be used to begin the names of other types of objects, we do not recommend this practice.
+                'Some Transact-SQL functions have names that start with double at signs (@@). To avoid confusion with these functions, you should not use names that start with @@. 
+
+                'Subsequent characters can include the following: 
+                'Letters as defined in the Unicode Standard 3.2.
+                'Decimal numbers from either Basic Latin or other national scripts.
+                'The @, $, #, or _.
+                'The identifier must not be a Transact-SQL reserved word. 
+                'SQL Server reserves both the uppercase and lowercase versions of reserved words.
+                'Embedded spaces or special characters are not allowed.
+                'Supplementary characters are not allowed.
+
+
         End Select
 
+        Return s
+    End Function
+
+    Public Function RemoveSquares(ByVal sText As String) As String
+        Dim s As String = ""
+        Dim ss As String
+        Dim sSave As String = ""
+        Dim i As Integer
+        Dim mode As Integer = 0
+        Dim bc As Integer = 0
+
+        For i = 1 To Len(sText)
+            ss = Mid(sText, i, 1)
+            Select Case mode
+                Case 0
+                    Select Case ss
+                        Case "["
+                            bc = 1
+                            sSave = ""
+                            mode = 3
+
+                        Case "'"
+                            mode = 1
+                            s &= ss
+
+                        Case """"
+                            sSave = ""
+                            mode = 2
+
+                        Case Else
+                            s &= ss
+
+                    End Select
+
+                Case 1
+                    If ss = "'" Then mode = 0
+                    s &= ss
+
+                Case 2
+                    If ss = """" Then
+                        If Mid(sText, i + 1, 1) = """" Then
+                            sSave &= """"
+                            i += 1
+                        Else
+                            s &= QuoteIdentifier(sSave)
+                            mode = 0
+                        End If
+                    Else
+                        sSave &= ss
+                    End If
+
+                Case 3
+                    Select Case ss
+                        Case "]"
+                            bc -= 1
+                            If bc = 0 Then
+                                s &= QuoteIdentifier(sSave)
+                                mode = 0
+                            Else
+                                sSave &= ss
+                            End If
+
+                        Case "["
+                            sSave &= ss
+                            bc += 1
+
+                        Case Else
+                            sSave &= ss
+
+                    End Select
+            End Select
+        Next
         Return s
     End Function
 #End Region
@@ -921,5 +1077,84 @@ Public Class sql
             Connected = False
         End If
     End Sub
+
+    Private Function GetNextToken(ByVal sSQL As String, ByRef Start As Integer) As String
+        Dim ls As String = ""
+        Dim Mode As Integer = 0
+
+        ' liMode =
+        ' 0 = searching for tokening
+        ' 1 = line comment
+        ' 2 = getting parameter no quotes
+        ' 3 = getting parameter single quote
+        ' 4 = getting parameter double quote
+        ' 5 = block comment
+
+        Do While (Start <= Len(sSQL))
+            Select Case Mode
+                Case 0
+                    Select Case Mid(sSQL, Start, 1)
+                        Case " ", Chr(9), Chr(10), Chr(13), "=", ","
+                        Case "-"
+                            If Mid(sSQL, Start, 2) = "--" Then
+                                Start += 1
+                                Mode = 1
+                            Else
+                                Mode = 2
+                                ls = Mid(sSQL, Start, 1)
+                            End If
+                        Case "/"
+                            If Mid(sSQL, Start, 2) = "/*" Then
+                                Start += 1
+                                Mode = 5
+                            Else
+                                Mode = 2
+                                ls = Mid(sSQL, Start, 1)
+                            End If
+                        Case "'"
+                            ls = Mid(sSQL, Start, 1)
+                            Mode = 3
+                        Case Chr(34)
+                            ls = Mid(sSQL, Start, 1)
+                            Mode = 4
+                        Case Else
+                            Mode = 2
+                            ls = Mid(sSQL, Start, 1)
+                    End Select
+                Case 1              ' 1 = line comment
+                    If Mid(sSQL, Start, 1) = Chr(10) Then
+                        Mode = 0
+                    End If
+                Case 2              ' 2 = getting parameter no quotes
+                    Select Case Mid(sSQL, Start, 1)
+                        Case " ", Chr(9), Chr(10), Chr(13), ",", "("
+                            Exit Do
+                        Case Else
+                            ls &= Mid(sSQL, Start, 1)
+                    End Select
+                Case 3              ' 3 = getting parameter single quote
+                    ls &= Mid(sSQL, Start, 1)
+                    If Mid$(sSQL, Start, 1) = "'" Then
+                        Exit Do
+                    End If
+                Case 4              ' 4 = getting parameter double quote
+                    ls &= Mid(sSQL, Start, 1)
+                    If Mid(sSQL, Start, 1) = Chr(34) Then
+                        If Mid(sSQL, Start + 1, 1) = Chr(34) Then
+                            Start += 1
+                        Else
+                            Exit Do
+                        End If
+                    End If
+                Case 5              ' 5 = block comment
+                    If Mid(sSQL, Start, 2) = "*/" Then
+                        Start += 1
+                        Mode = 0
+                    End If
+            End Select
+            Start += 1
+        Loop
+        GetNextToken = ls
+    End Function
 #End Region
 End Class

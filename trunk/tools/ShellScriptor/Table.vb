@@ -2,10 +2,8 @@ Option Explicit On
 Option Strict On
 
 'todo
-' check constraint (column and table)
-' unique constraint
 ' partition scheme
-' computed column
+' replication
 
 Imports System.Data.SqlClient
 
@@ -46,6 +44,8 @@ Public Class TableColumn
     Public RowGuid As Boolean = False
     Public Seed As Integer = 1
     Public Increment As Integer = 1
+    Public Computed As String = ""
+    Public Persisted As Boolean = False
 
     Public ReadOnly Property QuotedName() As String
         Get
@@ -226,8 +226,8 @@ Public Class TableColumn
                 Case "decimal", "numeric"
                     s &= "(" & iPrecision & "," & iScale & ")"
                 Case "float"
-                    If iLength <> 53 Then
-                        s &= "(" & iLength & ")"
+                    If iPrecision <> 53 Then
+                        s &= "(" & iPrecision & ")"
                     End If
             End Select
             TypeText = s
@@ -375,8 +375,8 @@ Public Class TableColumns
     ' }
     '
     ' <computed_column_definition> ::=
-    'x column_name AS computed_column_expression
-    'x [ PERSISTED [ NOT NULL ] ]
+    '  column_name AS computed_column_expression
+    '  [ PERSISTED [ NOT NULL ] ]
     '  [
     '     [ CONSTRAINT constraint_name ]
     '     { PRIMARY KEY |
@@ -1060,41 +1060,58 @@ Public Class TableColumns
             sOut &= "    <columns>" & vbCrLf
             For Each s In Keys
                 tc = DirectCast(Values.Item(s), TableColumn)
-                ss = "      <column name='" & tc.Name & "' type='" & tc.Type & "'"
-                If tc.Length > 0 Then
-                    ss &= " length='" & tc.Length & "'"
-                End If
-                If tc.Precision > 0 Then
-                    ss &= " precision='" & tc.Precision & "'"
-                    ss &= " scale='" & tc.Scale & "'"
-                End If
-                ss &= " allownulls='" & tc.Nullable & "'"
-                If tc.Identity Then
-                    ss &= " seed='" & tc.Seed & "' increment='" & tc.Increment & "'"
-                End If
-                If tc.RowGuid Then
-                    ss &= " rowguid='Y'"
-                End If
-                If tc.ANSIPadded = "N" Then
-                    ss &= " ansipadded='N'"
-                End If
-                If bCollation And tc.Collation <> "" Then
-                    ss &= " collation='" & tc.Collation & "'"
-                End If
-                If tc.DefaultName <> "" Then
-                    ss &= ">" & vbCrLf
-                    ss &= "        <default "
-                    If bConsName Then
-                        ss &= "name='" & tc.DefaultName & "'"
+                ss = "      <column name='" & tc.Name & "'"
+                If tc.Computed = "" Then
+                    ss &= " type='" & tc.Type & "'"
+                    If tc.Length > 0 Then
+                        ss &= " length='" & tc.Length & "'"
                     End If
-                    st = tc.DefaultValue
-                    If Mid(st, 1, 1) = "(" And Right(st, 1) = ")" Then
-                        st = Mid(st, 2, Len(st) - 2)
+                    If tc.Precision > 0 Then
+                        ss &= " precision='" & tc.Precision & "'"
+                        ss &= " scale='" & tc.Scale & "'"
                     End If
-                    ss &= "><![CDATA[" & st & "]]></default>" & vbCrLf
-                    ss &= "      </column>"
+                    ss &= " allownulls='" & tc.Nullable & "'"
+                    If tc.Identity Then
+                        ss &= " seed='" & tc.Seed & "' increment='" & tc.Increment & "'"
+                    End If
+                    If tc.RowGuid Then
+                        ss &= " rowguid='Y'"
+                    End If
+                    If tc.ANSIPadded = "N" Then
+                        ss &= " ansipadded='N'"
+                    End If
+                    If bCollation And tc.Collation <> "" Then
+                        ss &= " collation='" & tc.Collation & "'"
+                    End If
+                    If tc.DefaultName <> "" Then
+                        ss &= ">" & vbCrLf
+                        ss &= "        <default "
+                        If bConsName Then
+                            ss &= "name='" & tc.DefaultName & "'"
+                        End If
+                        st = tc.DefaultValue
+                        If Mid(st, 1, 1) = "(" And Right(st, 1) = ")" Then
+                            st = Mid(st, 2, Len(st) - 2)
+                        End If
+                        ss &= "><![CDATA[" & st & "]]></default>" & vbCrLf
+                        ss &= "      </column>"
+                    Else
+                        ss &= " />"
+                    End If
                 Else
-                    ss &= " />"
+                    ss &= " allownulls='" & tc.Nullable & "'"
+                    If tc.ANSIPadded = "N" Then
+                        ss &= " ansipadded='N'"
+                    End If
+                    If bCollation And tc.Collation <> "" Then
+                        ss &= " collation='" & tc.Collation & "'"
+                    End If
+                    If tc.Persisted Then
+                        ss &= " persisted='Y'"
+                    End If
+                    ss &= ">" & vbCrLf
+                    ss &= "        <formula><![CDATA[" & tc.Computed & "]]></formula>" & vbCrLf
+                    ss &= "      </column>"
                 End If
                 sOut &= ss & vbCrLf
             Next
@@ -1271,6 +1288,8 @@ Public Class TableColumns
         Dim sType As String
         Dim sNull As String
         Dim sColl As String
+        Dim sFormula As String
+        Dim bPersist As Boolean
         Dim sAP As String
         Dim dt As DataTable
         Dim dr As DataRow
@@ -1284,7 +1303,7 @@ Public Class TableColumns
         fixdef = bDef
         PreLoad = 2
 
-        dt = slib.TableColumns(sTableName, sSchema)
+        dt = slib.TableColumns(slib.QuoteIdentifier(sTableName), qSchema)
         If dt.Rows.Count = 0 Then
             PreLoad = 3
             Return
@@ -1314,9 +1333,20 @@ Public Class TableColumns
             Else
                 s = sqllib.GetString(dr.Item("ROWGUID"))
                 If s = "NO" Then
-                    AddColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
-                        dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, _
-                        sdn, sdv, sColl, sAP)
+                    sAP = Mid(sqllib.GetString(dr.Item("ANSIPadded")), 1, 1)
+                    sFormula = FixCheckText(sqllib.GetString(dr.Item("Computed")))
+                    If sFormula = "" Then
+                        AddColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
+                            dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, _
+                            sdn, sdv, sColl, sAP)
+                    Else
+                        If sqllib.GetString(dr.Item("Persisted")) = "NO" Then
+                            bPersist = False
+                        Else
+                            bPersist = True
+                        End If
+                        AddComputedColumn(sName, sFormula, sNull, bPersist)
+                    End If
                 Else
                     AddRowGuidColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
                         dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, _
@@ -1325,7 +1355,7 @@ Public Class TableColumns
             End If
         Next
 
-        dtIndexs = slib.TableIndexes(sTable, sSchema)
+        dtIndexs = slib.TableIndexes(qTable, qSchema)
 
         b = False
         sName = ""
@@ -1364,9 +1394,9 @@ Public Class TableColumns
             End If
         Next
 
-        dtCheck = slib.TableCheckConstraints(sTable, sSchema)
+        dtCheck = slib.TableCheckConstraints(qTable, qSchema)
 
-        dtFKeys = slib.TableFKeys(sTable, sSchema)
+        dtFKeys = slib.TableFKeys(qTable, qSchema)
         sName = ""
         For Each r As DataRow In dtFKeys.Rows
             s = sqllib.GetString(r.Item("ConstraintName"))
@@ -1381,7 +1411,7 @@ Public Class TableColumns
             End If
         Next
 
-        dtPerms = slib.TablePermissions(sTable, sSchema)
+        dtPerms = slib.TablePermissions(qTable, qSchema)
 
         'dt = slib.TableTriggers(sTable)
         'For Each r As DataRow In dt.Rows
@@ -1425,6 +1455,24 @@ Public Class TableColumns
             .DefaultValue = sDefaultValue
             .Collation = sCollation
             .ANSIPadded = sANSIPadded
+        End With
+
+        AddColumn(parm)
+    End Sub
+
+    Public Sub AddComputedColumn( _
+        ByVal sName As String, _
+        ByVal sFormula As String, _
+        ByVal bNullable As String, _
+        ByVal bPersist As Boolean)
+
+        Dim parm As New TableColumn
+
+        With parm
+            .Name = sName
+            .Computed = sFormula
+            .Persisted = bPersist
+            .Nullable = bNullable
         End With
 
         AddColumn(parm)
@@ -1681,23 +1729,34 @@ Public Class TableColumns
 
         For Each s In Keys
             tc = DirectCast(Values.Item(s), TableColumn)
-            sOut &= sTab & "   " & Comma & tc.QuotedName & " " & tc.TypeText
-            If tc.Identity Then
-                sOut &= " identity(" & tc.Seed & "," & tc.Increment & ")"
-            End If
+            sOut &= sTab & "   " & Comma & tc.QuotedName & " "
+            If tc.Computed = "" Then
+                sOut &= tc.TypeText
+                If tc.Identity Then
+                    sOut &= " identity(" & tc.Seed & "," & tc.Increment & ")"
+                End If
 
-            If tc.RowGuid Then
-                sOut &= " rowguidcol"
-            End If
+                If tc.RowGuid Then
+                    sOut &= " rowguidcol"
+                End If
 
-            If bCollation And tc.Collation <> "" Then
-                sOut &= " collate " & tc.Collation
-            End If
+                If bCollation And tc.Collation <> "" Then
+                    sOut &= " collate " & tc.Collation
+                End If
 
-            If tc.Nullable = "N" Then
-                sOut &= " not"
+                If tc.Nullable = "N" Then
+                    sOut &= " not"
+                End If
+                sOut &= " null"
+            Else
+                sOut &= "as " & tc.Computed
+                If tc.Persisted Then
+                    sOut &= " persisted"
+                    If tc.Nullable = "N" Then
+                        sOut &= " not null"
+                    End If
+                End If
             End If
-            sOut &= " null"
 
             If tc.DefaultName <> "" Then
                 If bConsName Then
@@ -1746,9 +1805,9 @@ Public Class TableColumns
 
         If Not dtCheck Is Nothing Then
             For Each dr As DataRow In dtCheck.Rows
-                sOut &= sTab & "   ,constraint "
+                sOut &= sTab & "   ,"
                 If bConsName Then
-                    sOut &= slib.QuoteIdentifier(dr("CONSTRAINT_NAME")) & " "
+                    sOut &= "constraint " & slib.QuoteIdentifier(dr("CONSTRAINT_NAME")) & " "
                 End If
                 s = slib.GetString(dr("CHECK_CLAUSE"))
                 s = FixCheckText(s)
@@ -1795,7 +1854,7 @@ Public Class TableColumns
             sCm = ", "
         End If
         If sWth <> "" Then
-            sWth &= "with (" & sWth & ")" & vbCrLf
+            sWth = "with (" & sWth & ")" & vbCrLf
         End If
         Return sWth
     End Function
@@ -1874,66 +1933,9 @@ Public Class TableColumns
     End Function
 
     Private Function FixCheckText(ByVal sCheck As String) As String
-        Dim s As String = ""
-        Dim ss As String
-        Dim sSave As String = ""
-        Dim i As Integer
-        Dim mode As Integer = 0
-        Dim bc As Integer = 0
+        Dim s As String
 
-        For i = 1 To Len(sCheck)
-            ss = Mid(sCheck, i, 1)
-            Select Case mode
-                Case 0
-                    Select Case ss
-                        Case "["
-                            bc = 1
-                            sSave = ""
-                            mode = 3
-
-                        Case "'"
-                            mode = 1
-                            s &= ss
-
-                        Case """"
-                            mode = 2
-                            s &= ss
-
-                        Case Else
-                            s &= ss
-
-                    End Select
-
-                Case 1
-                    If ss = "'" Then mode = 0
-                    s &= ss
-
-                Case 2
-                    If ss = """" Then mode = 0
-                    s &= ss
-
-                Case 3
-                    Select Case ss
-                        Case "]"
-                            bc -= 1
-                            If bc = 0 Then
-                                s &= slib.QuoteIdentifier(sSave)
-                                mode = 0
-                            Else
-                                sSave &= ss
-                            End If
-
-                        Case "["
-                            sSave &= ss
-                            bc += 1
-
-                        Case Else
-                            sSave &= ss
-
-                    End Select
-            End Select
-        Next
-
+        s = slib.RemoveSquares(sCheck)
         If Mid(s, 1, 1) = "(" And Right(s, 1) = ")" Then
             s = Mid(s, 2, Len(s) - 2)
         End If
