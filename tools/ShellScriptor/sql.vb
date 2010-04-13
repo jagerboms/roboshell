@@ -127,7 +127,7 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select name,cmptlevel from master.dbo.sysdatabases where name not in ('master','tempdb','model')"
+        sql = "select name,cmptlevel from master.dbo.sysdatabases where name not in ('master','tempdb','model','distribution')"
 
         Return GetTable(sql)
     End Function
@@ -274,7 +274,7 @@ Public Class sql
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select i.TABLE_NAME TableName"
+            sql = "select object_name(c.id) TableName"
             sql &= ",c.name COLUMN_NAME"
             sql &= ",t.name DATA_TYPE"
             sql &= ",c.prec CHARACTER_MAXIMUM_LENGTH"
@@ -283,28 +283,24 @@ Public Class sql
             sql &= ",c.xscale NUMERIC_SCALE"
             sql &= ",s.name DEFAULT_NAME"
             sql &= ",cm.text DEFAULT_TEXT"
-            sql &= ",i.COLLATION_NAME"
+            sql &= ",c.collation COLLATION_NAME"
             sql &= ",case when c.status & 128 = 0 then 'YES' else 'NO' end ANSIPadded"
             sql &= ",'NO' Replicate"
             sql &= ",case when c.colstat & 2 = 0 then 'NO' else 'YES' end ROWGUID"
             sql &= ",m.text Computed"
-            sql &= ",'NO' Persisted "
-            sql &= "from dbo.syscolumns c "
-            sql &= "left join dbo.sysobjects s "
-            sql &= "on s.id = c.cdefault "
-            sql &= "left join dbo.syscomments cm "
-            sql &= "on cm.id = s.id "
-            sql &= "and cm.colid = 1 "
-            sql &= "join dbo.systypes t "
-            sql &= "on t.xtype = c.xtype "
-            sql &= "and t.xusertype = c.xusertype "
-            sql &= "join INFORMATION_SCHEMA.COLUMNS i "
-            sql &= "on i.TABLE_NAME=object_name(c.id) "
-            sql &= "and i.TABLE_SCHEMA='" & Schema & "' "
-            sql &= "and i.COLUMN_NAME=c.name "
-            sql &= "left join dbo.syscomments m "
-            sql &= "on m.id = c.id "
-            sql &= "and m.number = c.colid "
+            sql &= ",'NO' Persisted"
+            sql &= "from dbo.syscolumns c"
+            sql &= "left join dbo.sysobjects s"
+            sql &= "on s.id = c.cdefault"
+            sql &= "left join dbo.syscomments cm"
+            sql &= "on cm.id = s.id"
+            sql &= "and cm.colid = 1"
+            sql &= "join dbo.systypes t"
+            sql &= "on t.xtype = c.xtype"
+            sql &= "and t.xusertype = c.xusertype"
+            sql &= "left join dbo.syscomments m"
+            sql &= "on m.id = c.id"
+            sql &= "and m.number = c.colid"
             sql &= "where c.id = object_id('" & Schema & "." & TableName & "') "
             sql &= "order by c.colorder"
         Else
@@ -481,17 +477,26 @@ Public Class sql
 
         openConnect()
 
-        sql = "select c.CONSTRAINT_CATALOG"
-        sql &= ",c.CONSTRAINT_SCHEMA"
-        sql &= ",c.CONSTRAINT_NAME"
-        sql &= ",c.CHECK_CLAUSE "
-        sql &= "from INFORMATION_SCHEMA.check_Constraints c "
-        sql &= "join INFORMATION_SCHEMA.Constraint_table_usage t "
-        sql &= "on t.CONSTRAINT_CATALOG=c.CONSTRAINT_CATALOG "
-        sql &= "and t.CONSTRAINT_SCHEMA = c.CONSTRAINT_SCHEMA "
-        sql &= "and t.CONSTRAINT_NAME = c.CONSTRAINT_NAME "
-        sql &= "where t.TABLE_NAME = '" & TableName & "' "
-        sql &= "and t.TABLE_SCHEMA = '" & Schema & "'"
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select c.name CONSTRAINT_NAME"
+            sql &= ",m.text CHECK_CLAUSE"
+            sql &= ",0 is_not_for_replication"
+            sql &= ",0 is_system_named "
+            sql &= "from dbo.sysobjects c "
+            sql &= "join dbo.syscomments m "
+            sql &= "on m.id = c.id "
+            sql &= "where c.xtype = 'C' "
+            sql &= "and c.parent_obj = object_id('" & Schema & "." & TableName & "') "
+            sql &= "order by 1"
+        Else
+            sql = "select c.name CONSTRAINT_NAME"
+            sql &= ",c.definition CHECK_CLAUSE"
+            sql &= ",c.is_not_for_replication"
+            sql &= ",c.is_system_named "
+            sql &= "from sys.check_constraints c "
+            sql &= "where c.parent_object_id = object_id('" & Schema & "." & TableName & "') "
+            sql &= "order by 1"
+        End If
 
         Return GetTable(sql)
     End Function
