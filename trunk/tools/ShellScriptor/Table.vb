@@ -370,7 +370,7 @@ Public Class TableColumns
     '         [ ON DELETE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
     '         [ ON UPDATE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
     '         [ NOT FOR REPLICATION ]
-    'x  | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
+    '   | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
     '   | DEFAULT constant_expression
     ' }
     '
@@ -392,7 +392,7 @@ Public Class TableColumns
     '         [ ON DELETE { NO ACTION | CASCADE } ]
     '         [ ON UPDATE { NO ACTION } ]
     'x        [ NOT FOR REPLICATION ]
-    'x    | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
+    '     | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
     ' ]
     '
     ' < table_constraint > ::=
@@ -413,7 +413,7 @@ Public Class TableColumns
     '         [ ON DELETE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
     '         [ ON UPDATE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
     'x        [ NOT FOR REPLICATION ]
-    'x    | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
+    '     | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
     ' }
     '
     ' <index_option> ::=
@@ -1206,6 +1206,9 @@ Public Class TableColumns
                 If bConsName Then
                     ss &= "name='" & slib.QuoteIdentifier(dr("CONSTRAINT_NAME")) & "' "
                 End If
+                If CType(dr("is_not_for_replication"), Boolean) Then
+                    ss &= "replication='N' "
+                End If
                 ss &= "type='check'>" & vbCrLf
                 ss &= "        <![CDATA["
                 s = slib.GetString(dr("CHECK_CLAUSE"))
@@ -1702,6 +1705,10 @@ Public Class TableColumns
             sTab = ""
         End If
 
+        If PreLoad = 3 Then
+            Return ""
+        End If
+
         For Each s In Keys
             tc = DirectCast(Values.Item(s), TableColumn)
             Select Case tc.ANSIPadded
@@ -1811,7 +1818,11 @@ Public Class TableColumns
                 End If
                 s = slib.GetString(dr("CHECK_CLAUSE"))
                 s = FixCheckText(s)
-                sOut &= "check (" & s & ")" & vbCrLf
+                sOut &= "check"
+                If CType(dr("is_not_for_replication"), Boolean) Then
+                    sOut &= " not for replication"
+                End If
+                sOut &= " (" & s & ")" & vbCrLf
             Next
         End If
 
