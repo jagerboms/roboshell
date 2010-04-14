@@ -288,19 +288,19 @@ Public Class sql
             sql &= ",'NO' Replicate"
             sql &= ",case when c.colstat & 2 = 0 then 'NO' else 'YES' end ROWGUID"
             sql &= ",m.text Computed"
-            sql &= ",'NO' Persisted"
-            sql &= "from dbo.syscolumns c"
-            sql &= "left join dbo.sysobjects s"
-            sql &= "on s.id = c.cdefault"
-            sql &= "left join dbo.syscomments cm"
-            sql &= "on cm.id = s.id"
-            sql &= "and cm.colid = 1"
-            sql &= "join dbo.systypes t"
-            sql &= "on t.xtype = c.xtype"
-            sql &= "and t.xusertype = c.xusertype"
-            sql &= "left join dbo.syscomments m"
-            sql &= "on m.id = c.id"
-            sql &= "and m.number = c.colid"
+            sql &= ",'NO' Persisted "
+            sql &= "from dbo.syscolumns c "
+            sql &= "left join dbo.sysobjects s "
+            sql &= "on s.id = c.cdefault "
+            sql &= "left join dbo.syscomments cm "
+            sql &= "on cm.id = s.id "
+            sql &= "and cm.colid = 1 "
+            sql &= "join dbo.systypes t "
+            sql &= "on t.xtype = c.xtype "
+            sql &= "and t.xusertype = c.xusertype "
+            sql &= "left join dbo.syscomments m "
+            sql &= "on m.id = c.id "
+            sql &= "and m.number = c.colid "
             sql &= "where c.id = object_id('" & Schema & "." & TableName & "') "
             sql &= "order by c.colorder"
         Else
@@ -350,12 +350,14 @@ Public Class sql
         If Version < 90 Then            'SQL 2000 compatible
             sql = "select name,ident_seed('" & s & _
                   "') seed,ident_incr('" & s & _
-                  "') increment from syscolumns where id = object_id('" & s & _
+                  "') increment,columnproperty(object_id,name,'IsIdNotForRepl') replicated " & _
+                  " from syscolumns where id = object_id('" & s & _
                   "') and colstat & 1 = 1"
         Else
             sql = "select name,ident_seed('" & s & _
                   "') seed,ident_incr('" & s & _
-                  "') increment from sys.columns where object_id = object_id('" & s & _
+                  "') increment,columnproperty(object_id,name,'IsIdNotForRepl') replicated " & _
+                  "from sys.columns where object_id = object_id('" & s & _
                   "') and is_identity = 1"
         End If
         Return GetRow(sql)
@@ -372,10 +374,11 @@ Public Class sql
             sql &= ",col_name(k.fkeyid, k.fkey) ColumnName"
             sql &= ",user_name(o1.uid) LinkedSchema"
             sql &= ",object_name(k.rkeyid) LinkedTable"
-            sql &= ",col_name(k.rkeyid, k.rkey) LinkedColumn "
+            sql &= ",col_name(k.rkeyid, k.rkey) LinkedColumn"
             sql &= ",c.MATCH_OPTION"
             sql &= ",c.UPDATE_RULE"
-            sql &= ",c.DELETE_RULE "
+            sql &= ",c.DELETE_RULE"
+            sql &= ",objectproperty(object_id(k.constid),'CnstIsNotRepl') Replicated "
             sql &= "from dbo.sysforeignkeys k "
             sql &= "join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
             sql &= "on c.CONSTRAINT_NAME = object_name(k.constid) "
@@ -395,7 +398,8 @@ Public Class sql
             sql &= ",u2.COLUMN_NAME LinkedColumn"
             sql &= ",c.MATCH_OPTION"
             sql &= ",c.UPDATE_RULE"
-            sql &= ",c.DELETE_RULE "
+            sql &= ",c.DELETE_RULE"
+            sql &= ",objectproperty(object_id(c.CONSTRAINT_SCHEMA+'.'+c.CONSTRAINT_NAME),'CnstIsNotRepl') Replicated "
             sql &= "from INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
             sql &= "join INFORMATION_SCHEMA.KEY_COLUMN_USAGE u1 "
             sql &= "on u1.CONSTRAINT_CATALOG=c.CONSTRAINT_CATALOG "
