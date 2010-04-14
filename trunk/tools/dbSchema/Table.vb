@@ -44,6 +44,7 @@ Public Class TableColumn
     Public RowGuid As Boolean = False
     Public Seed As Integer = 1
     Public Increment As Integer = 1
+    Public Replicated As Boolean = False
     Public Computed As String = ""
     Public Persisted As Boolean = False
 
@@ -344,7 +345,7 @@ Public Class TableColumns
     '     [ NULL | NOT NULL ]
     '     [
     '         [ IDENTITY [ ( seed , increment ) ]]
-    'x        [ NOT FOR REPLICATION ]
+    '         [ NOT FOR REPLICATION ]
     '     ]
     '     [ ROWGUIDCOL ]
     '     [ <column_constraint> [ ...n ] ]
@@ -899,6 +900,7 @@ Public Class TableColumns
             Dim st As String = ""
             Dim sFTable As String = ""
             Dim qName As String = slib.QuoteIdentifier(sFKeyName)
+            Dim bRepl As Boolean = True
 
             If dtFKeys Is Nothing Then
                 Return ""
@@ -911,6 +913,7 @@ Public Class TableColumns
             For Each r As DataRow In dtFKeys.Rows
                 If sFKeyName = slib.GetString(r.Item("ConstraintName")) Then
                     If i = 0 Then
+                        bRepl = CType(r("Replicated"), Boolean)
                         sFTable = slib.GetString(r.Item("LinkedTable"))
                         sOut &= "declare @c1 integer, @c2 integer" & vbCrLf
                         sOut &= vbCrLf
@@ -977,7 +980,11 @@ Public Class TableColumns
                 End If
             Next
             If sOut <> "" Then
-                sOut &= sRest & ss & ")" & vbCrLf
+                sOut &= sRest & ss & ")"
+                If bRepl Then
+                    sOut &= " not for replication"
+                End If
+                sOut &= vbCrLf
                 If sOpt <> "" Then
                     sOut &= "    " & sOpt & vbCrLf
                 End If
@@ -996,6 +1003,7 @@ Public Class TableColumns
             Dim so As String = ""
             Dim st As String = ""
             Dim sOut As String = ""
+            Dim bRepl As Boolean = True
 
             If dtFKeys Is Nothing Then
                 Return ""
@@ -1008,6 +1016,7 @@ Public Class TableColumns
             For Each r As DataRow In dtFKeys.Rows
                 If sFKeyName = slib.GetString(r.Item("ConstraintName")) Then
                     If i = 0 Then
+                        bRepl = CType(r("Replicated"), Boolean)
                         sOut &= "alter table " & qSchema & "." & qTable & " add constraint " & slib.QuoteIdentifier(sFKeyName) & vbCrLf
                         sOut &= "foreign key (" & slib.QuoteIdentifier(r.Item("ColumnName"))
 
@@ -1030,7 +1039,11 @@ Public Class TableColumns
                 End If
             Next
             If sOut <> "" Then
-                sOut &= ss & ")" & vbCrLf
+                sOut &= ss & ")"
+                If bRepl Then
+                    sOut &= " not for replication"
+                End If
+                sOut &= vbCrLf
                 If so <> "" Then
                     sOut &= so & vbCrLf
                 End If
@@ -1073,6 +1086,9 @@ Public Class TableColumns
                     ss &= " allownulls='" & tc.Nullable & "'"
                     If tc.Identity Then
                         ss &= " seed='" & tc.Seed & "' increment='" & tc.Increment & "'"
+                        If tc.Replicated Then
+                            ss &= " replication='N'"
+                        End If
                     End If
                     If tc.RowGuid Then
                         ss &= " rowguid='Y'"
@@ -1246,6 +1262,9 @@ Public Class TableColumns
                                 If st <> "NO ACTION" Then
                                     ss &= " onupdate='" & st & "'"
                                 End If
+                                If CType(r("Replicated"), Boolean) Then
+                                    ss &= " replication='N'"
+                                End If
                                 ss &= ">" & vbCrLf
                             End If
                             ss &= "        <column name='" & slib.GetString(r.Item("ColumnName")) & "'"
@@ -1299,6 +1318,7 @@ Public Class TableColumns
         Dim i As Integer
         Dim iSeed As Integer
         Dim iIncr As Integer
+        Dim bRepl As Boolean = False
 
         sSchema = Sch
         qSchema = slib.QuoteIdentifier(Sch)
@@ -1319,6 +1339,7 @@ Public Class TableColumns
             sIdentity = slib.GetString(dr.Item("name"))
             iSeed = slib.GetInteger(dr.Item("seed"), 1)
             iIncr = slib.GetInteger(dr.Item("increment"), 1)
+            bRepl = CType(dr("replicated"), Boolean)
         End If
 
         For Each dr In dt.Rows        ' Columns
@@ -1332,7 +1353,7 @@ Public Class TableColumns
             If sName = sIdentity Then
                 AddIdentityColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
                     dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, _
-                    iSeed, iIncr, sdn, sdv, sColl, sAP)
+                    iSeed, iIncr, sdn, sdv, sColl, sAP, bRepl)
             Else
                 s = sqllib.GetString(dr.Item("ROWGUID"))
                 If s = "NO" Then
@@ -1528,7 +1549,8 @@ Public Class TableColumns
         ByVal sDefaultName As String, _
         ByVal sDefaultValue As String, _
         ByVal sCollation As String, _
-        ByVal sANSIPadded As String)
+        ByVal sANSIPadded As String, _
+        ByVal bRepl As Boolean)
 
         Dim parm As New TableColumn
 
@@ -1548,6 +1570,7 @@ Public Class TableColumns
             .Identity = True
             .Seed = iSeed
             .Increment = iIncr
+            .Replicated = bRepl
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
             .Collation = sCollation
@@ -1741,6 +1764,9 @@ Public Class TableColumns
                 sOut &= tc.TypeText
                 If tc.Identity Then
                     sOut &= " identity(" & tc.Seed & "," & tc.Increment & ")"
+                    If tc.Replicated Then
+                        sOut &= " not for replication"
+                    End If
                 End If
 
                 If tc.RowGuid Then
