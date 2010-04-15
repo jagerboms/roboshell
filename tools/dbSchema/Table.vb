@@ -3,7 +3,9 @@ Option Strict On
 
 'todo
 ' partition scheme
-' replication
+' change 'not for replication' in fkey full text
+'x    [ { TEXTIMAGE_ON { filegroup | "default" } ]
+'x        [ { CONTENT | DOCUMENT } ] xml_schema_collection ) ]
 
 Imports System.Data.SqlClient
 
@@ -392,7 +394,7 @@ Public Class TableColumns
     '         REFERENCES referenced_table_name [ ( ref_column ) ]
     '         [ ON DELETE { NO ACTION | CASCADE } ]
     '         [ ON UPDATE { NO ACTION } ]
-    'x        [ NOT FOR REPLICATION ]
+    '         [ NOT FOR REPLICATION ]
     '     | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
     ' ]
     '
@@ -413,7 +415,7 @@ Public Class TableColumns
     '         REFERENCES referenced_table_name [ ( ref_column [ ,...n ] ) ]
     '         [ ON DELETE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
     '         [ ON UPDATE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
-    'x        [ NOT FOR REPLICATION ]
+    '         [ NOT FOR REPLICATION ]
     '     | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
     ' }
     '

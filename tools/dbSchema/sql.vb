@@ -350,7 +350,7 @@ Public Class sql
         If Version < 90 Then            'SQL 2000 compatible
             sql = "select name,ident_seed('" & s & _
                   "') seed,ident_incr('" & s & _
-                  "') increment,columnproperty(object_id,name,'IsIdNotForRepl') replicated " & _
+                  "') increment,columnproperty(id,name,'IsIdNotForRepl') replicated " & _
                   " from syscolumns where id = object_id('" & s & _
                   "') and colstat & 1 = 1"
         Else
