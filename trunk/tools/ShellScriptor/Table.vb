@@ -3,7 +3,6 @@ Option Strict On
 
 'todo
 ' partition scheme
-' replication
 
 Imports System.Data.SqlClient
 
@@ -44,8 +43,11 @@ Public Class TableColumn
     Public RowGuid As Boolean = False
     Public Seed As Integer = 1
     Public Increment As Integer = 1
+    Public Replicated As Boolean = False
     Public Computed As String = ""
     Public Persisted As Boolean = False
+    Public XMLDocument As Boolean = False
+    Public XMLCollection As String = ""
 
     Public ReadOnly Property QuotedName() As String
         Get
@@ -221,13 +223,29 @@ Public Class TableColumn
             Dim s As String
             s = sType
             Select Case sType
-                Case "binary", "char", "nchar", "nvarchar", "varbinary", "varchar"
+                Case "varchar", "nvarchar", "varbinary"
+                    If iLength = -1 Then
+                        s &= "(max)"
+                    Else
+                        s &= "(" & iLength & ")"
+                    End If
+                Case "binary", "char", "nchar"
                     s &= "(" & iLength & ")"
                 Case "decimal", "numeric"
                     s &= "(" & iPrecision & "," & iScale & ")"
                 Case "float"
                     If iPrecision <> 53 Then
                         s &= "(" & iPrecision & ")"
+                    End If
+                Case "xml"
+                    If XMLCollection <> "" Then
+                        s &= "("
+                        If XMLDocument Then
+                            s &= "document "
+                        Else
+                            s &= "content "
+                        End If
+                        s &= XMLCollection & ")"
                     End If
             End Select
             TypeText = s
@@ -310,9 +328,12 @@ Public Class TableColumns
     Private sIdentity As String = ""
 
     Private sFileGroup As String = "PRIMARY"
+    Private sTextFileGroup As String = "PRIMARY"
+    Private sDefFileGroup As String = "PRIMARY"
     Private bAudit As Boolean = False
     Private bState As Boolean = False
     Private bConsName As Boolean = True
+    Private sDefCollation As String
     Private bCollation As Boolean = False
     Private fixdef As Boolean = False
 
@@ -336,7 +357,7 @@ Public Class TableColumns
     '     [ ON { filegroup
     'x         | partition_scheme_name ( partition_column_name )
     '-         | "default" } ]
-    'x    [ { TEXTIMAGE_ON { filegroup | "default" } ]
+    '     [ { TEXTIMAGE_ON { filegroup | "default" } ]
     '
     ' <column_definition> ::=
     ' column_name <data_type>
@@ -344,7 +365,7 @@ Public Class TableColumns
     '     [ NULL | NOT NULL ]
     '     [
     '         [ IDENTITY [ ( seed , increment ) ]]
-    'x        [ NOT FOR REPLICATION ]
+    '         [ NOT FOR REPLICATION ]
     '     ]
     '     [ ROWGUIDCOL ]
     '     [ <column_constraint> [ ...n ] ]
@@ -352,7 +373,7 @@ Public Class TableColumns
     ' <data type> ::=
     ' [ type_schema_name . ] type_name
     '     [ ( precision [ , scale ] | max |
-    'x        [ { CONTENT | DOCUMENT } ] xml_schema_collection ) ]
+    '         [ { CONTENT | DOCUMENT } ] xml_schema_collection ) ]
     '
     ' <column_constraint> ::=
     ' [ CONSTRAINT constraint_name ]
@@ -391,7 +412,7 @@ Public Class TableColumns
     '         REFERENCES referenced_table_name [ ( ref_column ) ]
     '         [ ON DELETE { NO ACTION | CASCADE } ]
     '         [ ON UPDATE { NO ACTION } ]
-    'x        [ NOT FOR REPLICATION ]
+    '         [ NOT FOR REPLICATION ]
     '     | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
     ' ]
     '
@@ -412,7 +433,7 @@ Public Class TableColumns
     '         REFERENCES referenced_table_name [ ( ref_column [ ,...n ] ) ]
     '         [ ON DELETE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
     '         [ ON UPDATE { NO ACTION | CASCADE | SET NULL | SET DEFAULT } ]
-    'x        [ NOT FOR REPLICATION ]
+    '         [ NOT FOR REPLICATION ]
     '     | CHECK [ NOT FOR REPLICATION ] ( logical_expression )
     ' }
     '
@@ -421,7 +442,7 @@ Public Class TableColumns
     '    PAD_INDEX = { ON | OFF }
     '   | FILLFACTOR = fillfactor
     '   | IGNORE_DUP_KEY = { ON | OFF }
-    'x  | STATISTICS_NORECOMPUTE = { ON | OFF }
+    '   | STATISTICS_NORECOMPUTE = { ON | OFF }
     '   | ALLOW_ROW_LOCKS = { ON | OFF}
     '   | ALLOW_PAGE_LOCKS ={ ON | OFF}
     ' }
@@ -578,7 +599,7 @@ Public Class TableColumns
             '    | FILLFACTOR = fillfactor
             '-   | SORT_IN_TEMPDB = { ON | OFF }
             '    | IGNORE_DUP_KEY = { ON | OFF }
-            'x   | STATISTICS_NORECOMPUTE = { ON | OFF }
+            '    | STATISTICS_NORECOMPUTE = { ON | OFF }
             '-   | DROP_EXISTING = { ON | OFF }
             '-   | ONLINE = { ON | OFF }
             '    | ALLOW_ROW_LOCKS = { ON | OFF }
@@ -610,7 +631,7 @@ Public Class TableColumns
                             sOut &= slib.QuoteIdentifier(r.Item("ColumnName"))
                             sWth = IndexWith(r)
                             s = slib.GetString(r.Item("filegroup"))
-                            If s <> "PRIMARY" Then
+                            If s <> sDefFileGroup Then
                                 sOn &= "on " & s & vbCrLf
                             End If
                         Else
@@ -681,7 +702,7 @@ Public Class TableColumns
                             sOut &= "left join" & vbCrLf
                             sOut &= "(" & vbCrLf
                             s = slib.GetString(r.Item("filegroup"))
-                            If s <> "PRIMARY" Then
+                            If s <> sDefFileGroup Then
                                 sOn &= "on " & s & vbCrLf
                             End If
                             sOut &= "    select  '" & s & "' name" & vbCrLf
@@ -899,6 +920,7 @@ Public Class TableColumns
             Dim st As String = ""
             Dim sFTable As String = ""
             Dim qName As String = slib.QuoteIdentifier(sFKeyName)
+            Dim bRepl As Boolean = True
 
             If dtFKeys Is Nothing Then
                 Return ""
@@ -911,6 +933,7 @@ Public Class TableColumns
             For Each r As DataRow In dtFKeys.Rows
                 If sFKeyName = slib.GetString(r.Item("ConstraintName")) Then
                     If i = 0 Then
+                        bRepl = slib.GetBit(r("Replicated"), False)
                         sFTable = slib.GetString(r.Item("LinkedTable"))
                         sOut &= "declare @c1 integer, @c2 integer" & vbCrLf
                         sOut &= vbCrLf
@@ -949,10 +972,16 @@ Public Class TableColumns
                             sOpt &= st & "on update " & s
                         End If
                         sRest &= "    and     c.UPDATE_RULE = '" & s & "'" & vbCrLf
+                        sRest &= "    and     objectproperty(object_id('" & qSchema & "." & qName & "'),'CnstIsNotRepl') = "
+                        If bRepl Then
+                            sRest &= "1" & vbCrLf
+                        Else
+                            sRest &= "0" & vbCrLf
+                        End If
                         sRest &= "    and     u1.TABLE_NAME = '" & sTable & "'" & vbCrLf
                         sRest &= "    and     u2.TABLE_NAME = '" & sFTable & "'" & vbCrLf
                         sRest &= vbCrLf
-                        sRest &= "    if @c1 <> @c2 or @c1 <> ~~" & vbCrLf
+                        sRest &= "    if coalesce(@c1,0) <> coalesce(@c2,0) or coalesce(@c1,0) <> ~~" & vbCrLf
                         sRest &= "    begin" & vbCrLf
                         sRest &= "        print 'changing foreign key ''" & sFKeyName & "'''" & vbCrLf
                         sRest &= "        alter table " & qSchema & "." & qTable & " drop constraint " & qName & vbCrLf
@@ -966,7 +995,6 @@ Public Class TableColumns
                         sRest &= "    foreign key (" & slib.QuoteIdentifier(r.Item("ColumnName"))
                         ss = ") references " & slib.QuoteIdentifier(r.Item("LinkedSchema")) & "." & _
                              slib.QuoteIdentifier(r.Item("LinkedTable")) & "(" & slib.QuoteIdentifier(r.Item("LinkedColumn"))
-
                     Else
                         sOut &= "        union select  " & CInt(r.Item("Sequence")) & ", '" & slib.GetString(r.Item("ColumnName"))
                         sOut &= "', '" & slib.QuoteIdentifier(r.Item("LinkedColumn")) & "'" & vbCrLf
@@ -977,7 +1005,11 @@ Public Class TableColumns
                 End If
             Next
             If sOut <> "" Then
-                sOut &= sRest & ss & ")" & vbCrLf
+                sOut &= sRest & ss & ")"
+                If bRepl Then
+                    sOut &= " not for replication"
+                End If
+                sOut &= vbCrLf
                 If sOpt <> "" Then
                     sOut &= "    " & sOpt & vbCrLf
                 End If
@@ -996,6 +1028,7 @@ Public Class TableColumns
             Dim so As String = ""
             Dim st As String = ""
             Dim sOut As String = ""
+            Dim bRepl As Boolean = True
 
             If dtFKeys Is Nothing Then
                 Return ""
@@ -1008,6 +1041,7 @@ Public Class TableColumns
             For Each r As DataRow In dtFKeys.Rows
                 If sFKeyName = slib.GetString(r.Item("ConstraintName")) Then
                     If i = 0 Then
+                        bRepl = slib.GetBit(r("Replicated"), False)
                         sOut &= "alter table " & qSchema & "." & qTable & " add constraint " & slib.QuoteIdentifier(sFKeyName) & vbCrLf
                         sOut &= "foreign key (" & slib.QuoteIdentifier(r.Item("ColumnName"))
 
@@ -1030,7 +1064,11 @@ Public Class TableColumns
                 End If
             Next
             If sOut <> "" Then
-                sOut &= ss & ")" & vbCrLf
+                sOut &= ss & ")"
+                If bRepl Then
+                    sOut &= " not for replication"
+                End If
+                sOut &= vbCrLf
                 If so <> "" Then
                     sOut &= so & vbCrLf
                 End If
@@ -1052,8 +1090,11 @@ Public Class TableColumns
             sOut = "<?xml version='1.0'?>" & vbCrLf
             sOut &= "<sqldef>" & vbCrLf
             sOut &= "  <table name='" & sTable & "' owner='" & sSchema & "'"
-            If sFileGroup <> "PRIMARY" Then
+            If sFileGroup <> sDefFileGroup Then
                 sOut &= " filegroup='" & sFileGroup & "'"
+            End If
+            If sTextFileGroup <> sDefFileGroup And sTextFileGroup <> "" Then
+                sOut &= " textfilegroup='" & sTextFileGroup & "'"
             End If
             sOut &= ">" & vbCrLf
 
@@ -1063,16 +1104,32 @@ Public Class TableColumns
                 ss = "      <column name='" & tc.Name & "'"
                 If tc.Computed = "" Then
                     ss &= " type='" & tc.Type & "'"
-                    If tc.Length > 0 Then
-                        ss &= " length='" & tc.Length & "'"
-                    End If
-                    If tc.Precision > 0 Then
-                        ss &= " precision='" & tc.Precision & "'"
-                        ss &= " scale='" & tc.Scale & "'"
+                    If tc.Type = "xml" Then
+                        If tc.XMLCollection <> "" Then
+                            If tc.XMLDocument Then
+                                ss &= " document='Y'"
+                            Else
+                                ss &= " content='Y'"
+                            End If
+                            ss &= " collection='" & tc.XMLCollection & "'"
+                        End If
+                    Else
+                        If tc.Length > 0 Then
+                            ss &= " length='" & tc.Length & "'"
+                        ElseIf tc.Length = 0 Then
+                            ss &= " length='max'"
+                        End If
+                        If tc.Precision > 0 Then
+                            ss &= " precision='" & tc.Precision & "'"
+                            ss &= " scale='" & tc.Scale & "'"
+                        End If
                     End If
                     ss &= " allownulls='" & tc.Nullable & "'"
                     If tc.Identity Then
                         ss &= " seed='" & tc.Seed & "' increment='" & tc.Increment & "'"
+                        If tc.Replicated Then
+                            ss &= " replication='N'"
+                        End If
                     End If
                     If tc.RowGuid Then
                         ss &= " rowguid='Y'"
@@ -1081,7 +1138,11 @@ Public Class TableColumns
                         ss &= " ansipadded='N'"
                     End If
                     If bCollation And tc.Collation <> "" Then
-                        ss &= " collation='" & tc.Collation & "'"
+                        If tc.Collation = sDefCollation Then
+                            ss &= " collation='database_default'"
+                        Else
+                            ss &= " collation='" & tc.Collation & "'"
+                        End If
                     End If
                     If tc.DefaultName <> "" Then
                         ss &= ">" & vbCrLf
@@ -1104,7 +1165,11 @@ Public Class TableColumns
                         ss &= " ansipadded='N'"
                     End If
                     If bCollation And tc.Collation <> "" Then
-                        ss &= " collation='" & tc.Collation & "'"
+                        If tc.Collation = sDefCollation Then
+                            ss &= " collation='database_default'"
+                        Else
+                            ss &= " collation='" & tc.Collation & "'"
+                        End If
                     End If
                     If tc.Persisted Then
                         ss &= " persisted='Y'"
@@ -1174,7 +1239,7 @@ Public Class TableColumns
                                     ss &= " pagelocks='off'"
                                 End If
                                 st = slib.GetString(r.Item("filegroup"))
-                                If st <> "PRIMARY" Then
+                                If st <> sDefFileGroup Then
                                     ss &= " on='" & st & "'"
                                 End If
                                 ss &= ">" & vbCrLf
@@ -1206,7 +1271,7 @@ Public Class TableColumns
                 If bConsName Then
                     ss &= "name='" & slib.QuoteIdentifier(dr("CONSTRAINT_NAME")) & "' "
                 End If
-                If CType(dr("is_not_for_replication"), Boolean) Then
+                If slib.GetBit(dr("is_not_for_replication"), False) Then
                     ss &= "replication='N' "
                 End If
                 ss &= "type='check'>" & vbCrLf
@@ -1245,6 +1310,9 @@ Public Class TableColumns
                                 st = slib.GetString(r.Item("UPDATE_RULE"))
                                 If st <> "NO ACTION" Then
                                     ss &= " onupdate='" & st & "'"
+                                End If
+                                If slib.GetBit(r("Replicated"), False) Then
+                                    ss &= " replication='N'"
                                 End If
                                 ss &= ">" & vbCrLf
                             End If
@@ -1299,6 +1367,7 @@ Public Class TableColumns
         Dim i As Integer
         Dim iSeed As Integer
         Dim iIncr As Integer
+        Dim bRepl As Boolean = False
 
         sSchema = Sch
         qSchema = slib.QuoteIdentifier(Sch)
@@ -1314,36 +1383,47 @@ Public Class TableColumns
 
         sTable = sqllib.GetString(dt.Rows(0).Item("TableName"))
         qTable = sqllib.QuoteIdentifier(sTable)
-        dr = slib.TableIdentity(sTable, sSchema)
+        dr = slib.TableDetails(sTable, sSchema)
         If Not dr Is Nothing Then
-            sIdentity = slib.GetString(dr.Item("name"))
-            iSeed = slib.GetInteger(dr.Item("seed"), 1)
-            iIncr = slib.GetInteger(dr.Item("increment"), 1)
+            sIdentity = slib.GetString(dr("IdentityColumn"))
+            iSeed = slib.GetInteger(dr("IdentitySeed"), 1)
+            iIncr = slib.GetInteger(dr("IdentityIncrement"), 1)
+            bRepl = slib.GetBit(dr("IdentityReplicated"), False)
+            sFileGroup = slib.GetString(dr("DataFileGroup"))
+            sTextFileGroup = slib.GetString(dr("TextFileGroup"))
+            sDefFileGroup = slib.GetString(dr("DefFileGroup"))
+            sDefCollation = slib.GetString(dr("DefCollation"))
         End If
 
         For Each dr In dt.Rows        ' Columns
-            sName = sqllib.GetString(dr.Item("COLUMN_NAME"))
-            sType = sqllib.GetString(dr.Item("DATA_TYPE"))
-            sNull = Mid(sqllib.GetString(dr.Item("IS_NULLABLE")), 1, 1)
-            sdn = sqllib.GetString(dr.Item("DEFAULT_NAME"))
-            sdv = FixDefaultText(sqllib.GetString(dr.Item("DEFAULT_TEXT")))
-            sColl = sqllib.GetString(dr.Item("COLLATION_NAME"))
-            sAP = Mid(sqllib.GetString(dr.Item("ANSIPadded")), 1, 1)
+            sName = sqllib.GetString(dr("COLUMN_NAME"))
+            sType = sqllib.GetString(dr("DATA_TYPE"))
+            sNull = Mid(sqllib.GetString(dr("IS_NULLABLE")), 1, 1)
+            sdn = sqllib.GetString(dr("DEFAULT_NAME"))
+            sdv = FixDefaultText(sqllib.GetString(dr("DEFAULT_TEXT")))
+            sColl = sqllib.GetString(dr("COLLATION_NAME"))
+            sAP = Mid(sqllib.GetString(dr("ANSIPadded")), 1, 1)
             If sName = sIdentity Then
-                AddIdentityColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
-                    dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, _
-                    iSeed, iIncr, sdn, sdv, sColl, sAP)
+                AddIdentityColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
+                    dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
+                    iSeed, iIncr, sdn, sdv, sColl, sAP, bRepl)
             Else
-                s = sqllib.GetString(dr.Item("ROWGUID"))
+                s = sqllib.GetString(dr("ROWGUID"))
                 If s = "NO" Then
-                    sAP = Mid(sqllib.GetString(dr.Item("ANSIPadded")), 1, 1)
-                    sFormula = FixCheckText(sqllib.GetString(dr.Item("Computed")))
+                    sAP = Mid(sqllib.GetString(dr("ANSIPadded")), 1, 1)
+                    sFormula = FixCheckText(sqllib.GetString(dr("Computed")))
                     If sFormula = "" Then
-                        AddColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
-                            dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, _
-                            sdn, sdv, sColl, sAP)
+                        If LCase(sType) = "xml" Then
+                            AddXMLColumn(sName, dr("xmlschema"), _
+                                dr("xmlcollection"), dr("is_xml_document"), sNull, _
+                                sdn, sdv, sColl, sAP)
+                        Else
+                            AddColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
+                                dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
+                                sdn, sdv, sColl, sAP)
+                        End If
                     Else
-                        If sqllib.GetString(dr.Item("Persisted")) = "NO" Then
+                        If sqllib.GetString(dr("Persisted")) = "NO" Then
                             bPersist = False
                         Else
                             bPersist = True
@@ -1351,8 +1431,8 @@ Public Class TableColumns
                         AddComputedColumn(sName, sFormula, sNull, bPersist)
                     End If
                 Else
-                    AddRowGuidColumn(sName, sType, dr.Item("CHARACTER_MAXIMUM_LENGTH"), _
-                        dr.Item("NUMERIC_PRECISION"), dr.Item("NUMERIC_SCALE"), sNull, _
+                    AddRowGuidColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
+                        dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
                         sdn, sdv, sAP)
                 End If
             End If
@@ -1363,11 +1443,8 @@ Public Class TableColumns
         b = False
         sName = ""
         For Each dr In dtIndexs.Rows
-            s = sqllib.GetString(dr.Item("name"))
+            s = sqllib.GetString(dr("name"))
             i = CInt(dr.Item("type"))
-            If i = 1 Then
-                sFileGroup = slib.GetString(dr.Item("filegroup"))
-            End If
             If CInt(dr.Item("is_primary_key")) <> 0 Then
                 If Not b Then
                     sPKey = s
@@ -1378,8 +1455,8 @@ Public Class TableColumns
                     End If
                     b = True
                 End If
-                sPK = sqllib.GetString(dr.Item("ColumnName"))
-                If CInt(dr.Item("is_descending_key")) <> 0 Then
+                sPK = sqllib.GetString(dr("ColumnName"))
+                If CInt(dr("is_descending_key")) <> 0 Then
                     AddPKey(sPK, True)
                 Else
                     AddPKey(sPK, False)
@@ -1402,7 +1479,7 @@ Public Class TableColumns
         dtFKeys = slib.TableFKeys(qTable, qSchema)
         sName = ""
         For Each r As DataRow In dtFKeys.Rows
-            s = sqllib.GetString(r.Item("ConstraintName"))
+            s = sqllib.GetString(r("ConstraintName"))
             If sName <> s Then
                 sName = s
                 i = xFKeys.GetUpperBound(0)
@@ -1423,7 +1500,7 @@ Public Class TableColumns
         '        i += 1
         '        ReDim Preserve xTriggers(i)
         '    End If
-        '    xTriggers(i) = sqllib.GetString(r.Item("TriggerName"))
+        '    xTriggers(i) = sqllib.GetString(r("TriggerName"))
         'Next
     End Sub
 
@@ -1453,6 +1530,38 @@ Public Class TableColumns
             If IsNumeric(oScale) Then
                 .Scale = CInt(oScale)
             End If
+            .Nullable = bNullable
+            .DefaultName = sDefaultName
+            .DefaultValue = sDefaultValue
+            .Collation = sCollation
+            .ANSIPadded = sANSIPadded
+        End With
+
+        AddColumn(parm)
+    End Sub
+
+    Public Sub AddXMLColumn( _
+        ByVal sName As String, _
+        ByVal oXMLSchema As Object, _
+        ByVal oXMLCollection As Object, _
+        ByVal oXMLDoc As Object, _
+        ByVal bNullable As String, _
+        ByVal sDefaultName As String, _
+        ByVal sDefaultValue As String, _
+        ByVal sCollation As String, _
+        ByVal sANSIPadded As String)
+
+        Dim parm As New TableColumn
+        Dim s As String
+
+        s = slib.QuoteIdentifier(oXMLSchema)
+        If s <> "" Then s &= "."
+        s &= slib.QuoteIdentifier(oXMLCollection)
+        With parm
+            .Name = sName
+            .Type = "xml"
+            .XMLCollection = s
+            .XMLDocument = slib.GetBit(oXMLDoc, False)
             .Nullable = bNullable
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
@@ -1528,7 +1637,8 @@ Public Class TableColumns
         ByVal sDefaultName As String, _
         ByVal sDefaultValue As String, _
         ByVal sCollation As String, _
-        ByVal sANSIPadded As String)
+        ByVal sANSIPadded As String, _
+        ByVal bRepl As Boolean)
 
         Dim parm As New TableColumn
 
@@ -1548,6 +1658,7 @@ Public Class TableColumns
             .Identity = True
             .Seed = iSeed
             .Increment = iIncr
+            .Replicated = bRepl
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
             .Collation = sCollation
@@ -1741,6 +1852,9 @@ Public Class TableColumns
                 sOut &= tc.TypeText
                 If tc.Identity Then
                     sOut &= " identity(" & tc.Seed & "," & tc.Increment & ")"
+                    If tc.Replicated Then
+                        sOut &= " not for replication"
+                    End If
                 End If
 
                 If tc.RowGuid Then
@@ -1748,7 +1862,11 @@ Public Class TableColumns
                 End If
 
                 If bCollation And tc.Collation <> "" Then
-                    sOut &= " collate " & tc.Collation
+                    If tc.Collation = sDefCollation Then
+                        sOut &= " collate database_default"
+                    Else
+                        sOut &= " collate " & tc.Collation
+                    End If
                 End If
 
                 If tc.Nullable = "N" Then
@@ -1803,11 +1921,7 @@ Public Class TableColumns
                 Comma = ","
                 sOut &= vbCrLf
             Next
-            sOut &= sTab & "    )"
-            If sFileGroup <> "PRIMARY" Then
-                sOut &= " on " & sFileGroup
-            End If
-            sOut &= vbCrLf
+            sOut &= sTab & "    )" & vbCrLf
         End If
 
         If Not dtCheck Is Nothing Then
@@ -1819,14 +1933,22 @@ Public Class TableColumns
                 s = slib.GetString(dr("CHECK_CLAUSE"))
                 s = FixCheckText(s)
                 sOut &= "check"
-                If CType(dr("is_not_for_replication"), Boolean) Then
+                If slib.GetBit(dr("is_not_for_replication"), False) Then
                     sOut &= " not for replication"
                 End If
                 sOut &= " (" & s & ")" & vbCrLf
             Next
         End If
 
-        sOut &= sTab & ")" & vbCrLf
+        sOut &= sTab & ")"
+        If sFileGroup <> sDefFileGroup Then
+            sOut &= " on " & slib.QuoteIdentifier(sFileGroup)
+        End If
+        If sTextFileGroup <> sDefFileGroup And sTextFileGroup <> "" Then
+            sOut &= " textimage_on " & slib.QuoteIdentifier(sTextFileGroup)
+        End If
+        sOut &= vbCrLf
+
         If bFull Then
             sOut &= "end" & vbCrLf
         End If
@@ -1837,29 +1959,35 @@ Public Class TableColumns
         Dim i As Integer = 0
         Dim sWth As String = ""
         Dim s As String = ""
+        Dim b As Boolean
         Dim sCm As String = ""
 
-        i = slib.GetInteger(r.Item("FILL_FACTOR"), 0)
+        i = slib.GetInteger(r("FILL_FACTOR"), 0)
         If i > 0 Then
             sWth = "fillfactor = " & i
             sCm = ", "
         End If
-        s = slib.GetString(r.Item("PAD_INDEX"))
+        b = slib.GetBit(r("no_recompute"), False)
+        If b Then
+            sWth &= sCm & "statistics_norecompute = on"
+            sCm = ", "
+        End If
+        s = slib.GetString(r("PAD_INDEX"))
         If s = "YES" Then
             sWth &= sCm & "pad_index = on"
             sCm = ", "
         End If
-        s = slib.GetString(r.Item("IGNORE_DUP_KEY"))
+        s = slib.GetString(r("IGNORE_DUP_KEY"))
         If s = "YES" Then
             sWth &= sCm & "ignore_dup_key = on"
             sCm = ", "
         End If
-        s = slib.GetString(r.Item("ALLOW_ROW_LOCKS"))
+        s = slib.GetString(r("ALLOW_ROW_LOCKS"))
         If s = "NO" Then
             sWth &= sCm & "allow_row_locks = off"
             sCm = ", "
         End If
-        s = slib.GetString(r.Item("ALLOW_PAGE_LOCKS"))
+        s = slib.GetString(r("ALLOW_PAGE_LOCKS"))
         If s = "NO" Then
             sWth &= sCm & "allow_page_locks = off"
             sCm = ", "

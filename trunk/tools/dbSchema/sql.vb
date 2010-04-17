@@ -274,7 +274,8 @@ Public Class sql
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select object_name(c.id) TableName"
+            sql = "declare @z bit set @z=0 "
+            sql &= "select object_name(c.id) TableName"
             sql &= ",c.name COLUMN_NAME"
             sql &= ",t.name DATA_TYPE"
             sql &= ",c.prec CHARACTER_MAXIMUM_LENGTH"
@@ -288,7 +289,10 @@ Public Class sql
             sql &= ",'NO' Replicate"
             sql &= ",case when c.colstat & 2 = 0 then 'NO' else 'YES' end ROWGUID"
             sql &= ",m.text Computed"
-            sql &= ",'NO' Persisted "
+            sql &= ",'NO' Persisted"
+            sql &= ",@z is_xml_document"
+            sql &= ",null xmlschema"
+            sql &= ",null xmlcollection "
             sql &= "from dbo.syscolumns c "
             sql &= "left join dbo.sysobjects s "
             sql &= "on s.id = c.cdefault "
@@ -318,7 +322,10 @@ Public Class sql
             sql &= ",case c.is_replicated when 0 then 'NO' else 'YES' end Replicate"
             sql &= ",case c.is_rowguidcol when 0 then 'NO' else 'YES' end ROWGUID"
             sql &= ",m.definition Computed"
-            sql &= ",case coalesce(m.is_persisted, 0) when 0 then 'NO' else 'YES' end Persisted "
+            sql &= ",case coalesce(m.is_persisted, 0) when 0 then 'NO' else 'YES' end Persisted"
+            sql &= ",c.is_xml_document"
+            sql &= ",sc.name xmlschema"
+            sql &= ",x.name xmlcollection "
             sql &= "from sys.objects i "
             sql &= "join sys.columns c "
             sql &= "on c.object_id = i.object_id "
@@ -333,6 +340,10 @@ Public Class sql
             sql &= "left join sys.computed_columns m "
             sql &= "on m.object_id = c.object_id "
             sql &= "and m.column_id = c.column_id "
+            sql &= "left join sys.xml_schema_collections x "
+            sql &= "on x.xml_collection_id = c.xml_collection_id "
+            sql &= "left join sys.schemas sc "
+            sql &= "on sc.schema_id = x.schema_id "
             sql &= "where i.object_id = object_id('" & Schema & "." & TableName & "') "
             sql &= "order by c.column_id"
         End If
@@ -363,6 +374,62 @@ Public Class sql
         Return GetRow(sql)
     End Function
 
+    Public Function TableDetails(ByVal TableName As String, ByVal Schema As String) As DataRow
+        Dim sql As String
+        Dim s As String
+
+        openConnect()
+
+        s = Schema & "." & TableName
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "declare @n sysname,@i sysname,@f sysname "
+            sql &= "set @n='rh.bbb' "
+            sql &= "select @i=name "
+            sql &= "from syscolumns "
+            sql &= "where id=object_id(@n) "
+            sql &= "and colstat & 1=1 "
+            sql &= "select @f=groupname from sysfilegroups where status & 16 <> 0 "
+            sql &= "select @i IdentityColumn"
+            sql &= ",columnproperty(object_id(@n),@i,'IsIdNotForRepl') IdentityReplicated"
+            sql &= ",ident_seed(@n) IdentitySeed"
+            sql &= ",ident_incr(@n) IdentityIncrement"
+            sql &= ",@f DataFileGroup"
+            sql &= ",@f TextFileGroup"
+            sql &= ",@f DefFileGroup"
+            sql &= ",databasepropertyex(db_name(), 'Collation') DefCollation"
+        Else
+            sql = "declare @n sysname,@i sysname,@d sysname,@t sysname,@f sysname "
+            sql &= "set @n='" & s & "' "
+            sql &= "select @i=name "
+            sql &= "from sys.columns "
+            sql &= "where object_id=object_id(@n) "
+            sql &= "and is_identity=1 "
+            sql &= "select @d=d.name "
+            sql &= "from sys.partitions p "
+            sql &= "join sys.indexes i "
+            sql &= "on i.object_id=p.object_id "
+            sql &= "and i.index_id=p.index_id "
+            sql &= "left join sys.data_spaces d "
+            sql &= "on d.data_space_id=i.data_space_id "
+            sql &= "where p.object_id=object_id(@n) "
+            sql &= "select @t=d.name "
+            sql &= "from sys.tables t "
+            sql &= "left join sys.data_spaces d "
+            sql &= "on d.data_space_id=t.lob_data_space_id "
+            sql &= "where t.object_id=object_id(@n) "
+            sql &= "select @f=d.name from sys.data_spaces d where is_default=1 "
+            sql &= "select @i IdentityColumn"
+            sql &= ",columnproperty(object_id(@n),@i,'IsIdNotForRepl') IdentityReplicated"
+            sql &= ",ident_seed(@n) IdentitySeed"
+            sql &= ",ident_incr(@n) IdentityIncrement"
+            sql &= ",@d DataFileGroup"
+            sql &= ",@t TextFileGroup"
+            sql &= ",@f DefFileGroup"
+            sql &= ",databasepropertyex(db_name(), 'Collation') DefCollation"
+        End If
+        Return GetRow(sql)
+    End Function
+
     Public Function TableFKeys(ByVal TableName As String, ByVal Schema As String) As DataTable
         Dim sql As String
 
@@ -387,7 +454,7 @@ Public Class sql
             sql &= "join sysobjects o1 "
             sql &= "on o1.id=k.rkeyid "
             sql &= "where o.name='" & TableName & "' "
-            sql &= "and user_name(o.uid)='" & schema & "' "
+            sql &= "and user_name(o.uid)='" & Schema & "' "
             sql &= "order by 1, 2"
         Else
             sql = "select c.CONSTRAINT_NAME ConstraintName"
@@ -411,7 +478,7 @@ Public Class sql
             sql &= "and u2.CONSTRAINT_NAME=c.UNIQUE_CONSTRAINT_NAME "
             sql &= "and u2.ORDINAL_POSITION=u1.ORDINAL_POSITION "
             sql &= "where u1.TABLE_NAME='" & TableName & "' "
-            sql &= "and u1.TABLE_SCHEMA='" & schema & "' "
+            sql &= "and u1.TABLE_SCHEMA='" & Schema & "' "
             sql &= "order by 1, 2"
         End If
 
@@ -424,20 +491,21 @@ Public Class sql
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select i.keyno key_ordinal"
+            sql = "declare @z bit, @o bit set @z=0 set @o=1 select i.keyno key_ordinal"
             sql &= ",x.name"
             sql &= ",index_col(object_name(x.id), x.indid, i.keyno) ColumnName"
-            sql &= ",case indexkey_property(x.id, x.indid, i.colid, 'isdescending') when 1 then 1 else 0 end is_descending_key"
+            sql &= ",case indexkey_property(x.id, x.indid, i.colid, 'isdescending') when 1 then @o else @z end is_descending_key"
             sql &= ",case when indexproperty(x.id, x.name, 'IsClustered') = 1 then 1 else 2 end type"
-            sql &= ",case when s.name is not null then 1 else 0 end is_primary_key"
-            sql &= ",case when indexproperty(x.id, x.name, 'IsUnique') = 1 then 1 else 0 end is_unique"
-            sql &= ",0 is_included_column"
+            sql &= ",case when s.name is not null then @o else @z end is_primary_key"
+            sql &= ",case when indexproperty(x.id, x.name, 'IsUnique') = 1 then @o else @z end is_unique"
+            sql &= ",@z is_included_column"
             sql &= ",'PRIMARY' filegroup"
             sql &= ",x.OrigFillFactor FILL_FACTOR"
             sql &= ",'NO' PAD_INDEX"
             sql &= ",'NO' IGNORE_DUP_KEY"
             sql &= ",'YES' ALLOW_ROW_LOCKS"
             sql &= ",case x.lockflags & 2 when 0 then 'YES' else 'NO' end ALLOW_PAGE_LOCKS "
+            sql &= ",@z no_recompute "
             sql &= "from dbo.sysindexes x "
             sql &= "join dbo.sysindexkeys i "
             sql &= "on i.id = x.id "
@@ -459,8 +527,12 @@ Public Class sql
             sql &= "case i.is_padded when 0 then 'NO' else 'YES' end PAD_INDEX,"
             sql &= "case i.ignore_dup_key when 0 then 'NO' else 'YES' end IGNORE_DUP_KEY,"
             sql &= "case i.allow_row_locks when 0 then 'NO' else 'YES' end ALLOW_ROW_LOCKS,"
-            sql &= "case i.allow_page_locks when 0 then 'NO' else 'YES' end ALLOW_PAGE_LOCKS "
+            sql &= "case i.allow_page_locks when 0 then 'NO' else 'YES' end ALLOW_PAGE_LOCKS,"
+            sql &= "s.no_recompute "
             sql &= "from sys.indexes i "
+            sql &= "join sys.stats s "
+            sql &= "on i.object_id = s.object_id "
+            sql &= "and i.index_id = s.stats_id "
             sql &= "join sys.index_columns ic "
             sql &= "on ic.object_id = i.object_id "
             sql &= "and ic.index_id = i.index_id "
@@ -849,14 +921,28 @@ Public Class sql
 
     Public Function GetInteger(ByVal objValue As Object, ByVal iDefault As Integer) As Integer
         If IsDBNull(objValue) Then
-            Return 0
+            Return iDefault
         ElseIf objValue Is Nothing Then
-            Return 0
+            Return iDefault
         Else
             Try
                 Return CInt(objValue)
             Catch ex As Exception
-                Return 0
+                Return iDefault
+            End Try
+        End If
+    End Function
+
+    Public Function GetBit(ByVal objValue As Object, ByVal bDefault As Boolean) As Boolean
+        If IsDBNull(objValue) Then
+            Return bDefault
+        ElseIf objValue Is Nothing Then
+            Return bDefault
+        Else
+            Try
+                Return CType(objValue, Boolean)
+            Catch ex As Exception
+                Return bDefault
             End Try
         End If
     End Function
