@@ -330,6 +330,8 @@ Public Class TableColumns
     Private sFileGroup As String = "PRIMARY"
     Private sTextFileGroup As String = "PRIMARY"
     Private sDefFileGroup As String = "PRIMARY"
+    Private sPartitionScheme As String = ""
+    Private sSchemeColumn As String = ""
     Private bAudit As Boolean = False
     Private bState As Boolean = False
     Private bConsName As Boolean = True
@@ -612,6 +614,7 @@ Public Class TableColumns
             Dim sInc As String = ""
             Dim sWth As String = ""
             Dim sOn As String = ""
+            Dim iClust As Integer
 
             If dtIndexs Is Nothing Then
                 Return ""
@@ -622,26 +625,27 @@ Public Class TableColumns
             End If
 
             For Each r As DataRow In dtIndexs.Rows
-                If CInt(r.Item("is_primary_key")) = 0 Then
-                    If IndexName = slib.GetString(r.Item("name")) Then
+                If CInt(r("is_primary_key")) = 0 Then
+                    If IndexName = slib.GetString(r("name")) Then
                         If i = 0 Then
-                            sOut &= "create" & slib.GetString(IIf(CInt(r.Item("is_unique")) <> 0, " unique", ""))
-                            sOut &= slib.GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
+                            iClust = slib.GetInteger(r("type"), 0)
+                            sOut &= "create" & slib.GetString(IIf(CInt(r("is_unique")) <> 0, " unique", ""))
+                            sOut &= slib.GetString(IIf(iClust = 1, " clustered", " nonclustered"))
                             sOut &= " index " & slib.QuoteIdentifier(IndexName) & " on " & qSchema & "." & qTable & " ("
-                            sOut &= slib.QuoteIdentifier(r.Item("ColumnName"))
+                            sOut &= slib.QuoteIdentifier(r("ColumnName"))
                             sWth = IndexWith(r)
-                            s = slib.GetString(r.Item("filegroup"))
-                            If s <> sDefFileGroup Then
+                            s = slib.GetString(r("filegroup"))
+                            If s <> sDefFileGroup And iClust <> 1 Then
                                 sOn &= "on " & s & vbCrLf
                             End If
                         Else
-                            If CInt(r.Item("is_included_column")) = 0 Then
-                                sOut &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
+                            If CInt(r("is_included_column")) = 0 Then
+                                sOut &= "," & slib.QuoteIdentifier(r("ColumnName"))
                             Else
-                                sInc &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
+                                sInc &= "," & slib.QuoteIdentifier(r("ColumnName"))
                             End If
                         End If
-                        If CInt(r.Item("is_descending_key")) <> 0 Then
+                        If CInt(r("is_descending_key")) <> 0 Then
                             sOut &= " desc"
                         End If
                         i += 1
@@ -671,6 +675,8 @@ Public Class TableColumns
             Dim j As Integer
             Dim s As String
             Dim sRest As String = ""
+            Dim iClust As Integer = 0
+            Dim sFG As String
             Dim sInc As String = ""
             Dim sWth As String = ""
             Dim sOut As String = ""
@@ -686,9 +692,11 @@ Public Class TableColumns
             End If
 
             For Each r As DataRow In dtIndexs.Rows
-                If CInt(r.Item("is_primary_key")) = 0 Then
-                    If IndexName = slib.GetString(r.Item("name")) Then
+                If CInt(r("is_primary_key")) = 0 Then
+                    If IndexName = slib.GetString(r("name")) Then
                         If i = 0 Then
+                            iClust = slib.GetInteger(r("type"), 0)
+                            sFG = slib.GetString(r("filegroup"))
                             sOut = "declare @o integer, @i integer, @t tinyint" & vbCrLf
                             sOut &= "       ,@c1 integer, @c2 integer" & vbCrLf
                             sOut &= "set @o = object_id('" & sTable & "')" & vbCrLf
@@ -701,24 +709,20 @@ Public Class TableColumns
                             sOut &= "on      d.data_space_id = i.data_space_id" & vbCrLf
                             sOut &= "left join" & vbCrLf
                             sOut &= "(" & vbCrLf
-                            s = slib.GetString(r.Item("filegroup"))
-                            If s <> sDefFileGroup Then
-                                sOn &= "on " & s & vbCrLf
-                            End If
-                            sOut &= "    select  '" & s & "' name" & vbCrLf
+                            sOut &= "    select  '" & sFG & "' name" & vbCrLf
 
-                            j = slib.GetInteger(r.Item("FILL_FACTOR"), 0)
+                            j = slib.GetInteger(r("FILL_FACTOR"), 0)
                             sOut &= "           ," & j & " fill_factor" & vbCrLf
-                            s = slib.GetString(r.Item("PAD_INDEX"))
+                            s = slib.GetString(r("PAD_INDEX"))
                             sOut &= "           ," & slib.GetString(IIf(s = "NO", _
                                                  "0", "1")) & " is_padded" & vbCrLf
-                            s = slib.GetString(r.Item("IGNORE_DUP_KEY"))
+                            s = slib.GetString(r("IGNORE_DUP_KEY"))
                             sOut &= "           ," & slib.GetString(IIf(s = "NO", _
                                             "0", "1")) & " ignore_dup_key" & vbCrLf
-                            s = slib.GetString(r.Item("ALLOW_ROW_LOCKS"))
+                            s = slib.GetString(r("ALLOW_ROW_LOCKS"))
                             sOut &= "           ," & slib.GetString(IIf(s = "NO", _
                                            "0", "1")) & " allow_row_locks" & vbCrLf
-                            s = slib.GetString(r.Item("ALLOW_PAGE_LOCKS"))
+                            s = slib.GetString(r("ALLOW_PAGE_LOCKS"))
                             sOut &= "           ," & slib.GetString(IIf(s = "NO", _
                                            "0", "1")) & " allow_page_locks" & vbCrLf
                             sOut &= ") e" & vbCrLf
@@ -747,15 +751,15 @@ Public Class TableColumns
                             sOut &= "    and     c.column_id = ic.column_id" & vbCrLf
                             sOut &= "    left join" & vbCrLf
                             sOut &= "    (" & vbCrLf
-                            sOut &= "        select  " & slib.GetString(r.Item("key_ordinal")) & " keyorder"
-                            sOut &= ", '" & slib.GetString(r.Item("ColumnName")) & "' ColumnName, "
-                            If CInt(r.Item("is_descending_key")) = 0 Then
+                            sOut &= "        select  " & slib.GetString(r("key_ordinal")) & " keyorder"
+                            sOut &= ", '" & slib.GetString(r("ColumnName")) & "' ColumnName, "
+                            If CInt(r("is_descending_key")) = 0 Then
                                 sOut &= "0"
                             Else
                                 sOut &= "1"
                             End If
                             sOut &= " Descending, "
-                            If CInt(r.Item("is_included_column")) = 0 Then
+                            If CInt(r("is_included_column")) = 0 Then
                                 sOut &= "0"
                             Else
                                 sOut &= "1"
@@ -766,7 +770,7 @@ Public Class TableColumns
                             sRest &= "    on      x.keyorder = ic.key_ordinal" & vbCrLf
                             sRest &= "    and     x.ColumnName = c.name" & vbCrLf
                             sRest &= "    and     x.Descending = ic.is_descending_key" & vbCrLf
-                            sRest &= "    where   @t = " & slib.GetString(r.Item("type")) & vbCrLf
+                            sRest &= "    where   @t = " & slib.GetString(r("type")) & vbCrLf
                             sRest &= "    and     ic.object_id = @o" & vbCrLf
                             sRest &= "    and     ic.index_id = @i" & vbCrLf
                             sRest &= vbCrLf
@@ -781,38 +785,45 @@ Public Class TableColumns
                             sRest &= "if @i is null" & vbCrLf
                             sRest &= "begin" & vbCrLf
                             sRest &= "    print 'creating index ''" & IndexName & "'''" & vbCrLf
-                            sRest &= "    create" & slib.GetString(IIf(CInt(r.Item("is_unique")) <> 0, " unique", ""))
-                            sRest &= slib.GetString(IIf(CInt(r.Item("type")) = 1, " clustered", " nonclustered"))
+                            sRest &= "    create" & slib.GetString(IIf(CInt(r("is_unique")) <> 0, " unique", ""))
+                            If iClust = 1 Then
+                                sRest &= " clustered"
+                            Else
+                                If sFG <> sDefFileGroup Then
+                                    sOn &= "on " & sFG & vbCrLf
+                                End If
+                                sRest &= " nonclustered"
+                            End If
                             sRest &= " index " & qName & vbCrLf
                             sRest &= "      on " & qSchema & "." & qTable & " ("
-                            sRest &= slib.QuoteIdentifier(r.Item("ColumnName"))
-                            If CInt(r.Item("is_descending_key")) <> 0 Then
+                            sRest &= slib.QuoteIdentifier(r("ColumnName"))
+                            If CInt(r("is_descending_key")) <> 0 Then
                                 sRest &= " desc"
                             End If
                             sWth = IndexWith(r)
                         Else
-                            sOut &= "        union select  " & slib.GetString(r.Item("key_ordinal"))
-                            sOut &= ", '" & slib.GetString(r.Item("ColumnName")) & "', "
-                            If CInt(r.Item("is_descending_key")) = 0 Then
+                            sOut &= "        union select  " & slib.GetString(r("key_ordinal"))
+                            sOut &= ", '" & slib.GetString(r("ColumnName")) & "', "
+                            If CInt(r("is_descending_key")) = 0 Then
                                 sOut &= "0"
                             Else
                                 sOut &= "1"
                             End If
-                            If CInt(r.Item("is_included_column")) = 0 Then
+                            If CInt(r("is_included_column")) = 0 Then
                                 sOut &= ", 0"
                             Else
                                 sOut &= ", 1"
                             End If
                             sOut &= vbCrLf
 
-                            If CInt(r.Item("is_included_column")) = 0 Then
-                                sRest &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
-                                If CInt(r.Item("is_descending_key")) <> 0 Then
+                            If CInt(r("is_included_column")) = 0 Then
+                                sRest &= "," & slib.QuoteIdentifier(r("ColumnName"))
+                                If CInt(r("is_descending_key")) <> 0 Then
                                     sRest &= " desc"
                                 End If
                             Else
-                                sInc &= "," & slib.QuoteIdentifier(r.Item("ColumnName"))
-                                If CInt(r.Item("is_descending_key")) <> 0 Then
+                                sInc &= "," & slib.QuoteIdentifier(r("ColumnName"))
+                                If CInt(r("is_descending_key")) <> 0 Then
                                     sInc &= " desc"
                                 End If
                             End If
@@ -1093,7 +1104,7 @@ Public Class TableColumns
             If sFileGroup <> sDefFileGroup Then
                 sOut &= " filegroup='" & sFileGroup & "'"
             End If
-            If sTextFileGroup <> sDefFileGroup And sTextFileGroup <> "" Then
+            If sTextFileGroup <> sFileGroup And sTextFileGroup <> "" Then
                 sOut &= " textfilegroup='" & sTextFileGroup & "'"
             End If
             sOut &= ">" & vbCrLf
@@ -1183,11 +1194,45 @@ Public Class TableColumns
             sOut &= "    </columns>" & vbCrLf
 
             If sPKey <> "" Then
-                ss = "    <primarykey "
+                ss = "    <primarykey"
                 If bConsName Then
-                    ss &= "name='" & sPKey & "' "
+                    ss &= " name='" & sPKey & "'"
                 End If
-                ss &= "clustered='" & slib.GetString(IIf(bPKClust, "Y", "N")) & "'>" & vbCrLf
+                ss &= " clustered='" & slib.GetString(IIf(bPKClust, "Y", "N")) & "'"
+
+                For Each r As DataRow In dtIndexs.Rows
+                    If CInt(r("is_primary_key")) <> 0 Then
+                        i = slib.GetInteger(r.Item("FILL_FACTOR"), 0)
+                        If i > 0 Then
+                            ss &= " fillfactor='" & i & "'"
+                        End If
+                        st = slib.GetString(r.Item("PAD_INDEX"))
+                        If st = "YES" Then
+                            ss &= " pad='on'"
+                        End If
+                        st = slib.GetString(r.Item("IGNORE_DUP_KEY"))
+                        If st = "YES" Then
+                            ss &= " dup='on'"
+                        End If
+                        st = slib.GetString(r.Item("ALLOW_ROW_LOCKS"))
+                        If st = "NO" Then
+                            ss &= " rowlocks='off'"
+                        End If
+                        st = slib.GetString(r.Item("ALLOW_PAGE_LOCKS"))
+                        If st = "NO" Then
+                            ss &= " pagelocks='off'"
+                        End If
+                        If Not bPKClust Then
+                            st = slib.GetString(r.Item("filegroup"))
+                            If st <> sFileGroup Then
+                                ss &= " on='" & st & "'"
+                            End If
+                        End If
+                        Exit For
+                    End If
+                Next
+
+                ss &= ">" & vbCrLf
                 For Each s In xPKeys
                     tc = DirectCast(Values.Item(s), TableColumn)
                     ss &= "      <column name='" & tc.Name & "'"
@@ -1200,136 +1245,137 @@ Public Class TableColumns
                 sOut &= ss
             End If
 
-            ss = ""
-            For Each s In xIndexs
-                If s <> "" And s <> sPKey Then
-                    If ss = "" Then
-                        ss = "    <indexes>" & vbCrLf
-                    End If
-                    ss &= "      <index name='" & s & "'"
-                    b = True
-                    For Each r As DataRow In dtIndexs.Rows
-                        If s = slib.GetString(r.Item("name")) Then
-                            If b Then
-                                b = False
-                                If CInt(r.Item("type")) = 1 Then
-                                    ss &= " clustered='Y'"
-                                End If
-                                If CInt(r.Item("is_unique")) <> 0 Then
-                                    ss &= " unique='Y'"
-                                End If
-                                i = slib.GetInteger(r.Item("FILL_FACTOR"), 0)
-                                If i > 0 Then
-                                    ss &= " fillfactor='" & i & "'"
-                                End If
-                                st = slib.GetString(r.Item("PAD_INDEX"))
-                                If st = "YES" Then
-                                    ss &= " pad='on'"
-                                End If
-                                st = slib.GetString(r.Item("IGNORE_DUP_KEY"))
-                                If st = "YES" Then
-                                    ss &= " dup='on'"
-                                End If
-                                st = slib.GetString(r.Item("ALLOW_ROW_LOCKS"))
-                                If st = "NO" Then
-                                    ss &= " rowlocks='off'"
-                                End If
-                                st = slib.GetString(r.Item("ALLOW_PAGE_LOCKS"))
-                                If st = "NO" Then
-                                    ss &= " pagelocks='off'"
-                                End If
-                                st = slib.GetString(r.Item("filegroup"))
-                                If st <> sDefFileGroup Then
-                                    ss &= " on='" & st & "'"
-                                End If
-                                ss &= ">" & vbCrLf
+                    ss = ""
+                    For Each s In xIndexs
+                        If s <> "" And s <> sPKey Then
+                            If ss = "" Then
+                                ss = "    <indexes>" & vbCrLf
                             End If
-                            ss &= "        <column name='" & slib.GetString(r.Item("ColumnName")) & "'"
-                            If CInt(r.Item("is_included_column")) <> 0 Then
-                                ss &= " included='Y'"
-                            End If
-                            If CInt(r.Item("is_descending_key")) <> 0 Then
-                                ss &= " direction='desc'"
-                            End If
-                            ss &= " />" & vbCrLf
+                            ss &= "      <index name='" & s & "'"
+                            b = True
+                            For Each r As DataRow In dtIndexs.Rows
+                                If s = slib.GetString(r.Item("name")) Then
+                                    If b Then
+                                        b = False
+                                        If CInt(r.Item("type")) = 1 Then
+                                            ss &= " clustered='Y'"
+                                        Else
+                                            st = slib.GetString(r.Item("filegroup"))
+                                            If st <> sDefFileGroup Then
+                                                ss &= " on='" & st & "'"
+                                            End If
+                                        End If
+                                        If CInt(r.Item("is_unique")) <> 0 Then
+                                            ss &= " unique='Y'"
+                                        End If
+                                        i = slib.GetInteger(r.Item("FILL_FACTOR"), 0)
+                                        If i > 0 Then
+                                            ss &= " fillfactor='" & i & "'"
+                                        End If
+                                        st = slib.GetString(r.Item("PAD_INDEX"))
+                                        If st = "YES" Then
+                                            ss &= " pad='on'"
+                                        End If
+                                        st = slib.GetString(r.Item("IGNORE_DUP_KEY"))
+                                        If st = "YES" Then
+                                            ss &= " dup='on'"
+                                        End If
+                                        st = slib.GetString(r.Item("ALLOW_ROW_LOCKS"))
+                                        If st = "NO" Then
+                                            ss &= " rowlocks='off'"
+                                        End If
+                                        st = slib.GetString(r.Item("ALLOW_PAGE_LOCKS"))
+                                        If st = "NO" Then
+                                            ss &= " pagelocks='off'"
+                                        End If
+                                        ss &= ">" & vbCrLf
+                                    End If
+                                    ss &= "        <column name='" & slib.GetString(r.Item("ColumnName")) & "'"
+                                    If CInt(r.Item("is_included_column")) <> 0 Then
+                                        ss &= " included='Y'"
+                                    End If
+                                    If CInt(r.Item("is_descending_key")) <> 0 Then
+                                        ss &= " direction='desc'"
+                                    End If
+                                    ss &= " />" & vbCrLf
+                                End If
+                            Next
+                            ss &= "      </index>" & vbCrLf
                         End If
                     Next
-                    ss &= "      </index>" & vbCrLf
-                End If
-            Next
-            If ss <> "" Then
-                ss &= "    </indexes>" & vbCrLf
-                sOut &= ss
-            End If
-
-            ss = ""
-            For Each dr As DataRow In dtCheck.Rows
-                If ss = "" Then
-                    ss = "    <constraints>" & vbCrLf
-                End If
-                ss &= "      <constraint "
-                If bConsName Then
-                    ss &= "name='" & slib.QuoteIdentifier(dr("CONSTRAINT_NAME")) & "' "
-                End If
-                If slib.GetBit(dr("is_not_for_replication"), False) Then
-                    ss &= "replication='N' "
-                End If
-                ss &= "type='check'>" & vbCrLf
-                ss &= "        <![CDATA["
-                s = slib.GetString(dr("CHECK_CLAUSE"))
-                If fixdef Then
-                    s = FixCheckText(s)
-                End If
-                ss &= s
-                ss &= "]]>" & vbCrLf
-                ss &= "      </constraint>" & vbCrLf
-            Next
-            If ss <> "" Then
-                ss &= "    </constraints>" & vbCrLf
-                sOut &= ss
-            End If
-
-            ss = ""
-            For Each s In xFKeys
-                If s <> "" Then
-                    If ss = "" Then
-                        ss = "    <foreignkeys>" & vbCrLf
+                    If ss <> "" Then
+                        ss &= "    </indexes>" & vbCrLf
+                        sOut &= ss
                     End If
-                    ss &= "      <foreignkey name='" & s & "'"
 
-                    b = True
-                    For Each r As DataRow In dtFKeys.Rows
-                        If s = slib.GetString(r.Item("ConstraintName")) Then
-                            If b Then
-                                b = False
-                                ss &= " references='" & slib.GetString(r.Item("LinkedTable")) & "'"
-                                st = slib.GetString(r.Item("DELETE_RULE"))
-                                If st <> "NO ACTION" Then
-                                    ss &= " ondelete='" & st & "'"
-                                End If
-                                st = slib.GetString(r.Item("UPDATE_RULE"))
-                                If st <> "NO ACTION" Then
-                                    ss &= " onupdate='" & st & "'"
-                                End If
-                                If slib.GetBit(r("Replicated"), False) Then
-                                    ss &= " replication='N'"
-                                End If
-                                ss &= ">" & vbCrLf
+                    ss = ""
+                    For Each dr As DataRow In dtCheck.Rows
+                        If ss = "" Then
+                            ss = "    <constraints>" & vbCrLf
+                        End If
+                        ss &= "      <constraint "
+                        If bConsName Then
+                            ss &= "name='" & slib.QuoteIdentifier(dr("CONSTRAINT_NAME")) & "' "
+                        End If
+                        If slib.GetBit(dr("is_not_for_replication"), False) Then
+                            ss &= "replication='N' "
+                        End If
+                        ss &= "type='check'>" & vbCrLf
+                        ss &= "        <![CDATA["
+                        s = slib.GetString(dr("CHECK_CLAUSE"))
+                        If fixdef Then
+                            s = FixCheckText(s)
+                        End If
+                        ss &= s
+                        ss &= "]]>" & vbCrLf
+                        ss &= "      </constraint>" & vbCrLf
+                    Next
+                    If ss <> "" Then
+                        ss &= "    </constraints>" & vbCrLf
+                        sOut &= ss
+                    End If
+
+                    ss = ""
+                    For Each s In xFKeys
+                        If s <> "" Then
+                            If ss = "" Then
+                                ss = "    <foreignkeys>" & vbCrLf
                             End If
-                            ss &= "        <column name='" & slib.GetString(r.Item("ColumnName")) & "'"
-                            ss &= " linksto='" & slib.GetString(r.Item("LinkedColumn")) & "' />" & vbCrLf
+                            ss &= "      <foreignkey name='" & s & "'"
+
+                            b = True
+                            For Each r As DataRow In dtFKeys.Rows
+                                If s = slib.GetString(r.Item("ConstraintName")) Then
+                                    If b Then
+                                        b = False
+                                        ss &= " references='" & slib.GetString(r.Item("LinkedTable")) & "'"
+                                        st = slib.GetString(r.Item("DELETE_RULE"))
+                                        If st <> "NO ACTION" Then
+                                            ss &= " ondelete='" & st & "'"
+                                        End If
+                                        st = slib.GetString(r.Item("UPDATE_RULE"))
+                                        If st <> "NO ACTION" Then
+                                            ss &= " onupdate='" & st & "'"
+                                        End If
+                                        If slib.GetBit(r("Replicated"), False) Then
+                                            ss &= " replication='N'"
+                                        End If
+                                        ss &= ">" & vbCrLf
+                                    End If
+                                    ss &= "        <column name='" & slib.GetString(r.Item("ColumnName")) & "'"
+                                    ss &= " linksto='" & slib.GetString(r.Item("LinkedColumn")) & "' />" & vbCrLf
+                                End If
+                            Next
+                            ss &= "      </foreignkey>" & vbCrLf
                         End If
                     Next
-                    ss &= "      </foreignkey>" & vbCrLf
-                End If
-            Next
-            If ss <> "" Then
-                ss &= "    </foreignkeys>" & vbCrLf
-                sOut &= ss
-            End If
-            sOut &= "  </table>" & vbCrLf
-            sOut &= "</sqldef>" & vbCrLf
-            XML = sOut
+                    If ss <> "" Then
+                        ss &= "    </foreignkeys>" & vbCrLf
+                        sOut &= ss
+                    End If
+                    sOut &= "  </table>" & vbCrLf
+                    sOut &= "</sqldef>" & vbCrLf
+                    XML = sOut
         End Get
     End Property
 #End Region
@@ -1383,7 +1429,7 @@ Public Class TableColumns
 
         sTable = sqllib.GetString(dt.Rows(0).Item("TableName"))
         qTable = sqllib.QuoteIdentifier(sTable)
-        dr = slib.TableDetails(sTable, sSchema)
+        dr = slib.TableDetails(qTable, qSchema)
         If Not dr Is Nothing Then
             sIdentity = slib.GetString(dr("IdentityColumn"))
             iSeed = slib.GetInteger(dr("IdentitySeed"), 1)
@@ -1393,6 +1439,8 @@ Public Class TableColumns
             sTextFileGroup = slib.GetString(dr("TextFileGroup"))
             sDefFileGroup = slib.GetString(dr("DefFileGroup"))
             sDefCollation = slib.GetString(dr("DefCollation"))
+            sPartitionScheme = slib.GetString(dr("PartitionScheme"))
+            sSchemeColumn = slib.GetString(dr("SchemeColumn"))
         End If
 
         For Each dr In dt.Rows        ' Columns
@@ -1921,7 +1969,23 @@ Public Class TableColumns
                 Comma = ","
                 sOut &= vbCrLf
             Next
-            sOut &= sTab & "    )" & vbCrLf
+            sOut &= sTab & "    )"
+            For Each r As DataRow In dtIndexs.Rows
+                If CInt(r("is_primary_key")) <> 0 Then
+                    s = IndexWith(r)
+                    If s <> "" Then
+                        sOut &= s
+                    End If
+                    If Not bPKClust Then
+                        s = slib.GetString(r("filegroup"))
+                        If s <> sFileGroup Then
+                            sOut &= " on " & s & vbCrLf
+                        End If
+                    End If
+                    Exit For
+                End If
+            Next
+            sOut &= vbCrLf
         End If
 
         If Not dtCheck Is Nothing Then
@@ -1939,12 +2003,11 @@ Public Class TableColumns
                 sOut &= " (" & s & ")" & vbCrLf
             Next
         End If
-
         sOut &= sTab & ")"
         If sFileGroup <> sDefFileGroup Then
             sOut &= " on " & slib.QuoteIdentifier(sFileGroup)
         End If
-        If sTextFileGroup <> sDefFileGroup And sTextFileGroup <> "" Then
+        If sTextFileGroup <> sFileGroup And sTextFileGroup <> "" Then
             sOut &= " textimage_on " & slib.QuoteIdentifier(sTextFileGroup)
         End If
         sOut &= vbCrLf
