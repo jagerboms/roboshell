@@ -295,6 +295,7 @@ begin
             and     p.ProcedureName = t.ProcedureName
             and     p.GrantDeny = t.GrantDeny
         )
+        and     object_id(t.ProcedureName) is not null
         set @e = @@error
         if @e <> 0 
         begin
