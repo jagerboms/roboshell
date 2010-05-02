@@ -292,7 +292,11 @@ Public Class sql
             sql &= ",'NO' Persisted"
             sql &= ",@z is_xml_document"
             sql &= ",null xmlschema"
-            sql &= ",null xmlcollection "
+            sql &= ",null xmlcollection"
+            sql &= ",case when c.colstat & 1=1 then @o else @z end is_identity"
+            sql &= ",columnproperty(c.id,c.name,'IsIdNotForRepl') IdentityReplicated"
+            sql &= ",case when c.colstat & 1=1 then ident_seed('" & Schema & "." & TableName & "') else 0 end IdentitySeed"
+            sql &= ",case when c.colstat & 1=1 then ident_incr('" & Schema & "." & TableName & "') else 0 end IdentityIncrement "
             sql &= "from dbo.syscolumns c "
             sql &= "left join dbo.sysobjects s "
             sql &= "on s.id = c.cdefault "
@@ -325,7 +329,11 @@ Public Class sql
             sql &= ",case coalesce(m.is_persisted, 0) when 0 then 'NO' else 'YES' end Persisted"
             sql &= ",c.is_xml_document"
             sql &= ",sc.name xmlschema"
-            sql &= ",x.name xmlcollection "
+            sql &= ",x.name xmlcollection"
+            sql &= ",c.is_identity"
+            sql &= ",columnproperty(i.object_id,c.name,'IsIdNotForRepl') IdentityReplicated"
+            sql &= ",case c.is_identity when 1 then ident_seed(schema_name(i.schema_id)+'.'+i.name) else 0 end IdentitySeed"
+            sql &= ",case c.is_identity when 1 then ident_incr(schema_name(i.schema_id)+'.'+i.name) else 0 end IdentityIncrement "
             sql &= "from sys.objects i "
             sql &= "join sys.columns c "
             sql &= "on c.object_id = i.object_id "
@@ -351,29 +359,6 @@ Public Class sql
         Return GetTable(sql)
     End Function
 
-    Public Function TableIdentity(ByVal TableName As String, ByVal Schema As String) As DataRow
-        Dim sql As String
-        Dim s As String
-
-        openConnect()
-
-        s = Schema & "." & TableName
-        If Version < 90 Then            'SQL 2000 compatible
-            sql = "select name,ident_seed('" & s & _
-                  "') seed,ident_incr('" & s & _
-                  "') increment,columnproperty(id,name,'IsIdNotForRepl') replicated " & _
-                  " from syscolumns where id = object_id('" & s & _
-                  "') and colstat & 1 = 1"
-        Else
-            sql = "select name,ident_seed('" & s & _
-                  "') seed,ident_incr('" & s & _
-                  "') increment,columnproperty(object_id,name,'IsIdNotForRepl') replicated " & _
-                  "from sys.columns where object_id = object_id('" & s & _
-                  "') and is_identity = 1"
-        End If
-        Return GetRow(sql)
-    End Function
-
     Public Function TableDetails(ByVal TableName As String, ByVal Schema As String) As DataRow
         Dim sql As String
         Dim s As String
@@ -382,30 +367,17 @@ Public Class sql
 
         s = Schema & "." & TableName
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "declare @n sysname,@i sysname,@f sysname,@p sysname "
-            sql &= "set @n='" & s & "' "
-            sql &= "select @i=name "
-            sql &= "from syscolumns "
-            sql &= "where id=object_id(@n) "
-            sql &= "and colstat & 1=1 "
+            sql = "declare @f sysname,@p sysname "
             sql &= "select @f=groupname from sysfilegroups where status & 16 <> 0 "
-            sql &= "select @i IdentityColumn"
-            sql &= ",columnproperty(object_id(@n),@i,'IsIdNotForRepl') IdentityReplicated"
-            sql &= ",ident_seed(@n) IdentitySeed"
-            sql &= ",ident_incr(@n) IdentityIncrement"
-            sql &= ",@f DataFileGroup"
+            sql &= "select @f DataFileGroup"
             sql &= ",@f TextFileGroup"
             sql &= ",@f DefFileGroup"
             sql &= ",@p PartitionScheme"
             sql &= ",@p SchemeColumn"
             sql &= ",databasepropertyex(db_name(), 'Collation') DefCollation"
         Else
-            sql = "declare @n sysname,@i sysname,@d sysname,@t sysname,@f sysname,@p sysname,@c sysname "
+            sql = "declare @n sysname,@d sysname,@t sysname,@f sysname,@p sysname,@c sysname "
             sql &= "set @n='" & s & "' "
-            sql &= "select @i=name "
-            sql &= "from sys.columns "
-            sql &= "where object_id=object_id(@n) "
-            sql &= "and is_identity=1 "
             sql &= "select @d=d.name "
             sql &= "from sys.partitions p "
             sql &= "join sys.indexes i "
@@ -432,12 +404,19 @@ Public Class sql
             sql &= "on pf.function_id=ps.function_id "
             sql &= "where p.object_id=object_id(@n) "
             sql &= "and p.index_id < 2 "
+            sql &= "select @c=c.name "
+            sql &= "from sys.partitions p "
+            sql &= "join sys.index_columns i "
+            sql &= "on i.object_id=p.object_id "
+            sql &= "and i.index_id=p.index_id "
+            sql &= "and i.partition_ordinal>0 "
+            sql &= "join sys.columns c "
+            sql &= "on c.object_id=i.object_id "
+            sql &= "and c.column_id=i.column_id "
+            sql &= "where p.object_id=object_id(@n) "
+            sql &= "and p.index_id < 2 "
             sql &= "select @f=d.name from sys.data_spaces d where is_default=1 "
-            sql &= "select @i IdentityColumn"
-            sql &= ",columnproperty(object_id(@n),@i,'IsIdNotForRepl') IdentityReplicated"
-            sql &= ",ident_seed(@n) IdentitySeed"
-            sql &= ",ident_incr(@n) IdentityIncrement"
-            sql &= ",@d DataFileGroup"
+            sql &= "select @d DataFileGroup"
             sql &= ",@t TextFileGroup"
             sql &= ",@f DefFileGroup"
             sql &= ",@p PartitionScheme"
@@ -508,20 +487,23 @@ Public Class sql
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "declare @z bit, @o bit set @z=0 set @o=1 select i.keyno key_ordinal"
-            sql &= ",x.name"
+            sql = "declare @z bit, @o bit set @z=0 set @o=1 "
+            sql &= "select Case x.name"
+            sql &= ",i.keyno index_column_id"
             sql &= ",index_col(object_name(x.id), x.indid, i.keyno) ColumnName"
-            sql &= ",case indexkey_property(x.id, x.indid, i.colid, 'isdescending') when 1 then @o else @z end is_descending_key"
+            sql &= ",i.keyno key_ordinal"
+            sql &= ",0 partition_ordinal"
             sql &= ",case when indexproperty(x.id, x.name, 'IsClustered') = 1 then 1 else 2 end type"
             sql &= ",case when s.name is not null then @o else @z end is_primary_key"
             sql &= ",case when indexproperty(x.id, x.name, 'IsUnique') = 1 then @o else @z end is_unique"
+            sql &= ",case indexkey_property(x.id, x.indid, i.colid, 'isdescending') when 1 then @o else @z end is_descending_key"
             sql &= ",@z is_included_column"
             sql &= ",'PRIMARY' filegroup"
             sql &= ",x.OrigFillFactor FILL_FACTOR"
-            sql &= ",'NO' PAD_INDEX"
-            sql &= ",'NO' IGNORE_DUP_KEY"
-            sql &= ",'YES' ALLOW_ROW_LOCKS"
-            sql &= ",case x.lockflags & 2 when 0 then 'YES' else 'NO' end ALLOW_PAGE_LOCKS "
+            sql &= ",@z PAD_INDEX"
+            sql &= ",@z IGNORE_DUP_KEY"
+            sql &= ",case x.lockflags & 1 when 0 then @o else @z end ALLOW_ROW_LOCKS "
+            sql &= ",case x.lockflags & 2 when 0 then @o else @z end ALLOW_PAGE_LOCKS "
             sql &= ",@z no_recompute "
             sql &= "from dbo.sysindexes x "
             sql &= "join dbo.sysindexkeys i "
@@ -531,21 +513,27 @@ Public Class sql
             sql &= "on s.name = x.name "
             sql &= "and s.parent_obj = x.id "
             sql &= "and s.xtype = 'PK' "
-            sql &= "where x.id = object_id('" & schema & "." & TableName & "') "
+            sql &= "where x.id = object_id('dbo.ppp') "
             sql &= "and x.name not like '_WA_%' "
             sql &= "order by 2, 1, 3"
         Else
-            sql = "select ic.key_ordinal,i.name,c.name ColumnName,"
-            sql &= "ic.is_descending_key,i.type,"
-            sql &= "i.is_primary_key,"
-            sql &= "i.is_unique,ic.is_included_column,"
-            sql &= "d.name filegroup,"
-            sql &= "i.fill_factor FILL_FACTOR,"
-            sql &= "case i.is_padded when 0 then 'NO' else 'YES' end PAD_INDEX,"
-            sql &= "case i.ignore_dup_key when 0 then 'NO' else 'YES' end IGNORE_DUP_KEY,"
-            sql &= "case i.allow_row_locks when 0 then 'NO' else 'YES' end ALLOW_ROW_LOCKS,"
-            sql &= "case i.allow_page_locks when 0 then 'NO' else 'YES' end ALLOW_PAGE_LOCKS,"
-            sql &= "s.no_recompute "
+            sql = "select i.name"
+            sql &= ",ic.index_column_id"
+            sql &= ",c.name ColumnName"
+            sql &= ",ic.key_ordinal"
+            sql &= ",ic.partition_ordinal"
+            sql &= ",i.type"
+            sql &= ",i.is_primary_key"
+            sql &= ",i.is_unique"
+            sql &= ",ic.is_descending_key"
+            sql &= ",ic.is_included_column"
+            sql &= ",d.name filegroup"
+            sql &= ",i.fill_factor FILL_FACTOR"
+            sql &= ",i.is_padded PAD_INDEX"
+            sql &= ",i.ignore_dup_key IGNORE_DUP_KEY"
+            sql &= ",i.allow_row_locks ALLOW_ROW_LOCKS"
+            sql &= ",i.allow_page_locks ALLOW_PAGE_LOCKS"
+            sql &= ",s.no_recompute "
             sql &= "from sys.indexes i "
             sql &= "join sys.stats s "
             sql &= "on i.object_id = s.object_id "
@@ -558,8 +546,8 @@ Public Class sql
             sql &= "and c.column_id = ic.column_id "
             sql &= "join sys.data_spaces d "
             sql &= "on d.data_space_id = i.data_space_id "
-            sql &= "where i.object_id = object_id('" & schema & "." & TableName & "') "
-            sql &= "order by 2, 1, 3"
+            sql &= "where i.object_id = object_id('" & Schema & "." & TableName & "') "
+            sql &= "order by 1, 2"
         End If
 
         Return GetTable(sql)
@@ -571,10 +559,13 @@ Public Class sql
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select c.name CONSTRAINT_NAME"
-            sql &= ",m.text CHECK_CLAUSE"
-            sql &= ",0 is_not_for_replication"
-            sql &= ",0 is_system_named "
+            sql = "declare @z bit set @z = 0 "
+            sql &= "select c.name ConstraintName"
+            sql &= ",m.text Definition"
+            sql &= ",@z Replicated"
+            sql &= ",@z SystemName"
+            sql &= ",null ColumnName"
+            sql &= ",@z IsSystem "
             sql &= "from dbo.sysobjects c "
             sql &= "join dbo.syscomments m "
             sql &= "on m.id = c.id "
@@ -582,11 +573,16 @@ Public Class sql
             sql &= "and c.parent_obj = object_id('" & Schema & "." & TableName & "') "
             sql &= "order by 1"
         Else
-            sql = "select c.name CONSTRAINT_NAME"
-            sql &= ",c.definition CHECK_CLAUSE"
-            sql &= ",c.is_not_for_replication"
-            sql &= ",c.is_system_named "
+            sql = "select c.name ConstraintName"
+            sql &= ",c.definition Definition"
+            sql &= ",c.is_not_for_replication Replicated"
+            sql &= ",c.is_system_named SystemName"
+            sql &= ",l.name ColumnName"
+            sql &= ",c.is_ms_shipped IsSystem "
             sql &= "from sys.check_constraints c "
+            sql &= "left join sys.columns l "
+            sql &= "on l.object_id=c.parent_object_id "
+            sql &= "and l.column_id=parent_column_id "
             sql &= "where c.parent_object_id = object_id('" & Schema & "." & TableName & "') "
             sql &= "order by 1"
         End If
@@ -1032,6 +1028,17 @@ Public Class sql
 
 
         End Select
+
+        Return s
+    End Function
+
+    Public Function CleanConstraint(ByVal constratint As String) As String
+        Dim s As String
+
+        s = RemoveSquares(constratint)
+        If Mid(s, 1, 1) = "(" And Right(s, 1) = ")" Then
+            s = Mid(s, 2, Len(s) - 2)
+        End If
 
         Return s
     End Function
