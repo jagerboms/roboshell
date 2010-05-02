@@ -100,6 +100,11 @@
     <Compile Include="AssemblyInfo.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="CheckConstraint.vb" />
+    <Compile Include="Column.vb" />
+    <Compile Include="FileGroup.vb" />
+    <Compile Include="ForeignKey.vb" />
+    <Compile Include="Index.vb" />
     <Compile Include="Job.vb" />
     <Compile Include="Scriptor.vb">
       <SubType>Code</SubType>

@@ -318,7 +318,7 @@ Module Scriptor
         Try
             sqllib.Database = Database
             s = GetCommandParameter("-w")
-            Dim tdefn As New TableColumns(Table, Schema, sqllib, True)
+            Dim tdefn As New TableDefn(Table, Schema, sqllib, True)
             sOut = tdefn.DataScript(s)
 
             WriteFile("data", Schema, Table, "", "sql", sOut)
@@ -460,7 +460,7 @@ Module Scriptor
 
 #Region "common functions"
     Private Function GetTable(ByVal sTable As String, ByVal Schema As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
+        Dim ts As New TableDefn(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
 
@@ -475,20 +475,18 @@ Module Scriptor
         sOut &= "go" & vbCrLf
         sOut &= vbCrLf
 
-        For Each s In ts.IKeys
-            If s <> "" Then
-                sOut &= ts.IndexShort(s)
+        For Each ic As TableIndex In ts.IKeys
+            If Not ic.PrimaryKey Then
+                sOut = ic.IndexShort
                 sOut &= "go" & vbCrLf
                 sOut &= vbCrLf
             End If
         Next
 
-        For Each s In ts.FKeys
-            If s <> "" Then
-                sOut &= ts.FKeyShort(s)
-                sOut &= "go" & vbCrLf
-                sOut &= vbCrLf
-            End If
+        For Each fk As ForeignKey In ts.FKeys
+            sOut &= fk.ForeignKeyShort
+            sOut &= "go" & vbCrLf
+            sOut &= vbCrLf
         Next
 
         If IncludePerm Then
@@ -505,7 +503,7 @@ Module Scriptor
 
     Private Function GetTableIntermediate(ByVal sTable As String, _
                     ByVal Schema As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
+        Dim ts As New TableDefn(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
 
@@ -515,20 +513,22 @@ Module Scriptor
         sOut &= "go" & vbCrLf
         WriteFile("table", Schema, sTable, "", "sql", sOut)
 
-        For Each s In ts.IKeys
-            If s <> "" Then
-                sOut = ts.IndexShort(s)
+        For Each ic As TableIndex In ts.IKeys
+            If Not ic.PrimaryKey Then
+                sOut = ic.IndexShort
                 sOut &= "go" & vbCrLf
-                WriteFile("index", Schema, sTable, s, "sql", sOut)
+                WriteFile("index", Schema, sTable, ic.Name, "sql", sOut)
             End If
         Next
 
-        For Each s In ts.FKeys
-            If s <> "" Then
-                sOut = ts.FKeyShort(s)
-                sOut &= "go" & vbCrLf
-                WriteFile("fkey", Schema, sTable, ts.LinkedTable(s) & "." & s, "sql", sOut)
+        For Each fk As ForeignKey In ts.FKeys
+            sOut = fk.ForeignKeyShort
+            sOut &= "go" & vbCrLf
+            s = fk.LinkedTable & "." & fk.Name
+            If fk.LinkedSchema <> "dbo" Then
+                s = fk.LinkedSchema & "." & s
             End If
+            WriteFile("fkey", Schema, sTable, s, "sql", sOut)
         Next
 
         If IncludePerm Then
@@ -544,7 +544,7 @@ Module Scriptor
     End Function
 
     Private Function GetTableFull(ByVal sTable As String, ByVal Schema As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
+        Dim ts As New TableDefn(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
 
@@ -554,20 +554,22 @@ Module Scriptor
         sOut &= "go" & vbCrLf
         WriteFile("table", Schema, sTable, "", "sql", sOut)
 
-        For Each s In ts.IKeys
-            If s <> "" Then
-                sOut = ts.IndexText(s)
+        For Each ic As TableIndex In ts.IKeys
+            If Not ic.PrimaryKey Then
+                sOut = ic.IndexText
                 sOut &= "go" & vbCrLf
-                WriteFile("index", Schema, sTable, s, "sql", sOut)
+                WriteFile("index", Schema, sTable, ic.Name, "sql", sOut)
             End If
         Next
 
-        For Each s In ts.FKeys
-            If s <> "" Then
-                sOut = ts.FKeyText(s)
-                sOut &= "go" & vbCrLf
-                WriteFile("fkey", Schema, sTable, ts.LinkedTable(s) & "." & s, "sql", sOut)
+        For Each fk As ForeignKey In ts.FKeys
+            sOut = fk.ForeignKeyText
+            sOut &= "go" & vbCrLf
+            s = fk.LinkedTable & "." & fk.Name
+            If fk.LinkedSchema <> "dbo" Then
+                s = fk.LinkedSchema & "." & s
             End If
+            WriteFile("fkey", Schema, sTable, s, "sql", sOut)
         Next
 
         If IncludePerm Then
@@ -583,7 +585,7 @@ Module Scriptor
     End Function
 
     Private Function GetTableXML(ByVal sTable As String, ByVal Schema As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableColumns(sTable, Schema, sqllib, fixdef)
+        Dim ts As New TableDefn(sTable, Schema, sqllib, fixdef)
         Dim sOut As String
         Dim s As String
 
