@@ -274,7 +274,7 @@ Public Class sql
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "declare @z bit set @z=0 "
+            sql = "declare @z bit,@o bit set @z=0 set @o=1 "
             sql &= "select object_name(c.id) TableName"
             sql &= ",c.name COLUMN_NAME"
             sql &= ",t.name DATA_TYPE"
