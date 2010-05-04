@@ -488,7 +488,7 @@ Public Class sql
 
         If Version < 90 Then            'SQL 2000 compatible
             sql = "declare @z bit, @o bit set @z=0 set @o=1 "
-            sql &= "select Case x.name"
+            sql &= "select x.name"
             sql &= ",i.keyno index_column_id"
             sql &= ",index_col(object_name(x.id), x.indid, i.keyno) ColumnName"
             sql &= ",i.keyno key_ordinal"
