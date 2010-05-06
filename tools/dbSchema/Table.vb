@@ -138,7 +138,6 @@ Public Class TableDefn
     Private cFKeys As New ForeignKeys
     Private cCheckC As New CheckConstraints
 
-    Private dtCheck As DataTable
     Private dtPerms As DataTable
 
 #Region "Properties"
@@ -525,7 +524,7 @@ Public Class TableDefn
                 s = sqllib.GetString(dr("ROWGUID"))
                 If s = "NO" Then
                     sAP = Mid(sqllib.GetString(dr("ANSIPadded")), 1, 1)
-                    sFormula = FixCheckText(sqllib.GetString(dr("Computed")))
+                    sFormula = sqllib.CleanConstraint(sqllib.GetString(dr("Computed")))
                     If sFormula = "" Then
                         If LCase(sType) = "xml" Then
                             cColumns.AddXMLColumn(sName, dr("xmlschema"), _
@@ -603,8 +602,8 @@ Public Class TableDefn
             cNdx.Columns.Add(s, j, b, bInc, i)
         Next
 
-        dtCheck = slib.TableCheckConstraints(qTable, qSchema)
-        For Each r As DataRow In dtCheck.Rows
+        dt = slib.TableCheckConstraints(qTable, qSchema)
+        For Each r As DataRow In dt.Rows
             s = slib.GetString(r("ConstraintName"))
             cCC = New CheckConstraint(sSchema, sTable, s)
             cCC.Definition = slib.GetString(r("Definition"))
@@ -852,21 +851,9 @@ Public Class TableDefn
             End If
         End If
 
-        If Not dtCheck Is Nothing Then
-            For Each dr As DataRow In dtCheck.Rows
-                sOut &= sTab & "   ,"
-                If bConsName Then
-                    sOut &= "constraint " & slib.QuoteIdentifier(dr("ConstraintName")) & " "
-                End If
-                s = slib.GetString(dr("Definition"))
-                s = FixCheckText(s)
-                sOut &= "check"
-                If slib.GetBit(dr("Replicated"), False) Then
-                    sOut &= " not for replication"
-                End If
-                sOut &= " (" & s & ")" & vbCrLf
-            Next
-        End If
+        For Each ck As CheckConstraint In cCheckC
+            sOut &= ck.CheckText(sTab & "   ", bConsName)
+        Next
         sOut &= sTab & ")"
         sOut &= fg.TableText
         sOut &= fg.TextText
@@ -948,17 +935,6 @@ Public Class TableDefn
             End Select
         Next
         If Mid(s, 1, 1) <> "(" Then s = "(" & s & ")"
-        Return s
-    End Function
-
-    Private Function FixCheckText(ByVal sCheck As String) As String
-        Dim s As String
-
-        s = slib.RemoveSquares(sCheck)
-        If Mid(s, 1, 1) = "(" And Right(s, 1) = ")" Then
-            s = Mid(s, 2, Len(s) - 2)
-        End If
-
         Return s
     End Function
 #End Region
