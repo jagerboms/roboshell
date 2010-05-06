@@ -109,6 +109,21 @@ Public Class CheckConstraint
         qTable = sqllib.QuoteIdentifier(sTable)
     End Sub
 
+    Public Function CheckText(ByVal sTab As String, ByVal ShowName As Boolean) As String
+        Dim sOut As String = ""
+
+        sOut = sTab & ","
+        If ShowName Then
+            sOut &= "constraint " & qName & " "
+        End If
+        sOut &= "check"
+        If bReplicated Then
+            sOut &= " not for replication"
+        End If
+        sOut &= " (" & sqllib.CleanConstraint(sDefinition) & ")" & vbCrLf
+        Return sOut
+    End Function
+
     Public Function CheckXML(ByVal sTab As String, ByVal ShowName As Boolean) As String
         Dim sOut As String
 

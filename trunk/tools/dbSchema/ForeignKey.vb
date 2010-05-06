@@ -322,9 +322,9 @@ Public Class ForeignKey
             End If
             sOut &= vbCrLf
 
-            st = ""
+            st = "    "
             If sDelete <> "NO ACTION" Then
-                sOut &= "on delete " & sDelete
+                sOut &= st & "on delete " & sDelete
                 st = " "
             End If
 

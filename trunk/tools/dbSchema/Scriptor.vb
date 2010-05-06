@@ -477,7 +477,7 @@ Module Scriptor
 
         For Each ic As TableIndex In ts.IKeys
             If Not ic.PrimaryKey Then
-                sOut = ic.IndexShort
+                sOut &= ic.IndexShort
                 sOut &= "go" & vbCrLf
                 sOut &= vbCrLf
             End If
