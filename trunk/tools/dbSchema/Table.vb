@@ -401,55 +401,55 @@ Public Class TableDefn
         Next
 
         dt = slib.TableCheckConstraints(qTable, qSchema)
-        For Each r As DataRow In dt.Rows
-            s = slib.GetString(r("ConstraintName"))
+        For Each dr In dt.Rows
+            s = slib.GetString(dr("ConstraintName"))
             cCC = New CheckConstraint(sSchema, sTable, s)
-            cCC.Definition = slib.GetString(r("Definition"))
-            If slib.GetBit(r("Replicated"), False) Then
+            cCC.Definition = slib.GetString(dr("Definition"))
+            If slib.GetBit(dr("Replicated"), False) Then
                 cCC.Replicated = True
             End If
-            cCC.ColumnName = slib.GetString(r("ColumnName"))
-            cCC.SystemName = slib.GetBit(r("SystemName"), False)
-            cCC.IsSystem = slib.GetBit(r("IsSystem"), False)
+            cCC.ColumnName = slib.GetString(dr("ColumnName"))
+            cCC.SystemName = slib.GetBit(dr("SystemName"), False)
+            cCC.IsSystem = slib.GetBit(dr("IsSystem"), False)
             cCheckC.Add(cCC)
         Next
 
         dt = slib.TableFKeys(qTable, qSchema)
-        For Each r As DataRow In dt.Rows
-            s = slib.GetString(r("ConstraintName"))
+        For Each dr In dt.Rows
+            s = slib.GetString(dr("ConstraintName"))
             cFK = cFKeys(s)
             If cFK Is Nothing Then
                 cFK = New ForeignKey(sSchema, sTable, s)
-                cFK.LinkedSchema = slib.GetString(r("LinkedSchema"))
-                cFK.LinkedTable = slib.GetString(r("LinkedTable"))
-                cFK.MatchOption = slib.GetString(r("MATCH_OPTION"))
-                cFK.DeleteOption = slib.GetString(r("DELETE_RULE"))
-                cFK.UpdateOption = slib.GetString(r("UPDATE_RULE"))
-                If slib.GetBit(r("Replicated"), False) Then
+                cFK.LinkedSchema = slib.GetString(dr("LinkedSchema"))
+                cFK.LinkedTable = slib.GetString(dr("LinkedTable"))
+                cFK.MatchOption = slib.GetString(dr("MATCH_OPTION"))
+                cFK.DeleteOption = slib.GetString(dr("DELETE_RULE"))
+                cFK.UpdateOption = slib.GetString(dr("UPDATE_RULE"))
+                If slib.GetBit(dr("Replicated"), False) Then
                     cFK.Replicated = True
                 End If
                 cFKeys.Add(cFK)
             End If
-            i = slib.GetInteger(r("Sequence"), -1)
-            sName = slib.GetString(r("ColumnName"))
-            s = slib.GetString(r("LinkedColumn"))
+            i = slib.GetInteger(dr("Sequence"), -1)
+            sName = slib.GetString(dr("ColumnName"))
+            s = slib.GetString(dr("LinkedColumn"))
 
             cFK.Columns.Add(sName, s, i)
         Next
 
         dt = slib.TablePermissions(qTable, qSchema)
-        For Each r As DataRow In dt.Rows
-            cPm = cPerms.Add(slib.GetString(r("Grantee")), _
+        For Each dr In dt.Rows
+            cPm = cPerms.Add(slib.GetString(dr("Grantee")), _
                     qSchema & "." & qTable, _
-                    slib.GetString(r("Permissions")))
+                    slib.GetString(dr("permission_name")))
 
-            s = slib.GetString(r("State"))
+            s = slib.GetString(dr("State"))
             If s = "GRANT_WITH_GRANT_OPTION" Then
                 cPm.GrantOption = True
             ElseIf s = "DENY" Then
                 cPm.Deny = True
             End If
-            j = slib.GetInteger(dr("Columns"), 0)
+            j = slib.GetInteger(dr("columns"), 0)
             If j > 1 Then
                 For Each tc As TableColumn In cColumns
                     i = tc.Index + 1
@@ -546,55 +546,7 @@ Public Class TableDefn
         Comma = " "
 
         For Each tc In cColumns
-            sOut &= sTab & "   " & Comma & tc.QuotedName & " "
-            If tc.Computed = "" Then
-                sOut &= tc.TypeText
-                If tc.Identity Then
-                    sOut &= " identity(" & tc.Seed & "," & tc.Increment & ")"
-                    If tc.Replicated Then
-                        sOut &= " not for replication"
-                    End If
-                End If
-
-                If tc.RowGuid Then
-                    sOut &= " rowguidcol"
-                End If
-
-                If opt.CollationShow And tc.Collation <> "" Then
-                    If tc.Collation = sDefCollation Then
-                        sOut &= " collate database_default"
-                    Else
-                        sOut &= " collate " & tc.Collation
-                    End If
-                End If
-
-                If tc.Nullable = "N" Then
-                    sOut &= " not"
-                End If
-                sOut &= " null"
-            Else
-                sOut &= "as " & tc.Computed
-                If tc.Persisted Then
-                    sOut &= " persisted"
-                    If tc.Nullable = "N" Then
-                        sOut &= " not null"
-                    End If
-                End If
-            End If
-
-            If tc.DefaultName <> "" Then
-                If opt.DefaultShowName Then
-                    sOut &= " constraint " & tc.QuotedDefaultName
-                End If
-                sOut &= " default ("
-                If opt.DefaultFix Then
-                    sOut &= slib.FixDefaultText(tc.DefaultValue)
-                Else
-                    sOut &= tc.DefaultValue
-                End If
-                sOut &= ")"
-            End If
-
+            sOut &= sTab & "   " & Comma & tc.Text(sDefCollation, opt)
             If tc.ANSIPadded = "N" And bANSI Then
                 sOut &= "   -- not ANSI"
             End If
