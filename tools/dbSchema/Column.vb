@@ -266,6 +266,61 @@ Public Class TableColumn
         Return s
     End Function
 
+    Public Function Text(ByVal sDefCollation As String, ByVal opt As ScriptOptions) As String
+        Dim sOut As String
+
+        sOut = QuotedName & " "
+        If Computed = "" Then
+            sOut &= TypeText
+            If Identity Then
+                sOut &= " identity(" & Seed & "," & Increment & ")"
+                If Replicated Then
+                    sOut &= " not for replication"
+                End If
+            End If
+
+            If RowGuid Then
+                sOut &= " rowguidcol"
+            End If
+
+            If opt.CollationShow And Collation <> "" Then
+                If Collation = sDefCollation Then
+                    sOut &= " collate database_default"
+                Else
+                    sOut &= " collate " & Collation
+                End If
+            End If
+
+            If Nullable = "N" Then
+                sOut &= " not"
+            End If
+            sOut &= " null"
+        Else
+            sOut &= "as " & Computed
+            If Persisted Then
+                sOut &= " persisted"
+                If Nullable = "N" Then
+                    sOut &= " not null"
+                End If
+            End If
+        End If
+
+        If DefaultName <> "" Then
+            If opt.DefaultShowName Then
+                sOut &= " constraint " & QuotedDefaultName
+            End If
+            sOut &= " default ("
+            If opt.DefaultFix Then
+                sOut &= sqllib.FixDefaultText(DefaultValue)
+            Else
+                sOut &= DefaultValue
+            End If
+            sOut &= ")"
+        End If
+
+        Return sOut
+    End Function
+
     Public Function XMLText(ByVal sTab As String, ByVal sDefCollation As String, ByVal opt As ScriptOptions) As String
         Dim sOut As String
         Dim s As String
