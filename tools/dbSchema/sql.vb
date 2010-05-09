@@ -285,7 +285,7 @@ Public Class sql
             sql &= ",s.name DEFAULT_NAME"
             sql &= ",cm.text DEFAULT_TEXT"
             sql &= ",c.collation COLLATION_NAME"
-            sql &= ",case when c.status & 128 = 0 then 'YES' else 'NO' end ANSIPadded"
+            sql &= ",case when c.status&16=0 then 'NO' else 'YES' end ANSIPadded"
             sql &= ",'NO' Replicate"
             sql &= ",case when c.colstat & 2 = 0 then 'NO' else 'YES' end ROWGUID"
             sql &= ",m.text Computed"
@@ -367,14 +367,20 @@ Public Class sql
 
         s = Schema & "." & TableName
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "declare @f sysname,@p sysname "
-            sql &= "select @f=groupname from sysfilegroups where status & 16 <> 0 "
-            sql &= "select @f DataFileGroup"
-            sql &= ",@f TextFileGroup"
+            sql = "declare @n sysname,@f sysname,@p sysname,@d sysname "
+            sql &= "set @n='" & s & "' "
+            sql &= "select @d=f.groupname "
+            sql &= "from sysindexes x "
+            sql &= "join sysfilegroups f on f.groupid=x.groupid "
+            sql &= "where x.id=object_id(@n) "
+            sql &= "and indid<2 "
+            sql &= "select @f=groupname from sysfilegroups where status & 16<>0 "
+            sql &= "select @d DataFileGroup"
+            sql &= ",@p TextFileGroup"
             sql &= ",@f DefFileGroup"
             sql &= ",@p PartitionScheme"
             sql &= ",@p SchemeColumn"
-            sql &= ",databasepropertyex(db_name(), 'Collation') DefCollation"
+            sql &= ",databasepropertyex(db_name(),'Collation') DefCollation"
         Else
             sql = "declare @n sysname,@d sysname,@t sysname,@f sysname,@p sysname,@c sysname "
             sql &= "set @n='" & s & "' "
@@ -441,7 +447,7 @@ Public Class sql
             sql &= ",c.MATCH_OPTION"
             sql &= ",c.UPDATE_RULE"
             sql &= ",c.DELETE_RULE"
-            sql &= ",objectproperty(object_id(k.constid),'CnstIsNotRepl') Replicated "
+            sql &= ",objectproperty(k.constid,'CnstIsNotRepl') Replicated "
             sql &= "from dbo.sysforeignkeys k "
             sql &= "join INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS c "
             sql &= "on c.CONSTRAINT_NAME = object_name(k.constid) "
@@ -567,7 +573,7 @@ Public Class sql
             sql = "declare @z bit set @z = 0 "
             sql &= "select c.name ConstraintName"
             sql &= ",m.text Definition"
-            sql &= ",@z Replicated"
+            sql &= ",ObjectProperty(c.id,'CnstIsNotRepl') Replicated"
             sql &= ",@z SystemName"
             sql &= ",null ColumnName"
             sql &= ",@z IsSystem "
@@ -1113,6 +1119,76 @@ Public Class sql
 
                         Case Else
                             sSave &= ss
+
+                    End Select
+            End Select
+        Next
+        Return s
+    End Function
+
+    Public Function FixDefaultText(ByVal sDefault As String) As String
+        Dim s As String = ""
+        Dim ss As String
+        Dim sSave As String = ""
+        Dim i As Integer
+        Dim mode As Integer = 0
+
+        For i = 1 To Len(sDefault)
+            ss = Mid(sDefault, i, 1)
+            Select Case mode
+                Case 0
+                    Select Case ss
+                        Case "'"
+                            mode = 1
+                            s &= ss
+
+                        Case """"
+                            mode = 2
+                            s &= ss
+
+                        Case "("
+                            If LCase(Right(s, 4)) <> "char" _
+                            And LCase(Right(s, 7)) <> "decimal" _
+                            And LCase(Right(s, 7)) <> "numeric" Then
+                                sSave = "("
+                                mode = 3
+                            Else
+                                s &= ss
+                            End If
+
+                        Case Else
+                            s &= ss
+
+                    End Select
+
+                Case 1
+                    If ss = "'" Then mode = 0
+                    s &= ss
+
+                Case 2
+                    If ss = """" Then mode = 0
+                    s &= ss
+
+                Case 3
+                    Select Case ss
+                        Case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "+"
+                            sSave &= ss
+
+                        Case "("
+                            s &= sSave
+                            sSave = "("
+
+                        Case ")"
+                            If Len(sSave) > 1 Then
+                                s &= Mid(sSave, 2)
+                            Else
+                                s &= "()"
+                            End If
+                            mode = 0
+
+                        Case Else
+                            s &= sSave & ss
+                            mode = 0
 
                     End Select
             End Select

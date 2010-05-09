@@ -352,7 +352,7 @@ Public Class ForeignKey
         qTable = sqllib.QuoteIdentifier(sTable)
     End Sub
 
-    Public Function ForeignKeyXML(ByVal sTab As String) As String
+    Public Function XMLText(ByVal sTab As String) As String
         Dim sOut As String
 
         sOut = sTab & "<foreignkey name='" & sName & "'"
@@ -397,6 +397,22 @@ Public Class ForeignKeys
 #Region "Methods"
     Public Function Add(ByVal forkey As ForeignKey) As Integer
         Return List.Add(forkey)
+    End Function
+
+    Public Function XMLText(ByVal sTab As String) As String
+        Dim ss As String = ""
+        Dim sOut As String = ""
+        Dim cFK As ForeignKey
+
+        For Each cFK In Me
+            ss &= cFK.XMLText(sTab & "  ")
+        Next
+        If ss <> "" Then
+            sOut &= sTab & "<foreignkeys>" & vbCrLf
+            sOut &= ss
+            sOut &= sTab & "</foreignkeys>" & vbCrLf
+        End If
+        Return sOut
     End Function
 #End Region
 End Class
