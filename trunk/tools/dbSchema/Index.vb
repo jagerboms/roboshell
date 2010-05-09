@@ -350,7 +350,7 @@ Public Class TableIndex
 
             s = IndexWith()
             If s <> "" Then
-                sOut &= s
+                sOut &= vbCrLf & s
             End If
 
             If Not bClustered Then
@@ -500,7 +500,7 @@ Public Class TableIndex
 
             s = IndexWith()
             If s <> "" Then
-                sOut &= "      " & s
+                sOut &= "      " & s & vbCrLf
             End If
 
             If Not bClustered Then
@@ -526,7 +526,7 @@ Public Class TableIndex
         qTable = sqllib.QuoteIdentifier(sTable)
     End Sub
 
-    Public Function IndexXML(ByVal sTab As String) As String
+    Public Function XMLText(ByVal sTab As String) As String
         Dim sOut As String
 
         If bPrimaryKey Then
@@ -575,7 +575,7 @@ Public Class TableIndex
         Return sOut
     End Function
 
-    Public Function PrimaryKeyText(ByVal sTab As String, ByVal ShowName As Boolean) As String
+    Public Function PrimaryKeyText(ByVal sTab As String, ByVal opt As ScriptOptions) As String
         Dim s As String
         Dim sC As String
         Dim sOut As String
@@ -585,7 +585,7 @@ Public Class TableIndex
         End If
 
         sOut = sTab & "   ,"
-        If ShowName Then
+        If opt.PrimaryKeyShowName Then
             sOut &= "constraint " & qName & " "
         End If
         sOut &= "primary key "
@@ -620,7 +620,7 @@ Public Class TableIndex
         Return sOut
     End Function
 
-    Public Function PrimaryKeyXML(ByVal sTab As String, ByVal ShowName As Boolean) As String
+    Public Function PrimaryKeyXML(ByVal sTab As String, ByVal opt As ScriptOptions) As String
         Dim sOut As String
 
         If Not bPrimaryKey Then
@@ -628,7 +628,7 @@ Public Class TableIndex
         End If
 
         sOut = sTab & "<primarykey"
-        If ShowName Then
+        If opt.PrimaryKeyShowName Then
             sOut &= " name='" & sName & "'"
         End If
         sOut &= " clustered='"
@@ -699,7 +699,7 @@ Public Class TableIndex
             sCm = ", "
         End If
         If sWth <> "" Then
-            sWth = "with (" & sWth & ")" & vbCrLf
+            sWth = "with (" & sWth & ")"
         End If
         Return sWth
     End Function
@@ -755,6 +755,27 @@ Public Class TableIndexes
             sPrimary = tabndx.Name
         End If
         Return List.Add(tabndx)
+    End Function
+
+    Public Function XMLText(ByVal sTab As String, ByVal opt As ScriptOptions) As String
+        Dim ss As String = ""
+        Dim sp As String = ""
+        Dim sOut As String = ""
+        Dim cNDX As TableIndex
+
+        For Each cNDX In Me
+            If cNDX.PrimaryKey Then
+                sOut &= cNDX.PrimaryKeyXML(sTab, opt)
+            Else
+                ss &= cNDX.XMLText(sTab & "  ")
+            End If
+        Next
+        If ss <> "" Then
+            sOut &= sTab & "<indexes>" & vbCrLf
+            sOut &= ss
+            sOut &= sTab & "</indexes>" & vbCrLf
+        End If
+        Return sOut
     End Function
 #End Region
 End Class

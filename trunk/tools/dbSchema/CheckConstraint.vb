@@ -109,11 +109,11 @@ Public Class CheckConstraint
         qTable = sqllib.QuoteIdentifier(sTable)
     End Sub
 
-    Public Function CheckText(ByVal sTab As String, ByVal ShowName As Boolean) As String
+    Public Function Text(ByVal sTab As String, ByVal opt As ScriptOptions) As String
         Dim sOut As String = ""
 
         sOut = sTab & ","
-        If ShowName Then
+        If opt.CheckShowName Then
             sOut &= "constraint " & qName & " "
         End If
         sOut &= "check"
@@ -124,11 +124,11 @@ Public Class CheckConstraint
         Return sOut
     End Function
 
-    Public Function CheckXML(ByVal sTab As String, ByVal ShowName As Boolean) As String
+    Public Function XMLText(ByVal sTab As String, ByVal opt As ScriptOptions) As String
         Dim sOut As String
 
         sOut = sTab & "<constraint "
-        If ShowName Then
+        If opt.CheckShowName Then
             sOut &= "name='" & sName & "' "
         End If
         If bReplicated Then
@@ -164,6 +164,22 @@ Public Class CheckConstraints
 #Region "Methods"
     Public Function Add(ByVal chkcon As CheckConstraint) As Integer
         Return List.Add(chkcon)
+    End Function
+
+    Public Function XMLText(ByVal sTab As String, ByVal opt As ScriptOptions) As String
+        Dim ss As String = ""
+        Dim sOut As String = ""
+        Dim cCC As CheckConstraint
+
+        For Each cCC In Me
+            ss &= cCC.XMLText(sTab & "  ", opt)
+        Next
+        If ss <> "" Then
+            sOut &= sTab & "<constraints>" & vbCrLf
+            sOut &= ss
+            sOut &= sTab & "</constraints>" & vbCrLf
+        End If
+        Return sOut
     End Function
 #End Region
 End Class

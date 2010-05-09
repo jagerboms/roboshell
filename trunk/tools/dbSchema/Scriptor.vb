@@ -22,12 +22,9 @@ Imports System.Configuration
 Imports System.Collections.Specialized
 
 Module Scriptor
-    Dim fixdef As Boolean = False
     Dim UniCode As Boolean = False
 
     Dim sType As String = ""
-    Dim Collation As Boolean = False
-    Dim ConsName As Boolean = True
     Dim IncludePerm As Boolean = False
     Dim JobSQL As Boolean = False
     Dim sObject As String = ""
@@ -36,6 +33,7 @@ Module Scriptor
     Dim bXML As Boolean = False
     Dim LogFile As String = ""
     Dim verbose As Boolean = False
+    Dim opt As New ScriptOptions
 
     Dim sqllib As New sql
 
@@ -191,16 +189,16 @@ Module Scriptor
                 Case "I"
                     mode = "I"
             End Select
-            fixdef = GetSwitch("-z")
+            opt.DefaultFix = GetSwitch("-z")
             UniCode = GetSwitch("-y")
             sType = GetCommandParameter("-t")
             sObject = GetCommandParameter("-o")
             sSchema = GetCommandParameter("-h")
             If GetSwitch("-a") Then
-                Collation = True
+                opt.CollationShow = True
             End If
             If GetSwitch("-c") Then
-                ConsName = False
+                opt.DefaultShowName = False
             End If
 
             If GetSwitch("-m") Then
@@ -318,8 +316,8 @@ Module Scriptor
         Try
             sqllib.Database = Database
             s = GetCommandParameter("-w")
-            Dim tdefn As New TableDefn(Table, Schema, sqllib, True)
-            sOut = tdefn.DataScript(s)
+            Dim cData As New Data(Table, Schema, sqllib)
+            sOut = cData.DataScript(s)
 
             WriteFile("data", Schema, Table, "", "sql", sOut)
 
@@ -434,15 +432,15 @@ Module Scriptor
                 ss = sqllib.GetString(dr.Item("sch"))
                 If sqllib.GetString(dr.Item("type")) = "U" Then
                     If bXML Then
-                        GetTableXML(s, ss, ConsName)
+                        GetTableXML(s, ss)
                     Else
                         Select Case mode
                             Case "F"
-                                GetTableFull(s, ss, ConsName)
+                                GetTableFull(s, ss)
                             Case "I"
-                                GetTableIntermediate(s, ss, ConsName)
+                                GetTableIntermediate(s, ss)
                             Case Else
-                                GetTable(s, ss, ConsName)
+                                GetTable(s, ss)
                         End Select
                     End If
                 Else
@@ -459,8 +457,8 @@ Module Scriptor
     End Function
 
 #Region "common functions"
-    Private Function GetTable(ByVal sTable As String, ByVal Schema As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableDefn(sTable, Schema, sqllib, fixdef)
+    Private Function GetTable(ByVal sTable As String, ByVal Schema As String) As Integer
+        Dim ts As New TableDefn(sTable, Schema, sqllib)
         Dim sOut As String
         Dim s As String
 
@@ -469,9 +467,7 @@ Module Scriptor
             Return 0
         End If
 
-        If Not ConsName Then ts.ScriptConstraints = False
-        If Collation Then ts.ScriptCollations = True
-        sOut = ts.TableText
+        sOut = ts.TableText(opt)
         sOut &= "go" & vbCrLf
         sOut &= vbCrLf
 
@@ -490,7 +486,7 @@ Module Scriptor
         Next
 
         If IncludePerm Then
-            s = ts.PermissionText
+            s = ts.Permissions.Text
             If s <> "" Then
                 sOut &= s
                 sOut &= "go" & vbCrLf
@@ -502,14 +498,12 @@ Module Scriptor
     End Function
 
     Private Function GetTableIntermediate(ByVal sTable As String, _
-                    ByVal Schema As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableDefn(sTable, Schema, sqllib, fixdef)
+                    ByVal Schema As String) As Integer
+        Dim ts As New TableDefn(sTable, Schema, sqllib)
         Dim sOut As String
         Dim s As String
 
-        If Not ConsName Then ts.ScriptConstraints = False
-        If Collation Then ts.ScriptCollations = True
-        sOut = ts.TableText
+        sOut = ts.TableText(opt)
         sOut &= "go" & vbCrLf
         WriteFile("table", Schema, sTable, "", "sql", sOut)
 
@@ -532,7 +526,7 @@ Module Scriptor
         Next
 
         If IncludePerm Then
-            s = ts.PermissionText
+            s = ts.Permissions.Text
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
@@ -543,14 +537,12 @@ Module Scriptor
         Return 0
     End Function
 
-    Private Function GetTableFull(ByVal sTable As String, ByVal Schema As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableDefn(sTable, Schema, sqllib, fixdef)
+    Private Function GetTableFull(ByVal sTable As String, ByVal Schema As String) As Integer
+        Dim ts As New TableDefn(sTable, Schema, sqllib)
         Dim sOut As String
         Dim s As String
 
-        If Not ConsName Then ts.ScriptConstraints = False
-        If Collation Then ts.ScriptCollations = True
-        sOut = ts.FullTableText
+        sOut = ts.FullTableText(opt)
         sOut &= "go" & vbCrLf
         WriteFile("table", Schema, sTable, "", "sql", sOut)
 
@@ -573,7 +565,7 @@ Module Scriptor
         Next
 
         If IncludePerm Then
-            s = ts.PermissionText
+            s = ts.Permissions.Text
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
@@ -584,18 +576,16 @@ Module Scriptor
         Return 0
     End Function
 
-    Private Function GetTableXML(ByVal sTable As String, ByVal Schema As String, ByVal ConsName As Boolean) As Integer
-        Dim ts As New TableDefn(sTable, Schema, sqllib, fixdef)
+    Private Function GetTableXML(ByVal sTable As String, ByVal Schema As String) As Integer
+        Dim ts As New TableDefn(sTable, Schema, sqllib)
         Dim sOut As String
         Dim s As String
 
-        If Not ConsName Then ts.ScriptConstraints = False
-        If Collation Then ts.ScriptCollations = True
-        sOut = ts.XML
+        sOut = ts.XML(opt)
         WriteFile("table", Schema, sTable, "", "tdef", sOut)
 
         If IncludePerm Then
-            s = ts.PermissionText
+            s = ts.Permissions.Text
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf

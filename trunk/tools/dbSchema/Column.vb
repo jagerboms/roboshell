@@ -80,7 +80,7 @@ Public Class TableColumn
     ' uniqueidentifier
     ' varbinary(len)
     ' varchar(len)
-    'xml
+    ' xml
 
     Public Property Type() As String
         Get
@@ -264,6 +264,94 @@ Public Class TableColumn
             End Select
         End If
         Return s
+    End Function
+
+    Public Function XMLText(ByVal sTab As String, ByVal sDefCollation As String, ByVal opt As ScriptOptions) As String
+        Dim sOut As String
+        Dim s As String
+
+        sOut = sTab & "<column name='" & Name & "'"
+        If Computed = "" Then
+            sOut &= " type='" & Type & "'"
+            If Type = "xml" Then
+                If XMLCollection <> "" Then
+                    If XMLDocument Then
+                        sOut &= " document='Y'"
+                    Else
+                        sOut &= " content='Y'"
+                    End If
+                    sOut &= " collection='" & XMLCollection & "'"
+                End If
+            Else
+                If Length > 0 Then
+                    sOut &= " length='" & Length & "'"
+                ElseIf Length = 0 Then
+                    sOut &= " length='max'"
+                End If
+                If Precision > 0 Then
+                    sOut &= " precision='" & Precision & "'"
+                    sOut &= " scale='" & Scale & "'"
+                End If
+            End If
+            sOut &= " allownulls='" & Nullable & "'"
+            If Identity Then
+                sOut &= " seed='" & Seed & "' increment='" & Increment & "'"
+                If Replicated Then
+                    sOut &= " replication='N'"
+                End If
+            End If
+            If RowGuid Then
+                sOut &= " rowguid='Y'"
+            End If
+            If ANSIPadded = "N" Then
+                sOut &= " ansipadded='N'"
+            End If
+            If opt.CollationShow And Collation <> "" Then
+                If Collation = sDefCollation Then
+                    sOut &= " collation='database_default'"
+                Else
+                    sOut &= " collation='" & Collation & "'"
+                End If
+            End If
+            If DefaultName <> "" Then
+                sOut &= ">" & vbCrLf
+                sOut &= sTab & "  <default "
+                If opt.DefaultShowName Then
+                    sOut &= "name='" & DefaultName & "'"
+                End If
+                s = DefaultValue
+                If Mid(s, 1, 1) = "(" And Right(s, 1) = ")" Then
+                    s = Mid(s, 2, Len(s) - 2)
+                End If
+                If opt.DefaultFix Then
+                    s = sqllib.FixDefaultText(s)
+                End If
+                sOut &= "><![CDATA[" & s & "]]></default>" & vbCrLf
+                sOut &= sTab & "</column>"
+            Else
+                sOut &= " />"
+            End If
+        Else
+            sOut &= " allownulls='" & Nullable & "'"
+            If ANSIPadded = "N" Then
+                sOut &= " ansipadded='N'"
+            End If
+            If opt.CollationShow And Collation <> "" Then
+                If Collation = sDefCollation Then
+                    sOut &= " collation='database_default'"
+                Else
+                    sOut &= " collation='" & Collation & "'"
+                End If
+            End If
+            If Persisted Then
+                sOut &= " persisted='Y'"
+            End If
+            sOut &= ">" & vbCrLf
+            sOut &= sTab & "  <formula><![CDATA[" & Computed & "]]></formula>" & vbCrLf
+            sOut &= sTab & "</column>"
+        End If
+
+        Return sOut
     End Function
 #End Region
 
@@ -464,6 +552,19 @@ Public Class TableColumns
 
         AddColumn(parm)
     End Sub
+
+    Public Function XMLText(ByVal sTab As String, ByVal sDefCollation As String, _
+                                    ByVal opt As ScriptOptions) As String
+        Dim sOut As String
+        Dim tc As TableColumn
+
+        sOut = sTab & "<columns>" & vbCrLf
+        For Each tc In Me
+            sOut &= tc.XMLText(sTab & "  ", sDefCollation, opt) & vbCrLf
+        Next
+        sOut &= sTab & "</columns>" & vbCrLf
+        Return sOut
+    End Function
 #End Region
 
 #Region "Library Routines"

@@ -122,9 +122,6 @@ Public Class TableDefn
 
     Private slib As New sql
     Private PreLoad As Integer = -1
-    Private bConsName As Boolean = True
-    Private fixdef As Boolean = False
-    Private bCollation As Boolean = False
 
     Private sTable As String
     Private qTable As String
@@ -137,8 +134,7 @@ Public Class TableDefn
     Private cColumns As New TableColumns
     Private cFKeys As New ForeignKeys
     Private cCheckC As New CheckConstraints
-
-    Private dtPerms As DataTable
+    Private cPerms As New TablePermissions
 
 #Region "Properties"
     Public Property TableName() As String
@@ -153,6 +149,12 @@ Public Class TableDefn
         End Set
     End Property
 
+    Public ReadOnly Property QuotedName() As String
+        Get
+            QuotedName = qTable
+        End Get
+    End Property
+
     Public Property Schema() As String
         Get
             Schema = sSchema
@@ -163,6 +165,12 @@ Public Class TableDefn
                 qSchema = slib.QuoteIdentifier(sSchema)
             End If
         End Set
+    End Property
+
+    Public ReadOnly Property QuotedSchema() As String
+        Get
+            QuotedSchema = qSchema
+        End Get
     End Property
 
     Public ReadOnly Property PrimaryKey() As String
@@ -189,22 +197,10 @@ Public Class TableDefn
         End Get
     End Property
 
-    Public Property ScriptConstraints() As Boolean
+    Public ReadOnly Property Permissions() As TablePermissions
         Get
-            ScriptConstraints = bConsName
+            Return cPerms
         End Get
-        Set(ByVal value As Boolean)
-            bConsName = value
-        End Set
-    End Property
-
-    Public Property ScriptCollations() As Boolean
-        Get
-            ScriptCollations = bCollation
-        End Get
-        Set(ByVal value As Boolean)
-            bCollation = value
-        End Set
     End Property
 
     Public ReadOnly Property IdentityColumn() As String
@@ -232,211 +228,13 @@ Public Class TableDefn
         End Get
     End Property
 
-    Public ReadOnly Property TableText() As String
+    Public ReadOnly Property AllColumns() As TableColumns
         Get
-            Return CreateTable(False)
-        End Get
-    End Property
-
-    Public ReadOnly Property FullTableText() As String
-        Get
-            Return CreateTable(True)
-        End Get
-    End Property
-
-    Public ReadOnly Property PermissionText() As String
-        Get
-            Dim i As Integer
-            Dim j As Integer
-            Dim sOut As String = ""
-            Dim s As String
-            Dim sC As String
-
-            If dtPerms Is Nothing Then
-                Return ""
-            End If
-
-            If dtPerms.Rows.Count = 0 Then
-                Return ""
-            End If
-
-            For Each r As DataRow In dtPerms.Rows
-                s = LCase(slib.GetString(r.Item("permission_name")))
-                j = slib.GetInteger(r.Item("columns"), 0)  ' insert/delete return null
-                If j > 1 Then
-                    sC = ""
-                    s &= " ("
-                    For Each tc As TableColumn In cColumns
-                        i = tc.Index + 1
-                        If (j And CInt(2 ^ i)) <> 0 Then
-                            s &= sC & tc.Name
-                            sC = ", "
-                        End If
-                    Next
-                    s &= ")"
-                End If
-                s &= " on " & qSchema & "." & qTable
-                s &= " to " & slib.GetString(r.Item("grantee"))
-                Select Case slib.GetString(r.Item("state"))
-                    Case "GRANT_WITH_GRANT_OPTION"
-                        sOut &= "grant " & s & " with grant option" & vbCrLf
-
-                    Case "GRANT"
-                        sOut &= "grant " & s & vbCrLf
-
-                    Case "DENY"
-                        sOut &= "deny " & s & vbCrLf
-
-                End Select
-            Next
-            Return sOut
-        End Get
-    End Property
-
-    Public ReadOnly Property XML() As String
-        Get
-            Dim sOut As String
-            Dim s As String
-            Dim ss As String
-            Dim st As String
-            Dim tc As TableColumn
-            Dim cNDX As TableIndex
-            Dim cFK As ForeignKey
-            Dim cCC As CheckConstraint
-
-            sOut = "<?xml version='1.0'?>" & vbCrLf
-            sOut &= "<sqldef>" & vbCrLf
-            sOut &= "  <table name='" & sTable & "' owner='" & sSchema & "'"
-            sOut &= fg.TableXML
-            sOut &= fg.TextXML
-            sOut &= ">" & vbCrLf
-
-            sOut &= "    <columns>" & vbCrLf
-            For Each tc In cColumns
-                ss = "      <column name='" & tc.Name & "'"
-                If tc.Computed = "" Then
-                    ss &= " type='" & tc.Type & "'"
-                    If tc.Type = "xml" Then
-                        If tc.XMLCollection <> "" Then
-                            If tc.XMLDocument Then
-                                ss &= " document='Y'"
-                            Else
-                                ss &= " content='Y'"
-                            End If
-                            ss &= " collection='" & tc.XMLCollection & "'"
-                        End If
-                    Else
-                        If tc.Length > 0 Then
-                            ss &= " length='" & tc.Length & "'"
-                        ElseIf tc.Length = 0 Then
-                            ss &= " length='max'"
-                        End If
-                        If tc.Precision > 0 Then
-                            ss &= " precision='" & tc.Precision & "'"
-                            ss &= " scale='" & tc.Scale & "'"
-                        End If
-                    End If
-                    ss &= " allownulls='" & tc.Nullable & "'"
-                    If tc.Identity Then
-                        ss &= " seed='" & tc.Seed & "' increment='" & tc.Increment & "'"
-                        If tc.Replicated Then
-                            ss &= " replication='N'"
-                        End If
-                    End If
-                    If tc.RowGuid Then
-                        ss &= " rowguid='Y'"
-                    End If
-                    If tc.ANSIPadded = "N" Then
-                        ss &= " ansipadded='N'"
-                    End If
-                    If bCollation And tc.Collation <> "" Then
-                        If tc.Collation = sDefCollation Then
-                            ss &= " collation='database_default'"
-                        Else
-                            ss &= " collation='" & tc.Collation & "'"
-                        End If
-                    End If
-                    If tc.DefaultName <> "" Then
-                        ss &= ">" & vbCrLf
-                        ss &= "        <default "
-                        If bConsName Then
-                            ss &= "name='" & tc.DefaultName & "'"
-                        End If
-                        st = tc.DefaultValue
-                        If Mid(st, 1, 1) = "(" And Right(st, 1) = ")" Then
-                            st = Mid(st, 2, Len(st) - 2)
-                        End If
-                        ss &= "><![CDATA[" & st & "]]></default>" & vbCrLf
-                        ss &= "      </column>"
-                    Else
-                        ss &= " />"
-                    End If
-                Else
-                    ss &= " allownulls='" & tc.Nullable & "'"
-                    If tc.ANSIPadded = "N" Then
-                        ss &= " ansipadded='N'"
-                    End If
-                    If bCollation And tc.Collation <> "" Then
-                        If tc.Collation = sDefCollation Then
-                            ss &= " collation='database_default'"
-                        Else
-                            ss &= " collation='" & tc.Collation & "'"
-                        End If
-                    End If
-                    If tc.Persisted Then
-                        ss &= " persisted='Y'"
-                    End If
-                    ss &= ">" & vbCrLf
-                    ss &= "        <formula><![CDATA[" & tc.Computed & "]]></formula>" & vbCrLf
-                    ss &= "      </column>"
-                End If
-                sOut &= ss & vbCrLf
-            Next
-            sOut &= "    </columns>" & vbCrLf
-
-            s = cIndexes.PrimaryKey
-            If s <> "" Then
-                cNDX = cIndexes.Item(s)
-                If Not cNDX Is Nothing Then
-                    sOut &= cNDX.PrimaryKeyXML("    ", bConsName)
-                End If
-            End If
-
-            ss = ""
-            For Each cNDX In cIndexes
-                If Not cNDX.PrimaryKey Then
-                    ss &= cNDX.IndexXML("      ")
-                End If
-            Next
-            If ss <> "" Then
-                sOut &= "    <indexes>" & vbCrLf
-                sOut &= ss
-                sOut &= "    </indexes>" & vbCrLf
-            End If
-
-            ss = ""
-            For Each cCC In cCheckC
-                ss &= cCC.CheckXML("      ", bConsName)
-            Next
-            If ss <> "" Then
-                sOut &= "    <constraints>" & vbCrLf
-                sOut &= ss
-                sOut &= "    </constraints>" & vbCrLf
-            End If
-
-            ss = ""
-            For Each cFK In cFKeys
-                ss &= cFK.ForeignKeyXML("      ")
-            Next
-            If ss <> "" Then
-                sOut &= "    <foreignkeys>" & vbCrLf
-                sOut &= ss
-                sOut &= "    </foreignkeys>" & vbCrLf
-            End If
-
-            sOut &= "  </table>" & vbCrLf
-            sOut &= "</sqldef>" & vbCrLf
-            XML = sOut
+            Try
+                Return cColumns
+            Catch
+                Return Nothing
+            End Try
         End Get
     End Property
 #End Region
@@ -446,17 +244,18 @@ Public Class TableDefn
         PreLoad = 0
     End Sub
 
-    Public Sub New(ByVal sTableName As String, ByVal sqllib As sql, ByVal bDef As Boolean)
-        LoadTable(sTableName, "dbo", sqllib, bDef)
+    Public Sub New(ByVal sTableName As String, ByVal sqllib As sql)
+        slib = sqllib
+        LoadTable(sTableName, "dbo")
     End Sub
 
     Public Sub New(ByVal sTableName As String, ByVal Schema As String, _
-                                ByVal sqllib As sql, ByVal bDef As Boolean)
-        LoadTable(sTableName, Schema, sqllib, bDef)
+                   ByVal sqllib As sql)
+        slib = sqllib
+        LoadTable(sTableName, Schema)
     End Sub
 
-    Private Sub LoadTable(ByVal sTableName As String, ByVal Sch As String, _
-                                ByVal sqllib As sql, ByVal bDef As Boolean)
+    Private Sub LoadTable(ByVal sTableName As String, ByVal Sch As String)
         Dim s As String = "a"
         Dim b As Boolean = False
         Dim bInc As Boolean
@@ -479,11 +278,10 @@ Public Class TableDefn
         Dim cNdx As TableIndex
         Dim cFK As ForeignKey
         Dim cCC As CheckConstraint
+        Dim cPm As TablePermission
 
         sSchema = Sch
         qSchema = slib.QuoteIdentifier(Sch)
-        slib = sqllib
-        fixdef = bDef
         PreLoad = 2
 
         dt = slib.TableColumns(slib.QuoteIdentifier(sTableName), qSchema)
@@ -492,8 +290,8 @@ Public Class TableDefn
             Return
         End If
 
-        sTable = sqllib.GetString(dt.Rows(0).Item("TableName"))
-        qTable = sqllib.QuoteIdentifier(sTable)
+        sTable = slib.GetString(dt.Rows(0).Item("TableName"))
+        qTable = slib.QuoteIdentifier(sTable)
         dr = slib.TableDetails(qTable, qSchema)
         If Not dr Is Nothing Then
             sDefCollation = slib.GetString(dr("DefCollation"))
@@ -505,15 +303,15 @@ Public Class TableDefn
         End If
 
         For Each dr In dt.Rows        ' Columns
-            sName = sqllib.GetString(dr("COLUMN_NAME"))
-            sType = sqllib.GetString(dr("DATA_TYPE"))
-            sNull = Mid(sqllib.GetString(dr("IS_NULLABLE")), 1, 1)
-            sdn = sqllib.GetString(dr("DEFAULT_NAME"))
-            sdv = FixDefaultText(sqllib.GetString(dr("DEFAULT_TEXT")))
-            sColl = sqllib.GetString(dr("COLLATION_NAME"))
-            sAP = Mid(sqllib.GetString(dr("ANSIPadded")), 1, 1)
+            sName = slib.GetString(dr("COLUMN_NAME"))
+            sType = slib.GetString(dr("DATA_TYPE"))
+            sNull = Mid(slib.GetString(dr("IS_NULLABLE")), 1, 1)
+            sdn = slib.GetString(dr("DEFAULT_NAME"))
+            sdv = slib.CleanConstraint((slib.GetString(dr("DEFAULT_TEXT"))))
+            sColl = slib.GetString(dr("COLLATION_NAME"))
+            sAP = Mid(slib.GetString(dr("ANSIPadded")), 1, 1)
 
-            If sqllib.GetBit(dr("is_identity"), False) Then
+            If slib.GetBit(dr("is_identity"), False) Then
                 iSeed = slib.GetInteger(dr("IdentitySeed"), 1)
                 iIncr = slib.GetInteger(dr("IdentityIncrement"), 1)
                 bRepl = slib.GetBit(dr("IdentityReplicated"), False)
@@ -521,10 +319,10 @@ Public Class TableDefn
                     dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
                     iSeed, iIncr, sdn, sdv, sColl, sAP, bRepl)
             Else
-                s = sqllib.GetString(dr("ROWGUID"))
+                s = slib.GetString(dr("ROWGUID"))
                 If s = "NO" Then
-                    sAP = Mid(sqllib.GetString(dr("ANSIPadded")), 1, 1)
-                    sFormula = sqllib.CleanConstraint(sqllib.GetString(dr("Computed")))
+                    sAP = Mid(slib.GetString(dr("ANSIPadded")), 1, 1)
+                    sFormula = slib.CleanConstraint(slib.GetString(dr("Computed")))
                     If sFormula = "" Then
                         If LCase(sType) = "xml" Then
                             cColumns.AddXMLColumn(sName, dr("xmlschema"), _
@@ -536,7 +334,7 @@ Public Class TableDefn
                                 sdn, sdv, sColl, sAP)
                         End If
                     Else
-                        If sqllib.GetString(dr("Persisted")) = "NO" Then
+                        If slib.GetString(dr("Persisted")) = "NO" Then
                             bPersist = False
                         Else
                             bPersist = True
@@ -553,7 +351,7 @@ Public Class TableDefn
 
         dt = slib.TableIndexes(qTable, qSchema)
         For Each dr In dt.Rows
-            s = sqllib.GetString(dr("name"))
+            s = slib.GetString(dr("name"))
 
             cNdx = cIndexes(s)
             If cNdx Is Nothing Then
@@ -591,11 +389,11 @@ Public Class TableDefn
 
                 cIndexes.Add(cNdx)
             End If
-            s = sqllib.GetString(dr("ColumnName"))
-            j = sqllib.GetInteger(dr("key_ordinal"), 0)
-            b = sqllib.GetBit(dr("is_descending_key"), False)
-            bInc = sqllib.GetBit(dr("is_included_column"), False)
-            i = sqllib.GetInteger(dr("partition_ordinal"), 0)
+            s = slib.GetString(dr("ColumnName"))
+            j = slib.GetInteger(dr("key_ordinal"), 0)
+            b = slib.GetBit(dr("is_descending_key"), False)
+            bInc = slib.GetBit(dr("is_included_column"), False)
+            i = slib.GetInteger(dr("partition_ordinal"), 0)
             If i > 0 Then
                 cNdx.IndexFileGroup.SchemeColumn = s
             End If
@@ -639,7 +437,28 @@ Public Class TableDefn
             cFK.Columns.Add(sName, s, i)
         Next
 
-        dtPerms = slib.TablePermissions(qTable, qSchema)
+        dt = slib.TablePermissions(qTable, qSchema)
+        For Each r As DataRow In dt.Rows
+            cPm = cPerms.Add(slib.GetString(r("Grantee")), _
+                    qSchema & "." & qTable, _
+                    slib.GetString(r("Permissions")))
+
+            s = slib.GetString(r("State"))
+            If s = "GRANT_WITH_GRANT_OPTION" Then
+                cPm.GrantOption = True
+            ElseIf s = "DENY" Then
+                cPm.Deny = True
+            End If
+            j = slib.GetInteger(dr("Columns"), 0)
+            If j > 1 Then
+                For Each tc As TableColumn In cColumns
+                    i = tc.Index + 1
+                    If (j And CInt(2 ^ i)) <> 0 Then
+                        cPm.AddColumn(tc.Name)
+                    End If
+                Next
+            End If
+        Next
 
         'dt = slib.TableTriggers(sTable)
         'For Each r As DataRow In dt.Rows
@@ -652,100 +471,35 @@ Public Class TableDefn
         'Next
     End Sub
 
-    Public Function DataScript(ByVal sFilter As String) As String
-        Dim tc As TableColumn
-        Dim dt As DataTable
-        Dim sOut As String = ""
-        Dim sHead As String
-        Dim sTail As String = ""
-        Dim s As String
-        Dim qN As String
-        Dim i As Integer
-        Dim ss As String = ""
-        Dim cNDX As TableIndex = Nothing
+    Public Function XML(ByVal opt As ScriptOptions) As String
+        Dim sOut As String
 
-        If cColumns.Identity <> "" Then
-            sOut &= "set identity_insert " & qSchema & "." & qTable & " on" & vbCrLf
-            sOut &= vbCrLf
-        End If
+        sOut = "<?xml version='1.0'?>" & vbCrLf
+        sOut &= "<sqldef>" & vbCrLf
+        sOut &= "  <table name='" & sTable & "' owner='" & sSchema & "'"
+        sOut &= fg.TableXML
+        sOut &= fg.TextXML
+        sOut &= ">" & vbCrLf
+        sOut &= cColumns.XMLText("    ", sDefCollation, opt)
+        sOut &= cIndexes.XMLText("    ", opt)
+        sOut &= cCheckC.XMLText("    ", opt)
+        sOut &= cFKeys.XMLText("    ")
+        sOut &= "  </table>" & vbCrLf
+        sOut &= "</sqldef>" & vbCrLf
+        XML = sOut
+    End Function
 
-        sHead = "insert into " & qSchema & "." & qTable & vbCrLf
-        sHead &= "(" & vbCrLf
-        s = "    "
-        For Each tc In cColumns
-            sHead &= s & tc.QuotedName
-            s = ", "
-        Next
-        sHead &= vbCrLf
-        sHead &= ")" & vbCrLf
-        s = "select  x."
-        For Each tc In cColumns
-            sHead &= s & tc.QuotedName & vbCrLf
-            s = "       ,x."
-        Next
-        sHead &= "from" & vbCrLf
-        sHead &= "(" & vbCrLf
+    Public Function TableText(ByVal opt As ScriptOptions) As String
+        Return CreateTable(False, opt)
+    End Function
 
-        i = 0
-        dt = slib.TableData(sTable, sSchema, sFilter)
-        For Each r As DataRow In dt.Rows
-            If i = 0 Then
-                sOut &= sTail
-                sOut &= sHead
-                s = "    select  "
-                For Each tc In cColumns
-                    sOut &= s & tc.DataFormat(r(tc.Name)) & " " & tc.QuotedName & vbCrLf
-                    s = "           ,"
-                Next
-                sTail = ") x" & vbCrLf
-                sTail &= "left join " & qSchema & "." & qTable & " a" & vbCrLf
-
-                s = cIndexes.PrimaryKey
-                If s <> "" Then
-                    cNDX = cIndexes.Item(s)
-                End If
-
-                If cNDX Is Nothing Then
-                    Return ""
-                End If
-
-                s = "on      a."
-                For Each ic As IndexColumn In cNDX.Columns
-                    qN = slib.QuoteIdentifier(ic.Name)
-                    If ss = "" Then ss = qN
-                    sTail &= s & qN & " = x." & qN & vbCrLf
-                    s = "and     a."
-                Next
-
-                sTail &= "where   a." & ss & " is null" & vbCrLf
-                sTail &= "go" & vbCrLf & vbCrLf
-
-                i += 1
-            Else
-                s = "    union select "
-                For Each tc In cColumns
-                    sOut &= s & tc.DataFormat(r(tc.Name))
-                    s = ", "
-                Next
-                sOut &= vbCrLf
-                i += 1
-            End If
-            If i = 100 Then i = 0
-        Next
-
-        sOut &= sTail
-        If cColumns.Identity <> "" Then
-            sOut &= vbCrLf
-            sOut &= "set identity_insert " & qSchema & "." & qTable & " off" & vbCrLf
-            sOut &= "go" & vbCrLf & vbCrLf
-        End If
-
-        Return sOut
+    Public Function FullTableText(ByVal opt As ScriptOptions) As String
+        Return CreateTable(True, opt)
     End Function
 #End Region
 
 #Region "private functions"
-    Private Function CreateTable(ByVal bFull As Boolean) As String
+    Private Function CreateTable(ByVal bFull As Boolean, ByVal opt As ScriptOptions) As String
         Dim sOut As String = ""
         Dim Comma As String
         Dim s As String
@@ -806,7 +560,7 @@ Public Class TableDefn
                     sOut &= " rowguidcol"
                 End If
 
-                If bCollation And tc.Collation <> "" Then
+                If opt.CollationShow And tc.Collation <> "" Then
                     If tc.Collation = sDefCollation Then
                         sOut &= " collate database_default"
                     Else
@@ -829,10 +583,16 @@ Public Class TableDefn
             End If
 
             If tc.DefaultName <> "" Then
-                If bConsName Then
+                If opt.DefaultShowName Then
                     sOut &= " constraint " & tc.QuotedDefaultName
                 End If
-                sOut &= " default " & tc.DefaultValue
+                sOut &= " default ("
+                If opt.DefaultFix Then
+                    sOut &= slib.FixDefaultText(tc.DefaultValue)
+                Else
+                    sOut &= tc.DefaultValue
+                End If
+                sOut &= ")"
             End If
 
             If tc.ANSIPadded = "N" And bANSI Then
@@ -847,12 +607,12 @@ Public Class TableDefn
             Dim c As TableIndex
             c = cIndexes.Item(s)
             If Not c Is Nothing Then
-                sOut &= c.PrimaryKeyText(sTab, bConsName)
+                sOut &= c.PrimaryKeyText(sTab, opt)
             End If
         End If
 
         For Each ck As CheckConstraint In cCheckC
-            sOut &= ck.CheckText(sTab & "   ", bConsName)
+            sOut &= ck.Text(sTab & "   ", opt)
         Next
         sOut &= sTab & ")"
         sOut &= fg.TableText
@@ -863,79 +623,6 @@ Public Class TableDefn
             sOut &= "end" & vbCrLf
         End If
         Return sOut
-    End Function
-
-    Private Function FixDefaultText(ByVal sDefault As String) As String
-        Dim s As String = ""
-        Dim ss As String
-        Dim sSave As String = ""
-        Dim i As Integer
-        Dim mode As Integer = 0
-
-        For i = 1 To Len(sDefault)
-            ss = Mid(sDefault, i, 1)
-            Select Case mode
-                Case 0
-                    Select Case ss
-                        Case "[", "]"
-
-                        Case "'"
-                            mode = 1
-                            s &= ss
-
-                        Case "("
-                            If fixdef Then
-                                If LCase(Right(s, 4)) <> "char" _
-                                And LCase(Right(s, 7)) <> "decimal" _
-                                And LCase(Right(s, 7)) <> "numeric" Then
-                                    sSave = "("
-                                    mode = 2
-                                Else
-                                    s &= ss
-                                End If
-                            Else
-                                s &= ss
-                            End If
-
-                        Case Else
-                            s &= ss
-
-                    End Select
-
-                Case 1
-                    If ss = "'" Then mode = 0
-                    s &= ss
-
-                Case 2
-                    Select Case ss
-                        Case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "+"
-                            sSave &= ss
-
-                        Case "("
-                            s &= sSave
-                            sSave = "("
-
-                        Case ")"
-                            If Len(sSave) > 1 Then
-                                s &= Mid(sSave, 2)
-                            Else
-                                s &= "()"
-                            End If
-                            mode = 0
-
-                        Case "[", "]"
-                            s &= sSave
-                            mode = 0
-
-                        Case Else
-                            s &= sSave & ss
-                            mode = 0
-
-                    End Select
-            End Select
-        Next
-        If Mid(s, 1, 1) <> "(" Then s = "(" & s & ")"
-        Return s
     End Function
 #End Region
 End Class
