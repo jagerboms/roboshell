@@ -113,7 +113,7 @@ Public Class CheckConstraint
         Dim sOut As String = ""
 
         sOut = sTab & ","
-        If opt.CheckShowName Then
+        If opt.CheckShowName And Not bSystemName Then
             sOut &= "constraint " & qName & " "
         End If
         sOut &= "check"
@@ -127,14 +127,14 @@ Public Class CheckConstraint
     Public Function XMLText(ByVal sTab As String, ByVal opt As ScriptOptions) As String
         Dim sOut As String
 
-        sOut = sTab & "<constraint "
-        If opt.CheckShowName Then
-            sOut &= "name='" & sName & "' "
+        sOut = sTab & "<constraint type='check'"
+        If opt.CheckShowName And Not bSystemName Then
+            sOut &= " name='" & sName & "'"
         End If
         If bReplicated Then
             sOut &= " replication='N'"
         End If
-        sOut &= " type='check'>" & vbCrLf
+        sOut &= ">" & vbCrLf
         sOut &= sTab & "  <![CDATA["
         sOut &= sqllib.CleanConstraint(sDefinition)
         sOut &= "]]>" & vbCrLf
