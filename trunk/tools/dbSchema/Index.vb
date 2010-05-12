@@ -155,7 +155,8 @@ Public Class IndexColumns
     Public Function Add(ByVal ColumnName As String, ByVal Ordinal As Integer, _
                         ByVal IsDescending As Boolean, ByVal IsIncluded As Boolean, _
                         ByVal PartOrdinal As Integer) As IndexColumn
-        Dim ic As New IndexColumn(ColumnName, Ordinal, IsDescending, IsIncluded, PartOrdinal)
+        Dim ic As New IndexColumn(ColumnName, Ordinal, IsDescending, _
+                         IsIncluded, PartOrdinal)
         List.Add(ic)
         Return ic
     End Function
@@ -181,6 +182,7 @@ Public Class TableIndex
     Private bRowLocking As Boolean = True
     Private bPageLocking As Boolean = True
     Private bNoRecompute As Boolean = False
+    Private bPKNamed As Boolean = False
 
     Private cCols As New IndexColumns
 
@@ -291,6 +293,15 @@ Public Class TableIndex
         End Get
         Set(ByVal value As Boolean)
             bNoRecompute = value
+        End Set
+    End Property
+
+    Public Property PrimaryKeyNamed() As Boolean
+        Get
+            PrimaryKeyNamed = bPKNamed
+        End Get
+        Set(ByVal pkn As Boolean)
+            bPKNamed = pkn
         End Set
     End Property
 
@@ -585,7 +596,7 @@ Public Class TableIndex
         End If
 
         sOut = sTab & "   ,"
-        If opt.PrimaryKeyShowName Then
+        If opt.PrimaryKeyShowName And Not bPKNamed Then
             sOut &= "constraint " & qName & " "
         End If
         sOut &= "primary key "
@@ -628,7 +639,7 @@ Public Class TableIndex
         End If
 
         sOut = sTab & "<primarykey"
-        If opt.PrimaryKeyShowName Then
+        If opt.PrimaryKeyShowName And Not bPKNamed Then
             sOut &= " name='" & sName & "'"
         End If
         sOut &= " clustered='"
