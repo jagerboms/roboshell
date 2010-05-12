@@ -261,7 +261,7 @@ Public Class TableDefn
         Dim bInc As Boolean
         Dim sdn As String
         Dim sdv As String
-        Dim bdn As Boolean
+        Dim bn As Boolean
         Dim sName As String
         Dim sType As String
         Dim sNull As String
@@ -309,7 +309,7 @@ Public Class TableDefn
             sNull = Mid(slib.GetString(dr("IS_NULLABLE")), 1, 1)
             sdn = slib.GetString(dr("DEFAULT_NAME"))
             sdv = slib.CleanConstraint((slib.GetString(dr("DEFAULT_TEXT"))))
-            bdn = slib.GetBit(dr("DefaultNamed"), False)
+            bn = slib.GetBit(dr("DefaultNamed"), False)
             sColl = slib.GetString(dr("COLLATION_NAME"))
             sAP = Mid(slib.GetString(dr("ANSIPadded")), 1, 1)
 
@@ -328,11 +328,11 @@ Public Class TableDefn
                         If LCase(sType) = "xml" Then
                             cColumns.AddXMLColumn(sName, dr("xmlschema"), _
                                 dr("xmlcollection"), dr("is_xml_document"), sNull, _
-                                sdn, sdv, bdn, sColl, sAP)
+                                sdn, sdv, bn, sColl, sAP)
                         Else
                             cColumns.AddColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
                                 dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
-                                sdn, sdv, bdn, sColl, sAP)
+                                sdn, sdv, bn, sColl, sAP)
                         End If
                     Else
                         If slib.GetString(dr("Persisted")) = "NO" Then
@@ -345,7 +345,7 @@ Public Class TableDefn
                 Else
                     cColumns.AddRowGuidColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
                         dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
-                        sdn, sdv, bdn, sAP)
+                        sdn, sdv, bn, sAP)
                 End If
             End If
         Next
@@ -364,6 +364,9 @@ Public Class TableDefn
                 End If
                 If slib.GetBit(dr("is_primary_key"), False) Then
                     cNdx.PrimaryKey = True
+                    If slib.GetBit(dr("PrimaryKeyNamed"), False) Then
+                        cNdx.PrimaryKeyNamed = True
+                    End If
                 End If
                 If slib.GetBit(dr("is_unique"), False) Then
                     cNdx.Unique = True
