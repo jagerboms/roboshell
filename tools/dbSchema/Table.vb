@@ -261,6 +261,7 @@ Public Class TableDefn
         Dim bInc As Boolean
         Dim sdn As String
         Dim sdv As String
+        Dim bdn As Boolean
         Dim sName As String
         Dim sType As String
         Dim sNull As String
@@ -308,6 +309,7 @@ Public Class TableDefn
             sNull = Mid(slib.GetString(dr("IS_NULLABLE")), 1, 1)
             sdn = slib.GetString(dr("DEFAULT_NAME"))
             sdv = slib.CleanConstraint((slib.GetString(dr("DEFAULT_TEXT"))))
+            bdn = slib.GetBit(dr("DefaultNamed"), False)
             sColl = slib.GetString(dr("COLLATION_NAME"))
             sAP = Mid(slib.GetString(dr("ANSIPadded")), 1, 1)
 
@@ -316,8 +318,7 @@ Public Class TableDefn
                 iIncr = slib.GetInteger(dr("IdentityIncrement"), 1)
                 bRepl = slib.GetBit(dr("IdentityReplicated"), False)
                 cColumns.AddIdentityColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
-                    dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
-                    iSeed, iIncr, sdn, sdv, sColl, sAP, bRepl)
+                    dr("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, iSeed, iIncr, bRepl)
             Else
                 s = slib.GetString(dr("ROWGUID"))
                 If s = "NO" Then
@@ -327,11 +328,11 @@ Public Class TableDefn
                         If LCase(sType) = "xml" Then
                             cColumns.AddXMLColumn(sName, dr("xmlschema"), _
                                 dr("xmlcollection"), dr("is_xml_document"), sNull, _
-                                sdn, sdv, sColl, sAP)
+                                sdn, sdv, bdn, sColl, sAP)
                         Else
                             cColumns.AddColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
                                 dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
-                                sdn, sdv, sColl, sAP)
+                                sdn, sdv, bdn, sColl, sAP)
                         End If
                     Else
                         If slib.GetString(dr("Persisted")) = "NO" Then
@@ -344,7 +345,7 @@ Public Class TableDefn
                 Else
                     cColumns.AddRowGuidColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
                         dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
-                        sdn, sdv, sAP)
+                        sdn, sdv, bdn, sAP)
                 End If
             End If
         Next

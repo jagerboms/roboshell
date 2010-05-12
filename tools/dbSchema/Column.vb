@@ -24,6 +24,7 @@ Public Class TableColumn
     Private iScale As Integer = 0
     Private sCollation As String = ""
     Private bANSIPadded As Boolean = True
+    Private bDefaultNamed As Boolean = False
     Private sqllib As New sql
 
 #Region "Properties"
@@ -52,6 +53,15 @@ Public Class TableColumn
         Get
             QuotedDefaultName = sqllib.QuoteIdentifier(DefaultName)
         End Get
+    End Property
+
+    Public Property DefaultNamed() As Boolean
+        Get
+            DefaultNamed = bDefaultNamed
+        End Get
+        Set(ByVal dsn As Boolean)
+            bDefaultNamed = dsn
+        End Set
     End Property
 
     ' bigint
@@ -306,7 +316,7 @@ Public Class TableColumn
         End If
 
         If DefaultName <> "" Then
-            If opt.DefaultShowName Then
+            If opt.DefaultShowName And Not bDefaultNamed Then
                 sOut &= " constraint " & QuotedDefaultName
             End If
             sOut &= " default ("
@@ -370,9 +380,9 @@ Public Class TableColumn
             End If
             If DefaultName <> "" Then
                 sOut &= ">" & vbCrLf
-                sOut &= sTab & "  <default "
-                If opt.DefaultShowName Then
-                    sOut &= "name='" & DefaultName & "'"
+                sOut &= sTab & "  <default"
+                If opt.DefaultShowName And Not bDefaultNamed Then
+                    sOut &= " name='" & DefaultName & "'"
                 End If
                 s = DefaultValue
                 If Mid(s, 1, 1) = "(" And Right(s, 1) = ")" Then
@@ -453,6 +463,7 @@ Public Class TableColumns
     ByVal bNullable As String, _
     ByVal sDefaultName As String, _
     ByVal sDefaultValue As String, _
+    ByVal bDefaultNamed As Boolean, _
     ByVal sCollation As String, _
     ByVal sANSIPadded As String)
 
@@ -473,6 +484,7 @@ Public Class TableColumns
             .Nullable = bNullable
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
+            .DefaultNamed = bDefaultNamed
             .Collation = sCollation
             .ANSIPadded = sANSIPadded
         End With
@@ -488,6 +500,7 @@ Public Class TableColumns
         ByVal bNullable As String, _
         ByVal sDefaultName As String, _
         ByVal sDefaultValue As String, _
+        ByVal bDefaultNamed As Boolean, _
         ByVal sCollation As String, _
         ByVal sANSIPadded As String)
 
@@ -505,6 +518,7 @@ Public Class TableColumns
             .Nullable = bNullable
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
+            .DefaultNamed = bDefaultNamed
             .Collation = sCollation
             .ANSIPadded = sANSIPadded
         End With
@@ -539,6 +553,7 @@ Public Class TableColumns
         ByVal bNullable As String, _
         ByVal sDefaultName As String, _
         ByVal sDefaultValue As String, _
+        ByVal bDefaultNamed As Boolean, _
         ByVal sANSIPadded As String)
 
         Dim parm As New TableColumn
@@ -558,6 +573,7 @@ Public Class TableColumns
             .Nullable = bNullable
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
+            .DefaultNamed = bDefaultNamed
             .RowGuid = True
             .ANSIPadded = sANSIPadded
         End With
@@ -574,10 +590,6 @@ Public Class TableColumns
         ByVal bNullable As String, _
         ByVal iSeed As Integer, _
         ByVal iIncr As Integer, _
-        ByVal sDefaultName As String, _
-        ByVal sDefaultValue As String, _
-        ByVal sCollation As String, _
-        ByVal sANSIPadded As String, _
         ByVal bRepl As Boolean)
 
         Dim parm As New TableColumn
@@ -599,10 +611,6 @@ Public Class TableColumns
             .Seed = iSeed
             .Increment = iIncr
             .Replicated = bRepl
-            .DefaultName = sDefaultName
-            .DefaultValue = sDefaultValue
-            .Collation = sCollation
-            .ANSIPadded = sANSIPadded
         End With
 
         AddColumn(parm)
