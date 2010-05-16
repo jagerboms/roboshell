@@ -98,6 +98,7 @@ Module Scriptor
                 SendMessage("      J - job", "T")
                 SendMessage("      D - data", "T")
                 SendMessage("      S - script permissions", "T")
+                SendMessage("      X - table definition XML file", "T")
                 SendMessage("     Stored procedures, tables, functions, views and triggers types", "T")
                 SendMessage("     can be combined.", "T")
                 SendMessage("", "T")
@@ -108,6 +109,9 @@ Module Scriptor
                 SendMessage("     the data to be scripted.", "T")
                 SendMessage("     When the type is 'S' the object parameter contains the user", "T")
                 SendMessage("     the permissions are to be scripted.", "T")
+                SendMessage("     When the type is 'X' the object parameter contains the pattern", "T")
+                SendMessage("     of the tdef filename(s) to be scripted. Use of * and ? wildcards", "T")
+                SendMessage("     characters is permitted.", "T")
                 SendMessage("", "T")
                 SendMessage("   -hSchema is schema to retrieve. If not provided", "T")
                 SendMessage("     objects from all schemas are retrieved.", "T")
@@ -223,6 +227,8 @@ Module Scriptor
                 ProcessJobs(Database)
             ElseIf Mid(LCase(sType), 1, 1) = "d" Then
                 ProcessData(Database, sObject, "dbo")
+            ElseIf Mid(LCase(sType), 1, 1) = "x" Then
+                ProcessXML(sObject)
             ElseIf Mid(LCase(sType), 1, 1) = "s" Then
                 ProcessPermissions(sObject)
             ElseIf Database = "*" Then
@@ -267,6 +273,31 @@ Module Scriptor
 
         Return True
     End Function
+
+    Private Sub ProcessXML(ByVal XMLFile As String)
+        Dim sOut As String = ""
+        Dim sDir As String
+
+        Try
+            sDir = Dir(XMLFile)
+            Do While sDir <> ""
+                Dim ts As New TableDefn(sqllib, sDir)
+                Select Case mode
+                    Case "F"
+                        GetTableFull(ts)
+                    Case "I"
+                        GetTableIntermediate(ts)
+                    Case Else
+                        GetTable(ts)
+                End Select
+
+                sDir = Dir()
+            Loop
+
+        Catch ex As Exception
+            SendMessage(ex.ToString, "E")
+        End Try
+    End Sub
 
     Private Sub ProcessPermissions(ByVal User As String)
         Dim sDB As String
@@ -431,16 +462,17 @@ Module Scriptor
                 st = sqllib.GetString(dr.Item("type"))
                 ss = sqllib.GetString(dr.Item("sch"))
                 If sqllib.GetString(dr.Item("type")) = "U" Then
+                    Dim ts As New TableDefn(s, ss, sqllib)
                     If bXML Then
-                        GetTableXML(s, ss)
+                        GetTableXML(ts)
                     Else
                         Select Case mode
                             Case "F"
-                                GetTableFull(s, ss)
+                                GetTableFull(ts)
                             Case "I"
-                                GetTableIntermediate(s, ss)
+                                GetTableIntermediate(ts)
                             Case Else
-                                GetTable(s, ss)
+                                GetTable(ts)
                         End Select
                     End If
                 Else
@@ -457,13 +489,12 @@ Module Scriptor
     End Function
 
 #Region "common functions"
-    Private Function GetTable(ByVal sTable As String, ByVal Schema As String) As Integer
-        Dim ts As New TableDefn(sTable, Schema, sqllib)
+    Private Function GetTable(ByVal ts As TableDefn) As Integer
         Dim sOut As String
         Dim s As String
 
         If ts.State = 3 Then
-            SendMessage("Table " & Schema & "." & sTable & " was not found and not scripted.", "T")
+            SendMessage("Table " & ts.Schema & "." & ts.TableName & " was not found and not scripted.", "T")
             Return 0
         End If
 
@@ -493,25 +524,23 @@ Module Scriptor
             End If
         End If
 
-        WriteFile("table", Schema, sTable, "", "sql", sOut)
+        WriteFile("table", ts.Schema, ts.TableName, "", "sql", sOut)
         Return 0
     End Function
 
-    Private Function GetTableIntermediate(ByVal sTable As String, _
-                    ByVal Schema As String) As Integer
-        Dim ts As New TableDefn(sTable, Schema, sqllib)
+    Private Function GetTableIntermediate(ByVal ts as TableDefn) As Integer
         Dim sOut As String
         Dim s As String
 
         sOut = ts.TableText(opt)
         sOut &= "go" & vbCrLf
-        WriteFile("table", Schema, sTable, "", "sql", sOut)
+        WriteFile("table", ts.Schema, ts.TableName, "", "sql", sOut)
 
         For Each ic As TableIndex In ts.IKeys
             If Not ic.PrimaryKey Then
                 sOut = ic.IndexShort
                 sOut &= "go" & vbCrLf
-                WriteFile("index", Schema, sTable, ic.Name, "sql", sOut)
+                WriteFile("index", ts.Schema, ts.TableName, ic.Name, "sql", sOut)
             End If
         Next
 
@@ -522,7 +551,7 @@ Module Scriptor
             If fk.LinkedSchema <> "dbo" Then
                 s = fk.LinkedSchema & "." & s
             End If
-            WriteFile("fkey", Schema, sTable, s, "sql", sOut)
+            WriteFile("fkey", ts.Schema, ts.TableName, s, "sql", sOut)
         Next
 
         If IncludePerm Then
@@ -530,27 +559,26 @@ Module Scriptor
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
-                WriteFile("perm", Schema, sTable, "", "sql", sOut)
+                WriteFile("perm", ts.Schema, ts.TableName, "", "sql", sOut)
             End If
         End If
 
         Return 0
     End Function
 
-    Private Function GetTableFull(ByVal sTable As String, ByVal Schema As String) As Integer
-        Dim ts As New TableDefn(sTable, Schema, sqllib)
+    Private Function GetTableFull(ByVal ts As TableDefn) As Integer
         Dim sOut As String
         Dim s As String
 
         sOut = ts.FullTableText(opt)
         sOut &= "go" & vbCrLf
-        WriteFile("table", Schema, sTable, "", "sql", sOut)
+        WriteFile("table", ts.Schema, ts.TableName, "", "sql", sOut)
 
         For Each ic As TableIndex In ts.IKeys
             If Not ic.PrimaryKey Then
                 sOut = ic.IndexText
                 sOut &= "go" & vbCrLf
-                WriteFile("index", Schema, sTable, ic.Name, "sql", sOut)
+                WriteFile("index", ts.Schema, ts.TableName, ic.Name, "sql", sOut)
             End If
         Next
 
@@ -561,7 +589,7 @@ Module Scriptor
             If fk.LinkedSchema <> "dbo" Then
                 s = fk.LinkedSchema & "." & s
             End If
-            WriteFile("fkey", Schema, sTable, s, "sql", sOut)
+            WriteFile("fkey", ts.Schema, ts.TableName, s, "sql", sOut)
         Next
 
         If IncludePerm Then
@@ -569,27 +597,26 @@ Module Scriptor
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
-                WriteFile("perm", Schema, sTable, "", "sql", sOut)
+                WriteFile("perm", ts.Schema, ts.TableName, "", "sql", sOut)
             End If
         End If
 
         Return 0
     End Function
 
-    Private Function GetTableXML(ByVal sTable As String, ByVal Schema As String) As Integer
-        Dim ts As New TableDefn(sTable, Schema, sqllib)
+    Private Function GetTableXML(ByVal ts As TableDefn) As Integer
         Dim sOut As String
         Dim s As String
 
         sOut = ts.XML(opt)
-        WriteFile("table", Schema, sTable, "", "tdef", sOut)
+        WriteFile("table", ts.Schema, ts.TableName, "", "tdef", sOut)
 
         If IncludePerm Then
             s = ts.Permissions.Text
             If s <> "" Then
                 sOut = s
                 sOut &= "go" & vbCrLf
-                WriteFile("perm", Schema, sTable, "", "sql", sOut)
+                WriteFile("perm", ts.Schema, ts.TableName, "", "sql", sOut)
             End If
         End If
 

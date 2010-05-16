@@ -41,6 +41,7 @@ Public Class TableColumn
     Public Computed As String = ""
     Public Persisted As Boolean = False
     Public XMLDocument As Boolean = False
+    Public XMLSchema As String = ""
     Public XMLCollection As String = ""
 
     Public ReadOnly Property QuotedName() As String
@@ -237,7 +238,7 @@ Public Class TableColumn
                 Case "decimal", "numeric"
                     s &= "(" & iPrecision & "," & iScale & ")"
                 Case "float"
-                    If iPrecision <> 53 Then
+                    If iPrecision <> 53 And iPrecision <> 0 Then
                         s &= "(" & iPrecision & ")"
                     End If
                 Case "xml"
@@ -247,6 +248,9 @@ Public Class TableColumn
                             s &= "document "
                         Else
                             s &= "content "
+                        End If
+                        If XMLSchema <> "" Then
+                            s &= XMLSchema & "."
                         End If
                         s &= XMLCollection & ")"
                     End If
@@ -345,75 +349,78 @@ Public Class TableColumn
                     Else
                         sOut &= " content='Y'"
                     End If
+                    If XMLSchema <> "" Then
+                        sOut &= " xmlschema='" & XMLSchema & "'"
+                    End If
                     sOut &= " collection='" & XMLCollection & "'"
                 End If
             Else
-                If Length > 0 Then
-                    sOut &= " length='" & Length & "'"
-                ElseIf Length = 0 Then
+                If Length = -1 Then
                     sOut &= " length='max'"
+                ElseIf Length > 0 Then
+                    sOut &= " length='" & Length & "'"
                 End If
                 If Precision > 0 Then
                     sOut &= " precision='" & Precision & "'"
                     sOut &= " scale='" & Scale & "'"
                 End If
             End If
-            sOut &= " allownulls='" & Nullable & "'"
-            If Identity Then
-                sOut &= " seed='" & Seed & "' increment='" & Increment & "'"
-                If Replicated Then
-                    sOut &= " replication='N'"
+                sOut &= " allownulls='" & Nullable & "'"
+                If Identity Then
+                    sOut &= " seed='" & Seed & "' increment='" & Increment & "'"
+                    If Replicated Then
+                        sOut &= " replication='N'"
+                    End If
                 End If
-            End If
-            If RowGuid Then
-                sOut &= " rowguid='Y'"
-            End If
-            If ANSIPadded = "N" Then
-                sOut &= " ansipadded='N'"
-            End If
-            If opt.CollationShow And Collation <> "" Then
-                If Collation = sDefCollation Then
-                    sOut &= " collation='database_default'"
+                If RowGuid Then
+                    sOut &= " rowguid='Y'"
+                End If
+                If ANSIPadded = "N" Then
+                    sOut &= " ansipadded='N'"
+                End If
+                If opt.CollationShow And Collation <> "" Then
+                    If Collation = sDefCollation Then
+                        sOut &= " collation='database_default'"
+                    Else
+                        sOut &= " collation='" & Collation & "'"
+                    End If
+                End If
+                If DefaultName <> "" Then
+                    sOut &= ">" & vbCrLf
+                    sOut &= sTab & "  <default"
+                    If opt.DefaultShowName And Not bDefaultNamed Then
+                        sOut &= " name='" & DefaultName & "'"
+                    End If
+                    s = DefaultValue
+                    If Mid(s, 1, 1) = "(" And Right(s, 1) = ")" Then
+                        s = Mid(s, 2, Len(s) - 2)
+                    End If
+                    If opt.DefaultFix Then
+                        s = sqllib.FixDefaultText(s)
+                    End If
+                    sOut &= "><![CDATA[" & s & "]]></default>" & vbCrLf
+                    sOut &= sTab & "</column>"
                 Else
-                    sOut &= " collation='" & Collation & "'"
+                    sOut &= " />"
                 End If
-            End If
-            If DefaultName <> "" Then
-                sOut &= ">" & vbCrLf
-                sOut &= sTab & "  <default"
-                If opt.DefaultShowName And Not bDefaultNamed Then
-                    sOut &= " name='" & DefaultName & "'"
-                End If
-                s = DefaultValue
-                If Mid(s, 1, 1) = "(" And Right(s, 1) = ")" Then
-                    s = Mid(s, 2, Len(s) - 2)
-                End If
-                If opt.DefaultFix Then
-                    s = sqllib.FixDefaultText(s)
-                End If
-                sOut &= "><![CDATA[" & s & "]]></default>" & vbCrLf
-                sOut &= sTab & "</column>"
-            Else
-                sOut &= " />"
-            End If
         Else
-            sOut &= " allownulls='" & Nullable & "'"
-            If ANSIPadded = "N" Then
-                sOut &= " ansipadded='N'"
-            End If
-            If opt.CollationShow And Collation <> "" Then
-                If Collation = sDefCollation Then
-                    sOut &= " collation='database_default'"
-                Else
-                    sOut &= " collation='" & Collation & "'"
+                sOut &= " allownulls='" & Nullable & "'"
+                If ANSIPadded = "N" Then
+                    sOut &= " ansipadded='N'"
                 End If
-            End If
-            If Persisted Then
-                sOut &= " persisted='Y'"
-            End If
-            sOut &= ">" & vbCrLf
-            sOut &= sTab & "  <formula><![CDATA[" & Computed & "]]></formula>" & vbCrLf
-            sOut &= sTab & "</column>"
+                If opt.CollationShow And Collation <> "" Then
+                    If Collation = sDefCollation Then
+                        sOut &= " collation='database_default'"
+                    Else
+                        sOut &= " collation='" & Collation & "'"
+                    End If
+                End If
+                If Persisted Then
+                    sOut &= " persisted='Y'"
+                End If
+                sOut &= ">" & vbCrLf
+                sOut &= sTab & "  <formula><![CDATA[" & Computed & "]]></formula>" & vbCrLf
+                sOut &= sTab & "</column>"
         End If
 
         Return sOut
@@ -457,9 +464,9 @@ Public Class TableColumns
     Public Sub AddColumn( _
     ByVal sName As String, _
     ByVal sType As String, _
-    ByVal oLength As Object, _
-    ByVal oPrecision As Object, _
-    ByVal oScale As Object, _
+    ByVal iLength As Integer, _
+    ByVal iPrecision As Integer, _
+    ByVal iScale As Integer, _
     ByVal bNullable As String, _
     ByVal sDefaultName As String, _
     ByVal sDefaultValue As String, _
@@ -472,15 +479,9 @@ Public Class TableColumns
         With parm
             .Name = sName
             .Type = sType
-            If IsNumeric(oLength) Then
-                .Length = CInt(oLength)
-            End If
-            If IsNumeric(oPrecision) Then
-                .Precision = CInt(oPrecision)
-            End If
-            If IsNumeric(oScale) Then
-                .Scale = CInt(oScale)
-            End If
+            .Length = iLength
+            .Precision = iPrecision
+            .Scale = iScale
             .Nullable = bNullable
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
@@ -505,15 +506,12 @@ Public Class TableColumns
         ByVal sANSIPadded As String)
 
         Dim parm As New TableColumn
-        Dim s As String
 
-        s = sqllib.QuoteIdentifier(oXMLSchema)
-        If s <> "" Then s &= "."
-        s &= sqllib.QuoteIdentifier(oXMLCollection)
         With parm
             .Name = sName
             .Type = "xml"
-            .XMLCollection = s
+            .XMLSchema = sqllib.QuoteIdentifier(oXMLSchema)
+            .XMLCollection = sqllib.QuoteIdentifier(oXMLCollection)
             .XMLDocument = sqllib.GetBit(oXMLDoc, False)
             .Nullable = bNullable
             .DefaultName = sDefaultName
@@ -547,9 +545,9 @@ Public Class TableColumns
     Public Sub AddRowGuidColumn( _
         ByVal sName As String, _
         ByVal sType As String, _
-        ByVal oLength As Object, _
-        ByVal oPrecision As Object, _
-        ByVal oScale As Object, _
+        ByVal iLength As Integer, _
+        ByVal iPrecision As Integer, _
+        ByVal iScale As Integer, _
         ByVal bNullable As String, _
         ByVal sDefaultName As String, _
         ByVal sDefaultValue As String, _
@@ -561,15 +559,9 @@ Public Class TableColumns
         With parm
             .Name = sName
             .Type = sType
-            If IsNumeric(oLength) Then
-                .Length = CInt(oLength)
-            End If
-            If IsNumeric(oPrecision) Then
-                .Precision = CInt(oPrecision)
-            End If
-            If IsNumeric(oScale) Then
-                .Scale = CInt(oScale)
-            End If
+            .Length = iLength
+            .Precision = iPrecision
+            .Scale = iScale
             .Nullable = bNullable
             .DefaultName = sDefaultName
             .DefaultValue = sDefaultValue
@@ -584,9 +576,9 @@ Public Class TableColumns
     Public Sub AddIdentityColumn( _
         ByVal sName As String, _
         ByVal sType As String, _
-        ByVal oLength As Object, _
-        ByVal oPrecision As Object, _
-        ByVal oScale As Object, _
+        ByVal iLength As Integer, _
+        ByVal iPrecision As Integer, _
+        ByVal iScale As Integer, _
         ByVal bNullable As String, _
         ByVal iSeed As Integer, _
         ByVal iIncr As Integer, _
@@ -597,15 +589,9 @@ Public Class TableColumns
         With parm
             .Name = sName
             .Type = sType
-            If IsNumeric(oLength) Then
-                .Length = CInt(oLength)
-            End If
-            If IsNumeric(oPrecision) Then
-                .Precision = CInt(oPrecision)
-            End If
-            If IsNumeric(oScale) Then
-                .Scale = CInt(oScale)
-            End If
+            .Length = iLength
+            .Precision = iPrecision
+            .Scale = iScale
             .Nullable = bNullable
             .Identity = True
             .Seed = iSeed

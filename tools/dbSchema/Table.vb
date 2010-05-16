@@ -255,6 +255,11 @@ Public Class TableDefn
         LoadTable(sTableName, Schema)
     End Sub
 
+    Public Sub New(ByVal sqllib As sql, ByVal sXML As String)
+        slib = sqllib
+        LoadXML(sXML)
+    End Sub
+
     Private Sub LoadTable(ByVal sTableName As String, ByVal Sch As String)
         Dim s As String = "a"
         Dim b As Boolean = False
@@ -265,6 +270,9 @@ Public Class TableDefn
         Dim sName As String
         Dim sType As String
         Dim sNull As String
+        Dim iLen As Integer = 0
+        Dim iPrc As Integer = 0
+        Dim iScl As Integer = 0
         Dim sColl As String
         Dim sFormula As String
         Dim bPersist As Boolean
@@ -306,6 +314,9 @@ Public Class TableDefn
         For Each dr In dt.Rows        ' Columns
             sName = slib.GetString(dr("COLUMN_NAME"))
             sType = slib.GetString(dr("DATA_TYPE"))
+            iLen = slib.GetInteger(dr("CHARACTER_MAXIMUM_LENGTH"), 0)
+            iPrc = slib.GetInteger(dr("NUMERIC_PRECISION"), 0)
+            iScl = slib.GetInteger(dr("NUMERIC_SCALE"), 0)
             sNull = Mid(slib.GetString(dr("IS_NULLABLE")), 1, 1)
             sdn = slib.GetString(dr("DEFAULT_NAME"))
             sdv = slib.CleanConstraint((slib.GetString(dr("DEFAULT_TEXT"))))
@@ -317,8 +328,8 @@ Public Class TableDefn
                 iSeed = slib.GetInteger(dr("IdentitySeed"), 1)
                 iIncr = slib.GetInteger(dr("IdentityIncrement"), 1)
                 bRepl = slib.GetBit(dr("IdentityReplicated"), False)
-                cColumns.AddIdentityColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
-                    dr("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, iSeed, iIncr, bRepl)
+                cColumns.AddIdentityColumn(sName, sType, iLen, iPrc, iScl, _
+                    sNull, iSeed, iIncr, bRepl)
             Else
                 s = slib.GetString(dr("ROWGUID"))
                 If s = "NO" Then
@@ -330,8 +341,7 @@ Public Class TableDefn
                                 dr("xmlcollection"), dr("is_xml_document"), sNull, _
                                 sdn, sdv, bn, sColl, sAP)
                         Else
-                            cColumns.AddColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
-                                dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
+                            cColumns.AddColumn(sName, sType, iLen, iPrc, iScl, sNull, _
                                 sdn, sdv, bn, sColl, sAP)
                         End If
                     Else
@@ -343,8 +353,7 @@ Public Class TableDefn
                         cColumns.AddComputedColumn(sName, sFormula, sNull, bPersist)
                     End If
                 Else
-                    cColumns.AddRowGuidColumn(sName, sType, dr("CHARACTER_MAXIMUM_LENGTH"), _
-                        dr.Item("NUMERIC_PRECISION"), dr("NUMERIC_SCALE"), sNull, _
+                    cColumns.AddRowGuidColumn(sName, sType, iLen, iPrc, iScl, sNull, _
                         sdn, sdv, bn, sAP)
                 End If
             End If
@@ -473,6 +482,583 @@ Public Class TableDefn
         '    End If
         '    xTriggers(i) = sqllib.GetString(r("TriggerName"))
         'Next
+    End Sub
+
+    '<?xml version='1.0'?>
+    '<sqldef>
+    '  <table name='ttt' owner='dbo'
+    '      [filegroup='EXTENSION' | partitionfunction='FUNCTION' partitioncolumn='COL'
+    '               textfilegroup='EXTENSION']
+    '    <columns>
+    '      <column name='id' type='integer' length='max' allownulls='N' seed='1' increment='1' />
+
+    '<column name='Name' type='Type'
+    ' document='Y' | content='Y'
+    '  collection='XMLCollection'
+    '  length='Length'
+    '  precision='Precision' scale='Scale'
+    '  allownulls='Y'
+    '  seed='Seed' increment='Increment' replication='N'
+    '  rowguid='Y'
+    '  ansipadded='N'
+    '  collation='database_default'
+    '  persisted='Y'>
+    '  <formula><![CDATA[Computed]]></formula>
+    '        <default name='DEFAULTNAME'><![CDATA[getdate()]]></default>
+    ' </column>
+    '      <column name='txt' type='text' length='max' allownulls='Y' />
+    '      <column name='dt' type='datetime' length='max' allownulls='N'>
+    '        <default><![CDATA[getdate()]]></default>
+    '      </column>
+    '    </columns>
+    '    <primarykey [name='PK'] clustered='Y'
+    '       [fillfactor='90']
+    '       [[filegroup='EXTENSION'] | [partitionfunction='FUNCTION' partitioncolumn='COL']]
+    '       [pad='on']
+    '       [dup='on']
+    '       [rowlocks='off']
+    '       [pagelocks='off'] >
+    '      <column name='id' [direction='desc'] />
+    '    </primarykey>
+    '    <indexes>
+    '       <index name='Name'
+    '          [clustered='Y']
+    '          [[filegroup='EXTENSION'] | [partitionfunction='FUNCTION' partitioncolumn='COL']]
+    '          [unique='Y']
+    '          [fillfactor='90']
+    '          [pad='on']
+    '          [dup='on']
+    '          [rowlocks='off']
+    '          [pagelocks='off'] >
+    '          <column name='Name'
+    '             [included='Y']
+    '             [direction='desc'] /> ...
+    '       </index>
+    '    </indexes>
+    '    <constraints>
+    '       <constraint type='check'
+    '          [name='Name']
+    '          [column='Name']
+    '          [replication='N'] >
+    '          <![CDATA[col='Y' col='N']]>
+    '       </constraint>
+    '    </constraints>
+    '    <foreignkeys>
+    '      <foreignkey name='Name' references='LinkedTable'
+    '        [match='MCH']
+    '        [ondelete='DEL']
+    '        [onupdate='UPD']
+    '        [replication='N'] >
+    '          <column name='Name' linksto='Linked' />
+    '      </foreignkey>
+    ''   </foreignkeys>
+    '  </table>
+    '</sqldef>
+
+    Public Sub LoadXML(ByVal sXML As String)
+        Dim b As Boolean
+        Dim i As Integer
+        Dim j As Integer
+        Dim k As Integer
+        Dim s As String
+        Dim dom As New Xml.XmlDocument
+        Dim x As Xml.XmlElement
+        Dim ele As Xml.XmlElement
+        Dim ele0 As Xml.XmlElement
+        Dim ele1 As Xml.XmlElement
+        Dim att As Xml.XmlAttribute
+        Dim sName As String
+        Dim sType As String
+        Dim sNull As String
+        Dim iLen As Integer
+        Dim iPrc As Integer
+        Dim iScl As Integer
+        Dim iSeed As Integer
+        Dim iIncr As Integer
+        Dim bRepl As Boolean
+        Dim sAP As String
+        Dim sColl As String
+        Dim bRG As Boolean
+        Dim sFormula As String
+        Dim bPersist As Boolean
+        Dim bDoc As Boolean
+        Dim sXMLColl As String
+        Dim sXMLSch As String
+        Dim sdn As String
+        Dim sdv As String
+        Dim bn As Boolean
+        Dim cNdx As TableIndex
+        Dim cCC As CheckConstraint
+        Dim cFK As ForeignKey
+
+        dom.Load(sXML)
+        If dom.DocumentElement.Name <> "sqldef" Then
+            PreLoad = 3
+            Return
+        End If
+
+        For Each x In dom.DocumentElement.ChildNodes
+            If x.Name = "table" Then
+                For Each att In x.Attributes
+                    Select Case att.Name
+                        Case "name"
+                            sTable = att.InnerText
+                            qTable = slib.QuoteIdentifier(sTable)
+
+                        Case "owner"
+                            sSchema = att.InnerText
+                            qSchema = slib.QuoteIdentifier(sSchema)
+
+                        Case "filegroup"
+                            fg.TableGroup = att.InnerText
+
+                        Case "textfilegroup"
+                            fg.TextGroup = att.InnerText
+
+                        Case "partitionfunction"
+                            fg.PartitionScheme = att.InnerText
+
+                        Case "partitioncolumn"
+                            fg.SchemeColumn = att.InnerText
+
+                    End Select
+                Next
+
+                For Each ele In x.ChildNodes
+                    Select Case ele.Name
+                        Case "columns"
+                            For Each ele0 In ele.ChildNodes
+                                sName = ""
+                                sType = "char"
+                                sNull = "N"
+                                iLen = 0
+                                iPrc = 0
+                                iScl = 0
+                                sAP = "Y"
+                                sColl = ""
+                                iSeed = 0
+                                iIncr = 0
+                                bRepl = False
+                                bRG = False
+                                bPersist = False
+                                bDoc = False
+                                sXMLColl = ""
+                                sXMLSch = ""
+
+                                For Each att In ele0.Attributes
+                                    Select Case att.Name
+                                        Case "name"
+                                            sName = att.InnerText
+
+                                        Case "type"
+                                            sType = att.InnerText
+
+                                        Case "allownulls"
+                                            sNull = att.InnerText
+
+                                        Case "length"
+                                            If LCase(att.InnerText) = "max" Then
+                                                iLen = -1
+                                            Else
+                                                iLen = CInt(att.InnerText)
+                                            End If
+
+                                        Case "precision"
+                                            iPrc = CInt(att.InnerText)
+
+                                        Case "scale"
+                                            iScl = CInt(att.InnerText)
+
+                                        Case "ansipadded"
+                                            sAP = UCase(Mid(att.InnerText, 1, 1))
+
+                                        Case "collation"
+                                            sColl = att.InnerText
+
+                                        Case "seed"
+                                            iSeed = CInt(att.InnerText)
+
+                                        Case "increment"
+                                            iIncr = CInt(att.InnerText)
+
+                                        Case "replication"
+                                            If LCase(Mid(att.InnerText, 1, 1)) = "n" Then
+                                                bRepl = True
+                                            End If
+
+                                        Case "rowguid"
+                                            If LCase(Mid(att.InnerText, 1, 1)) = "y" Then
+                                                bRG = True
+                                            End If
+
+                                        Case "persisted"
+                                            If LCase(Mid(att.InnerText, 1, 1)) = "y" Then
+                                                bPersist = True
+                                            End If
+
+                                        Case "document"
+                                            If LCase(Mid(att.InnerText, 1, 1)) = "y" Then
+                                                bDoc = True
+                                            End If
+
+                                        Case "content"
+                                            If LCase(Mid(att.InnerText, 1, 1)) = "y" Then
+                                                bDoc = False
+                                            End If
+
+                                        Case "collection"
+                                            sXMLColl = att.InnerText
+
+                                        Case "xmlschema"
+                                            sXMLSch = att.InnerText
+
+                                    End Select
+                                Next
+                                If sName = "" Then
+                                    PreLoad = 3
+                                    Return
+                                End If
+                                sFormula = ""
+                                sdn = ""
+                                sdv = ""
+                                bn = False
+                                For Each ele1 In ele0.ChildNodes
+                                    Select Case ele1.Name
+                                        Case "formula"
+                                            sFormula = ele1.InnerText
+
+                                        Case "default"
+                                            For Each att In ele1.Attributes
+                                                Select Case att.Name
+                                                    Case "name"
+                                                        sdn = att.InnerText
+                                                End Select
+                                            Next
+                                            sdv = ele1.InnerText
+
+                                            If sdn = "" Then
+                                                sdn = sName & "Def"
+                                                bn = True
+                                            End If
+                                    End Select
+                                Next
+
+                                If iSeed > 0 Then
+                                    cColumns.AddIdentityColumn(sName, sType, iLen, iPrc, _
+                                                   iScl, sNull, iSeed, iIncr, bRepl)
+                                ElseIf bRG Then
+                                    cColumns.AddRowGuidColumn(sName, sType, iLen, iPrc, _
+                                                   iScl, sNull, sdn, sdv, bn, sAP)
+                                ElseIf sFormula <> "" Then
+                                    cColumns.AddComputedColumn(sName, sFormula, _
+                                                   sNull, bPersist)
+                                ElseIf LCase(sType) = "xml" Then
+                                    cColumns.AddXMLColumn(sName, sXMLSch, sXMLColl, bDoc, _
+                                                   sNull, sdn, sdv, bn, sColl, sAP)
+                                Else
+                                    cColumns.AddColumn(sName, sType, iLen, iPrc, iScl, _
+                                                   sNull, sdn, sdv, bn, sColl, sAP)
+                                End If
+                            Next
+
+                        Case "primarykey"
+                            sName = ""
+                            bn = False
+                            For Each att In ele.Attributes
+                                Select Case att.Name
+                                    Case "name"
+                                        sName = att.InnerText
+                                        Exit For
+                                End Select
+                            Next
+                            If sName = "" Then
+                                sName = sTable & "PK"
+                                bn = True
+                            End If
+
+                            cNdx = New TableIndex(sSchema, sTable, sName)
+                            cNdx.PrimaryKey = True
+                            cNdx.PrimaryKeyNamed = bn
+                            cNdx.IndexFileGroup.DefaultGroup = fg.DefaultGroup
+                            cNdx.IndexFileGroup.TableGroup = fg.TableGroup
+                            cNdx.IndexFileGroup.TextGroup = fg.TextGroup
+
+                            b = False
+                            sColl = ""
+                            s = ""
+                            For Each att In ele.Attributes
+                                Select Case att.Name
+                                    Case "clustered"
+                                        If LCase(Mid(att.InnerText, 1, 1)) = "y" Then
+                                            cNdx.Clustered = True
+                                        End If
+
+                                    Case "fillfactor"
+                                        cNdx.FillFactor = CInt(att.InnerText)
+
+                                    Case "pad"
+                                        If LCase(att.InnerText) = "on" Then
+                                            cNdx.PadIndex = True
+                                        End If
+
+                                    Case "dup"
+                                        If LCase(att.InnerText) = "on" Then
+                                            cNdx.IgnoreDuplicates = True
+                                        End If
+
+                                    Case "rowlocks"
+                                        If LCase(att.InnerText) = "off" Then
+                                            cNdx.RowLocking = False
+                                        End If
+
+                                    Case "pagelocks"
+                                        If LCase(att.InnerText) = "off" Then
+                                            cNdx.PageLocking = False
+                                        End If
+
+                                    Case "filegroup"
+                                        cNdx.IndexFileGroup.IndexGroup = att.InnerText
+
+                                    Case "partitionfunction"
+                                        cNdx.IndexFileGroup.PartitionScheme = att.InnerText
+
+                                    Case "partitioncolumn"
+                                        s = att.InnerText
+                                        cNdx.IndexFileGroup.SchemeColumn = s
+
+                                End Select
+                            Next
+                            cIndexes.Add(cNdx)
+                            i = 1
+                            j = 0
+                            For Each ele1 In ele.ChildNodes
+                                sName = ""
+                                b = False
+                                For Each att In ele1.Attributes
+                                    Select Case att.Name
+                                        Case "name"
+                                            sName = att.InnerText
+                                            If sName = s Then
+                                                j = 1
+                                            End If
+
+                                        Case "direction"
+                                            If LCase(att.InnerText) = "desc" Then
+                                                b = True
+                                            End If
+
+                                    End Select
+                                Next
+                                cNdx.Columns.Add(sName, i, b, False, j)
+                                i += 1
+                            Next
+
+                        Case "indexes"
+                            For Each ele0 In ele.ChildNodes
+                                sName = ""
+                                s = ""
+                                For Each att In ele0.Attributes
+                                    Select Case att.Name
+                                        Case "name"
+                                            sName = att.InnerText
+                                            Exit For
+                                    End Select
+                                Next
+                                cNdx = New TableIndex(sSchema, sTable, sName)
+                                cNdx.IndexFileGroup.DefaultGroup = fg.DefaultGroup
+                                cNdx.IndexFileGroup.TableGroup = fg.TableGroup
+                                cNdx.IndexFileGroup.TextGroup = fg.TextGroup
+
+                                sColl = ""
+                                For Each att In ele0.Attributes
+                                    Select Case att.Name
+                                        Case "unique"
+                                            If LCase(Mid(att.InnerText, 1, 1)) = "y" Then
+                                                cNdx.Unique = True
+                                            End If
+
+                                        Case "clustered"
+                                            If LCase(Mid(att.InnerText, 1, 1)) = "y" Then
+                                                cNdx.Clustered = True
+                                            End If
+
+                                        Case "fillfactor"
+                                            cNdx.FillFactor = CInt(att.InnerText)
+
+                                        Case "norecompute"
+                                            If LCase(Mid(att.InnerText, 1, 1)) = "y" Then
+                                                cNdx.NoRecompute = True
+                                            End If
+
+                                        Case "pad"
+                                            If LCase(att.InnerText) = "on" Then
+                                                cNdx.PadIndex = True
+                                            End If
+
+                                        Case "dup"
+                                            If LCase(att.InnerText) = "on" Then
+                                                cNdx.IgnoreDuplicates = True
+                                            End If
+
+                                        Case "rowlocks"
+                                            If LCase(att.InnerText) = "off" Then
+                                                cNdx.RowLocking = False
+                                            End If
+
+                                        Case "pagelocks"
+                                            If LCase(att.InnerText) = "off" Then
+                                                cNdx.PageLocking = False
+                                            End If
+
+                                        Case "filegroup"
+                                            cNdx.IndexFileGroup.IndexGroup = att.InnerText
+
+                                        Case "partitionfunction"
+                                            cNdx.IndexFileGroup.PartitionScheme = att.InnerText
+
+                                        Case "partitioncolumn"
+                                            s = att.InnerText
+                                            cNdx.IndexFileGroup.SchemeColumn = s
+
+                                    End Select
+                                Next
+                                cIndexes.Add(cNdx)
+                                i = 1
+                                For Each ele1 In ele0.ChildNodes
+                                    sName = ""
+                                    b = False
+                                    bn = False
+                                    j = 0
+                                    For Each att In ele1.Attributes
+                                        Select Case att.Name
+                                            Case "name"
+                                                sName = att.InnerText
+                                                If sName = s Then
+                                                    j = 1
+                                                End If
+
+                                            Case "direction"
+                                                If LCase(att.InnerText) = "desc" Then
+                                                    b = True
+                                                End If
+
+                                            Case "included"
+                                                If LCase(Mid(att.InnerText, 1, 1)) = "y" Then
+                                                    bn = True
+                                                End If
+
+                                        End Select
+                                    Next
+                                    If bn Then
+                                        k = 0
+                                    Else
+                                        k = i
+                                        i += 1
+                                    End If
+                                    cNdx.Columns.Add(sName, k, b, bn, j)
+                                Next
+                            Next
+
+                        Case "constraints"
+                            i = 0
+                            For Each ele0 In ele.ChildNodes
+                                sType = ""
+                                sName = ""
+                                s = ""
+                                bRepl = False
+                                For Each att In ele0.Attributes
+                                    Select Case att.Name
+                                        Case "type"
+                                            sType = att.InnerText
+
+                                        Case "name"
+                                            sName = att.InnerText
+
+                                        Case "column"
+                                            s = att.InnerText
+
+                                        Case "replication"
+                                            If LCase(Mid(att.InnerText, 1, 1)) = "n" Then
+                                                bRepl = True
+                                            End If
+
+                                    End Select
+                                Next
+                                If sType = "check" Then
+                                    b = False
+                                    If sName = "" Then
+                                        sName = "check" & i
+                                        i += 1
+                                        b = True
+                                    End If
+                                    cCC = New CheckConstraint(sSchema, sTable, sName)
+                                    cCC.Definition = ele0.InnerText
+                                    cCC.Replicated = bRepl
+                                    cCC.ColumnName = s
+                                    cCC.SystemName = b
+                                    cCheckC.Add(cCC)
+                                End If
+                            Next
+
+                        Case "foreignkeys"
+                            For Each ele0 In ele.ChildNodes
+                                sName = ""
+                                For Each att In ele0.Attributes
+                                    Select Case att.Name
+                                        Case "name"
+                                            sName = att.InnerText
+                                    End Select
+                                Next
+                                cFK = New ForeignKey(sSchema, sTable, sName)
+                                For Each att In ele0.Attributes
+                                    Select Case att.Name
+                                        Case "references"
+                                            cFK.LinkedTable = att.InnerText
+
+                                        Case "referenceschema"
+                                            cFK.LinkedSchema = att.InnerText
+
+                                        Case "match"
+                                            cFK.MatchOption = att.InnerText
+
+                                        Case "ondelete"
+                                            cFK.DeleteOption = att.InnerText
+
+                                        Case "onupdate"
+                                            cFK.UpdateOption = att.InnerText
+
+                                        Case "replication"
+                                            If LCase(Mid(att.InnerText, 1, 1)) = "n" Then
+                                                cFK.Replicated = True
+                                            End If
+
+                                    End Select
+                                Next
+                                cFKeys.Add(cFK)
+
+                                i = 1
+                                For Each ele1 In ele0.ChildNodes
+                                    sName = ""
+                                    b = False
+                                    For Each att In ele1.Attributes
+                                        Select Case att.Name
+                                            Case "name"
+                                                sName = att.InnerText
+
+                                            Case "linksto"
+                                                s = att.InnerText
+
+                                        End Select
+                                    Next
+                                    cFK.Columns.Add(sName, s, i)
+                                    i += 1
+                                Next
+                            Next
+
+                    End Select
+                Next
+            End If
+        Next
     End Sub
 
     Public Function XML(ByVal opt As ScriptOptions) As String

@@ -134,6 +134,9 @@ Public Class CheckConstraint
         If bReplicated Then
             sOut &= " replication='N'"
         End If
+        If sColumnName <> "" Then
+            sOut &= " column='" & sColumnName & "'"
+        End If
         sOut &= ">" & vbCrLf
         sOut &= sTab & "  <![CDATA["
         sOut &= sqllib.CleanConstraint(sDefinition)

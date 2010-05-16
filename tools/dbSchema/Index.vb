@@ -556,6 +556,9 @@ Public Class TableIndex
         If iFillFactor > 0 Then
             sOut &= " fillfactor='" & iFillFactor & "'"
         End If
+        If bNoRecompute Then
+            sOut &= " norecompute='Y'"
+        End If
         If bPadIndex Then
             sOut &= " pad='on'"
         End If
