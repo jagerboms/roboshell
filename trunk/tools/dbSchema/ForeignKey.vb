@@ -113,9 +113,9 @@ Public Class ForeignKey
     Private qName As String = ""
     Private sLinkedSchema As String
     Private sLinkedTable As String
-    Private sMatch As String
-    Private sDelete As String
-    Private sUpdate As String
+    Private sMatch As String = "SIMPLE"
+    Private sDelete As String = "NO ACTION"
+    Private sUpdate As String = "NO ACTION"
     Private bReplicated As Boolean = False
 
     Private sqllib As New sql
@@ -357,6 +357,10 @@ Public Class ForeignKey
 
         sOut = sTab & "<foreignkey name='" & sName & "'"
         sOut &= " references='" & sLinkedTable & "'"
+        sOut &= " referenceschema='" & sLinkedSchema & "'"
+        If sMatch <> "SIMPLE" Then
+            sOut &= " match='" & sMatch & "'"
+        End If
         If sDelete <> "NO ACTION" Then
             sOut &= " ondelete='" & sDelete & "'"
         End If
