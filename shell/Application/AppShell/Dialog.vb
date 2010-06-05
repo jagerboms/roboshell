@@ -522,7 +522,7 @@ Public Class Dialog
 
         Try
             bLoading = True
-            LoadContainer("", fForm.Controls)
+            LoadContainer("", fForm.Controls, 30, 30)
         Catch ex As Exception
             Publics.MessageOut(ex.Message)
             bRet = False
@@ -531,7 +531,9 @@ Public Class Dialog
         Return bRet
     End Function
 
-    Private Function LoadContainer(ByVal sCont As String, ByVal ctrs As Control.ControlCollection) As Boolean
+    Private Function LoadContainer(ByVal sCont As String, _
+                ByVal ctrs As Control.ControlCollection, _
+                ByVal iTop As Integer, ByVal iLeft As Integer) As Boolean
         Dim l As Label
         Dim i As Integer = 0
         Dim iH As Integer
@@ -551,17 +553,13 @@ Public Class Dialog
         Dim ci As String = ""
         Dim d As DialogField
 
-        If sCont = "" Then
-            gt = 30
-            ch = 30
-        Else
-            gt = 0
-            ch = 0
-        End If
+        gt = iTop
+        ch = iLeft
 
         For Each f As Field In sDefn.Fields
             d = dlogf.Item(f.Name)
-            If d.Field.DisplayType <> "REL" And d.Field.DisplayType <> "H" And d.Field.Container = sCont Then ' do nothing for hidden fields
+            If d.Field.DisplayType <> "REL" And d.Field.DisplayType <> "H" _
+            And d.Field.Container = sCont Then ' do nothing for hidden fields
                 Select Case d.Field.Locate
                     Case "G"
                         gl = 5
@@ -600,7 +598,7 @@ Public Class Dialog
                     AddHandler tb.DrawItem, AddressOf TabDrawItem
                     tb.DrawMode = TabDrawMode.OwnerDrawFixed
                     ctrs.Add(tb)
-                    LoadContainer(d.Name, tb.Controls)
+                    LoadContainer(d.Name, tb.Controls, 0, 0)
 
                 ElseIf UCase(d.Field.DisplayType) = "TBP" Then
                     Dim s As String
@@ -618,8 +616,42 @@ Public Class Dialog
                             .Margin = New System.Windows.Forms.Padding(0)
                         End With
                         ctrs.Add(tp)
-                        LoadContainer(d.Name, tp.Controls)
+                        LoadContainer(d.Name, tp.Controls, 0, 0)
                     End If
+
+                ElseIf UCase(d.Field.DisplayType) = "GRP" Then
+                    Dim gb As New GroupBox
+                    Dim s As String
+
+                    cl = gl
+                    ct += ch + 5
+                    cw = d.Field.LabelWidth
+                    If d.Field.DisplayHeight > 1 Then
+                        iH = 17 + 17 * d.Field.DisplayHeight
+                    Else
+                        iH = 17
+                    End If
+                    With gb
+                        .Name = d.Name
+                        .Top = ct - 2
+                        .Left = cl + cw
+                        .Height = iH
+                        .Width = d.Field.DisplayWidth
+                        .BackColor = GetBackColour()
+                        .FlatStyle = FlatStyle.Standard
+                        .ForeColor = System.Drawing.Color.Blue
+                        s = d.Field.Label
+                        If d.Field.LinkField <> "" Then
+                            s = GetString(GetFieldValue(d.Field.LinkField))
+                        End If
+                        If s <> "" Then
+                            gb.Text = s
+                        End If
+                    End With
+                    cw += d.Field.DisplayWidth
+                    ch = iH
+                    ctrs.Add(gb)
+                    LoadContainer(d.Name, gb.Controls, 10, 10)
 
                 ElseIf d.Field.Locate <> "P" Or i = 0 Then
                     ct += ch + 5

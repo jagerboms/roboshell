@@ -188,7 +188,7 @@ Public Class ShellMenu
                 End If
             End If
         Next
-        fForm.Controls.Add(ts)
+        oForm.Controls.Add(ts)
     End Sub
 
     Public Sub Enable(ByVal Action As ActionDefn)

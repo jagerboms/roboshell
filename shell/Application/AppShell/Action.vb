@@ -235,63 +235,10 @@ Public Class ActionDefn
 End Class
 
 Public Class ActionDefns
-
-#Region "enumerator implementation"
-    Implements IEnumerable
-    Public Function GetEnumerator() As System.Collections.IEnumerator _
-                    Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActionsCollection(Keys, Values)
-    End Function
-
-    Public Class ActionsCollection
-        Implements IEnumerable, IEnumerator
-        Private Values As New Hashtable
-        Dim Keys() As String
-        Private EnumeratorPosition As Integer = -1
-
-        Public Sub New(ByVal aKeys() As String, ByVal Hash As Hashtable)
-            Keys = aKeys
-            Values = Hash
-        End Sub
-
-        Public Function GetEnumerator() As System.Collections.IEnumerator _
-                            Implements System.Collections.IEnumerable.GetEnumerator
-            Return CType(Me, IEnumerator)
-        End Function
-
-        Public Overridable Overloads ReadOnly Property Current() As Object _
-                                                    Implements IEnumerator.Current
-            Get
-                Return Values.Item(Keys(EnumeratorPosition))
-            End Get
-        End Property
-
-        Public Function MoveNext() As Boolean _
-                                Implements System.Collections.IEnumerator.MoveNext
-            EnumeratorPosition += 1
-            Return (EnumeratorPosition < Values.Count)
-        End Function
-
-        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
-            EnumeratorPosition = -1
-        End Sub
-    End Class
-#End Region
-
-    Private Values As New Hashtable
-    Private Keys() As String
-    Private SKeys() As String
+    Inherits CollectionBase
 
     Public Sub Add(ByVal Parm As ActionDefn)
-        Dim i As Integer
-
-        i = Values.Count
-        ReDim Preserve Keys(i)
-        ReDim Preserve SKeys(i)
-        Values.Add(Parm.Name, Parm)
-        Keys(i) = Parm.Name
-        SKeys(i) = Parm.Name
-        Array.Sort(SKeys)
+        List.Add(Parm)
     End Sub
 
     Public Function Add(ByVal Name As String, _
@@ -355,19 +302,20 @@ Public Class ActionDefns
         Return parm
     End Function
 
-    Public ReadOnly Property Item(ByVal index As Object) As ActionDefn
+    Default Public Overloads ReadOnly Property Item(ByVal Index As Integer) As ActionDefn
         Get
-            Try
-                Return CType(Values.Item(index), ActionDefn)
-            Catch
-                Return Nothing
-            End Try
+            Return CType(List.Item(Index), ActionDefn)
         End Get
     End Property
 
-    Public ReadOnly Property count() As Integer
+    Default Public Overloads ReadOnly Property Item(ByVal Name As String) As ActionDefn
         Get
-            Return Values.Count
+            For Each ic As ActionDefn In Me
+                If ic.Name = Name Then
+                    Return ic
+                End If
+            Next
+            Return Nothing
         End Get
     End Property
 End Class
@@ -437,48 +385,7 @@ Public Class ActionRule
 End Class
 
 Public Class ActionRules
-
-#Region "enumerator implementation"
-    Implements IEnumerable
-    Public Function GetEnumerator() As System.Collections.IEnumerator _
-                    Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActionRulesCollection(Values)
-    End Function
-
-    Public Class ActionRulesCollection
-        Implements IEnumerable, IEnumerator
-        Private Values As New Collection
-        Private EnumeratorPosition As Integer = 0
-
-        Public Sub New(ByVal col As Collection)
-            Values = col
-        End Sub
-
-        Public Function GetEnumerator() As System.Collections.IEnumerator _
-                            Implements System.Collections.IEnumerable.GetEnumerator
-            Return CType(Me, IEnumerator)
-        End Function
-
-        Public Overridable Overloads ReadOnly Property Current() As Object _
-                                                    Implements IEnumerator.Current
-            Get
-                Return CType(Values.Item(EnumeratorPosition), ActionRule)
-            End Get
-        End Property
-
-        Public Function MoveNext() As Boolean _
-                                Implements System.Collections.IEnumerator.MoveNext
-            EnumeratorPosition += 1
-            Return (EnumeratorPosition <= Values.Count)
-        End Function
-
-        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
-            EnumeratorPosition = 0
-        End Sub
-    End Class
-#End Region
-
-    Private Values As New Collection
+    Inherits CollectionBase
 
     Public Function Add(ByVal ID As Integer, _
                         ByVal FieldName As String, _
@@ -492,13 +399,18 @@ Public Class ActionRules
             .Type = Type
             .Value = Value
         End With
-        Values.Add(parm, parm.ID.ToString)
-        Return CType(Values.Item(ID.ToString), ActionRule)
+        List.Add(parm)
+        Return parm
     End Function
 
-    Public ReadOnly Property count() As Integer
+    Default Public Overloads ReadOnly Property Item(ByVal Name As String) As ActionRule
         Get
-            Return Values.Count
+            For Each ic As ActionRule In Me
+                If ic.FieldName = Name Then
+                    Return ic
+                End If
+            Next
+            Return Nothing
         End Get
     End Property
 End Class
@@ -527,48 +439,7 @@ Public Class ActionRuleDefn
 End Class
 
 Public Class ActionRuleDefns
-
-#Region "enumerator implementation"
-    Implements IEnumerable
-    Public Function GetEnumerator() As System.Collections.IEnumerator _
-                    Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActionRulesCollection(Values)
-    End Function
-
-    Public Class ActionRulesCollection
-        Implements IEnumerable, IEnumerator
-        Private Values As New Collection
-        Private EnumeratorPosition As Integer = 0
-
-        Public Sub New(ByVal col As Collection)
-            Values = col
-        End Sub
-
-        Public Function GetEnumerator() As System.Collections.IEnumerator _
-                            Implements System.Collections.IEnumerable.GetEnumerator
-            Return CType(Me, IEnumerator)
-        End Function
-
-        Public Overridable Overloads ReadOnly Property Current() As Object _
-                                                    Implements IEnumerator.Current
-            Get
-                Return CType(Values.Item(EnumeratorPosition), ActionRuleDefn)
-            End Get
-        End Property
-
-        Public Function MoveNext() As Boolean _
-                                Implements System.Collections.IEnumerator.MoveNext
-            EnumeratorPosition += 1
-            Return (EnumeratorPosition <= Values.Count)
-        End Function
-
-        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
-            EnumeratorPosition = 0
-        End Sub
-    End Class
-#End Region
-
-    Private Values As New Collection
+    Inherits CollectionBase
 
     Public Function Add(ByVal ID As Integer, _
                         ByVal Name As String, _
@@ -579,7 +450,7 @@ Public Class ActionRuleDefns
         Dim b As Boolean = True
         Dim rule As New ActionRule
 
-        For Each obj As Object In Values
+        For Each obj As Object In Me
             parm = CType(obj, ActionRuleDefn)
             If parm.Name = Name Then
                 b = False
@@ -589,7 +460,7 @@ Public Class ActionRuleDefns
         If b Then
             parm = New ActionRuleDefn
             parm.Name = Name
-            Values.Add(parm, Name)
+            List.Add(parm)
         End If
 
         With rule
@@ -602,9 +473,9 @@ Public Class ActionRuleDefns
         Return parm
     End Function
 
-    Public ReadOnly Property count() As Integer
+    Default Public Overloads ReadOnly Property Item(ByVal Index As Integer) As ActionRuleDefn
         Get
-            Return Values.Count
+            Return CType(List.Item(Index), ActionRuleDefn)
         End Get
     End Property
 End Class
@@ -633,48 +504,7 @@ Public Class ActionProcessRuleDefn
 End Class
 
 Public Class ActionProcessRuleDefns
-
-#Region "enumerator implementation"
-    Implements IEnumerable
-    Public Function GetEnumerator() As System.Collections.IEnumerator _
-                    Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActProcRulesCollection(Values)
-    End Function
-
-    Public Class ActProcRulesCollection
-        Implements IEnumerable, IEnumerator
-        Private Values As New Collection
-        Private EnumeratorPosition As Integer
-
-        Public Sub New(ByVal col As Collection)
-            Values = col
-        End Sub
-
-        Public Function GetEnumerator() As System.Collections.IEnumerator _
-                            Implements System.Collections.IEnumerable.GetEnumerator
-            Return CType(Me, IEnumerator)
-        End Function
-
-        Public Overridable Overloads ReadOnly Property Current() As Object _
-                                                    Implements IEnumerator.Current
-            Get
-                Return CType(Values.Item(EnumeratorPosition), ActionProcessRuleDefn)
-            End Get
-        End Property
-
-        Public Function MoveNext() As Boolean _
-                                Implements System.Collections.IEnumerator.MoveNext
-            EnumeratorPosition += 1
-            Return (EnumeratorPosition <= Values.Count)
-        End Function
-
-        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
-            EnumeratorPosition = 0
-        End Sub
-    End Class
-#End Region
-
-    Private Values As New Collection
+    Inherits CollectionBase
 
     Public Function Add(ByVal Process As String, _
                         ByVal Value As Object) As ActionProcessRuleDefn
@@ -682,14 +512,14 @@ Public Class ActionProcessRuleDefns
 
         parm.Process = Process
         parm.Value = Value
-        Values.Add(parm, parm.Value.ToString)
+        List.Add(parm)
 
         Return parm
     End Function
 
-    Public ReadOnly Property count() As Integer
+    Default Public Overloads ReadOnly Property Item(ByVal Index As Integer) As ActionProcessRuleDefn
         Get
-            Return Values.Count
+            Return CType(List.Item(Index), ActionProcessRuleDefn)
         End Get
     End Property
 End Class
@@ -718,48 +548,7 @@ Public Class ActionState
 End Class
 
 Public Class ActionStates
-
-#Region "enumerator implementation"
-    Implements IEnumerable
-    Public Function GetEnumerator() As System.Collections.IEnumerator _
-                    Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActStatesCollection(Values)
-    End Function
-
-    Public Class ActStatesCollection
-        Implements IEnumerable, IEnumerator
-        Private Values As New Collection
-        Private EnumeratorPosition As Integer
-
-        Public Sub New(ByVal col As Collection)
-            Values = col
-        End Sub
-
-        Public Function GetEnumerator() As System.Collections.IEnumerator _
-                            Implements System.Collections.IEnumerable.GetEnumerator
-            Return CType(Me, IEnumerator)
-        End Function
-
-        Public Overridable Overloads ReadOnly Property Current() As Object _
-                                                    Implements IEnumerator.Current
-            Get
-                Return CType(Values.Item(EnumeratorPosition), ActionState)
-            End Get
-        End Property
-
-        Public Function MoveNext() As Boolean _
-                                Implements System.Collections.IEnumerator.MoveNext
-            EnumeratorPosition += 1
-            Return (EnumeratorPosition <= Values.Count)
-        End Function
-
-        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
-            EnumeratorPosition = 0
-        End Sub
-    End Class
-#End Region
-
-    Private Values As New Collection
+    Inherits CollectionBase
 
     Public Function Add(ByVal Action As String, _
                         ByVal Enabled As Boolean) As ActionState
@@ -767,24 +556,25 @@ Public Class ActionStates
 
         parm.Action = Action
         parm.Enabled = Enabled
-        Values.Add(parm, parm.Action)
+        List.Add(parm)
 
-        Return CType(Values.Item(Action), ActionState)
+        Return parm
     End Function
 
-    Public ReadOnly Property Item(ByVal index As String) As ActionState
+    Default Public Overloads ReadOnly Property Item(ByVal Index As Integer) As ActionState
         Get
-            Try
-                Return CType(Values.Item(index), ActionState)
-            Catch
-                Return Nothing
-            End Try
+            Return CType(List.Item(Index), ActionState)
         End Get
     End Property
 
-    Public ReadOnly Property count() As Integer
+    Default Public Overloads ReadOnly Property Item(ByVal Name As String) As ActionState
         Get
-            Return Values.Count
+            For Each ic As ActionState In Me
+                If ic.Action = Name Then
+                    Return ic
+                End If
+            Next
+            Return Nothing
         End Get
     End Property
 End Class

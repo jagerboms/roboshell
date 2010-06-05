@@ -110,61 +110,10 @@ Public Class shellParameter
 End Class
 
 Public Class ShellParameters
-
-#Region "enumerator implementation"
-    Implements IEnumerable
-    Public Function GetEnumerator() As System.Collections.IEnumerator _
-                    Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ShellParametersCollection(Keys, Values)
-    End Function
-
-    Public Class ShellParametersCollection
-        Implements IEnumerable, IEnumerator
-        Private Values As New Hashtable
-        Dim Keys() As String
-        Private EnumeratorPosition As Integer = -1
-
-        Public Sub New(ByVal aKeys() As String, ByVal Hash As Hashtable)
-            Keys = aKeys
-            Values = Hash
-        End Sub
-
-        Public Function GetEnumerator() As System.Collections.IEnumerator _
-                            Implements System.Collections.IEnumerable.GetEnumerator
-            Return CType(Me, IEnumerator)
-        End Function
-
-        Public Overridable Overloads ReadOnly Property Current() As Object _
-                                                    Implements IEnumerator.Current
-            Get
-                Return CType(Values.Item(Keys(EnumeratorPosition)), shellParameter)
-            End Get
-        End Property
-
-        Public Function MoveNext() As Boolean _
-                                Implements System.Collections.IEnumerator.MoveNext
-            EnumeratorPosition += 1
-            Return (EnumeratorPosition < Values.Count)
-        End Function
-
-        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
-            EnumeratorPosition = -1
-        End Sub
-    End Class
-#End Region
-
-    Private Values As New Hashtable
-    Private Keys(0) As String
+    Inherits CollectionBase
 
     Public Sub Add(ByVal Parm As shellParameter)
-        Dim s As String
-        If Parm.Index > Keys.GetUpperBound(0) Then
-            ReDim Preserve Keys(Parm.Index)
-        End If
-
-        s = LCase(Parm.Name)
-        Values.Add(s, Parm)
-        Keys(Parm.Index) = s
+        List.Add(Parm)
     End Sub
 
     Public Function Add(ByVal sName As String, _
@@ -181,7 +130,7 @@ Public Class ShellParameters
         Dim parm As New shellParameter
 
         With parm
-            .Index = Values.Count
+            .Index = List.Count
             .Name = sName
             .Input = Input
             .Output = Output
@@ -196,13 +145,20 @@ Public Class ShellParameters
         Return parm
     End Function
 
-    Public ReadOnly Property Item(ByVal index As String) As shellParameter
+    Default Public Overloads ReadOnly Property Item(ByVal Index As Integer) As shellParameter
         Get
-            Try
-                Return CType(Values.Item(LCase(index)), shellParameter)
-            Catch
-                Return Nothing
-            End Try
+            Return CType(List.Item(Index), shellParameter)
+        End Get
+    End Property
+
+    Default Public Overloads ReadOnly Property Item(ByVal Name As String) As shellParameter
+        Get
+            For Each ic As shellParameter In Me
+                If ic.Name = Name Then
+                    Return ic
+                End If
+            Next
+            Return Nothing
         End Get
     End Property
 
@@ -211,9 +167,9 @@ Public Class ShellParameters
     Public Function ClearValues() As Boolean
         Dim p As shellParameter
 
-        For Each p In Values.Values
-            CType(p, shellParameter).Value = Nothing
-            CType(p, shellParameter).InputText = Nothing
+        For Each p In List
+            p.Value = Nothing
+            p.InputText = Nothing
         Next
         Return True
     End Function
@@ -227,7 +183,7 @@ Public Class ShellParameters
         Dim i As Integer
 
         If Not cSource Is Nothing Then
-            For Each p In Values.Values
+            For Each p In List
                 If p.Input Then
                     s = cSource.Item(p.Name)
                     If Not s Is Nothing Then
@@ -258,7 +214,7 @@ Public Class ShellParameters
     Public Sub Clone(ByRef parms As ShellParameters)
         Dim param As shellParameter
 
-        For Each p As shellParameter In Values.Values
+        For Each p As shellParameter In List
             param = New shellParameter
             With param
                 .Index = p.Index
@@ -277,10 +233,4 @@ Public Class ShellParameters
             parms.Add(param)
         Next
     End Sub
-
-    Public ReadOnly Property count() As Integer
-        Get
-            Return Values.Count
-        End Get
-    End Property
 End Class
