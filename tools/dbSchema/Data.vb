@@ -24,6 +24,26 @@ Imports System.Collections
 Public Class Data
     Private slib As New sql
     Private cTable As TableDefn
+    Private sFilter As String
+    Private sFileName As String
+
+    Public Property Filter() As String
+        Get
+            Filter = sFilter
+        End Get
+        Set(ByVal sf As String)
+            sFilter = sf
+        End Set
+    End Property
+
+    Public Property FileName() As String
+        Get
+            FileName = sFileName
+        End Get
+        Set(ByVal fn As String)
+            sFileName = fn
+        End Set
+    End Property
 
     Public Sub New(ByVal sTableName As String, ByVal Schema As String, _
                    ByVal sqllib As sql)
@@ -31,7 +51,7 @@ Public Class Data
         cTable = New TableDefn(sTableName, Schema, sqllib)
     End Sub
 
-    Public Function DataScript(ByVal sFilter As String) As String
+    Public Sub DataScript()
         Dim sOut As String = ""
         Dim tc As TableColumn
         Dim dt As DataTable
@@ -42,10 +62,11 @@ Public Class Data
         Dim i As Integer
         Dim ss As String = ""
         Dim cNDX As TableIndex = Nothing
+        Dim file As New System.IO.StreamWriter(sFileName)
 
         If cTable.IdentityColumn <> "" Then
-            sOut &= "set identity_insert " & cTable.QuotedSchema & "." & cTable.QuotedName & " on" & vbCrLf
-            sOut &= vbCrLf
+            file.WriteLine("set identity_insert " & cTable.QuotedSchema & "." & cTable.QuotedName & " on")
+            file.WriteLine("")
         End If
 
         sHead = "insert into " & cTable.QuotedSchema & "." & cTable.QuotedName & vbCrLf
@@ -63,17 +84,18 @@ Public Class Data
             s = "       ,x."
         Next
         sHead &= "from" & vbCrLf
-        sHead &= "(" & vbCrLf
+        sHead &= "("
 
         i = 0
         dt = slib.TableData(cTable.QuotedName, cTable.QuotedSchema, sFilter)
         For Each r As DataRow In dt.Rows
+            sOut = ""
             If i = 0 Then
-                sOut &= sTail
-                sOut &= sHead
+                file.WriteLine(sTail)
+                file.WriteLine(sHead)
                 s = "    select  "
                 For Each tc In cTable.AllColumns
-                    sOut &= s & tc.DataFormat(r(tc.Name)) & " " & tc.QuotedName & vbCrLf
+                    file.WriteLine(s & tc.QuotedFormat(r(tc.Name), False) & " " & tc.QuotedName)
                     s = "           ,"
                 Next
                 sTail = ") x" & vbCrLf
@@ -85,7 +107,7 @@ Public Class Data
                 End If
 
                 If cNDX Is Nothing Then
-                    Return ""
+                    Return
                 End If
 
                 s = "on      a."
@@ -97,28 +119,59 @@ Public Class Data
                 Next
 
                 sTail &= "where   a." & ss & " is null" & vbCrLf
-                sTail &= "go" & vbCrLf & vbCrLf
+                sTail &= "go" & vbCrLf
 
                 i += 1
             Else
                 s = "    union select "
                 For Each tc In cTable.AllColumns
-                    sOut &= s & tc.DataFormat(r(tc.Name))
+                    sOut &= s & tc.QuotedFormat(r(tc.Name), False)
                     s = ", "
                 Next
-                sOut &= vbCrLf
+                file.WriteLine(sOut)
                 i += 1
             End If
             If i = 100 Then i = 0
         Next
 
-        sOut &= sTail
+        file.WriteLine(sTail)
         If cTable.IdentityColumn <> "" Then
-            sOut &= vbCrLf
-            sOut &= "set identity_insert " & cTable.QuotedSchema & "." & cTable.QuotedName & " off" & vbCrLf
-            sOut &= "go" & vbCrLf & vbCrLf
+            file.WriteLine("")
+            file.WriteLine("set identity_insert " & cTable.QuotedSchema & "." & cTable.QuotedName & " off")
+            file.WriteLine("go")
+            file.WriteLine("")
         End If
 
-        Return sOut
-    End Function
+        file.Close()
+    End Sub
+
+    Public Sub DataCSV()
+        Dim tc As TableColumn
+        Dim dt As DataTable
+        Dim sOut As String = ""
+        Dim s As String = ""
+        Dim file As New System.IO.StreamWriter(sFileName)
+
+        dt = slib.TableData(cTable.QuotedName, cTable.QuotedSchema, sFilter)
+
+        file.WriteLine(cTable.QuotedSchema & "." & cTable.QuotedName)
+        s = ""
+        For Each tc In cTable.AllColumns
+            sOut &= s & """" & tc.QuotedName & """"
+            s = ","
+        Next
+        file.WriteLine(sOut)
+
+        For Each r As DataRow In dt.Rows
+            sOut = ""
+            s = ""
+            For Each tc In cTable.AllColumns
+                sOut &= s & tc.QuotedFormat(r(tc.Name), True)
+                s = ","
+            Next
+            file.WriteLine(sOut)
+        Next
+
+        file.Close()
+    End Sub
 End Class
