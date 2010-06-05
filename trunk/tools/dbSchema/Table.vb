@@ -1039,6 +1039,7 @@ Public Class TableDefn
                                 i = 1
                                 For Each ele1 In ele0.ChildNodes
                                     sName = ""
+                                    s = ""
                                     b = False
                                     For Each att In ele1.Attributes
                                         Select Case att.Name

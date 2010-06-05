@@ -116,12 +116,16 @@ Module Scriptor
                 SendMessage("   -hSchema is schema to retrieve. If not provided", "T")
                 SendMessage("     objects from all schemas are retrieved.", "T")
                 SendMessage("", "T")
-                SendMessage("   -fType determines the type of script to be generated. Can be one of:", "T")
+                SendMessage("   -fType determines the type of script to be generated.", "T")
+                SendMessage("     For schema extracts it can be one of:", "T")
                 SendMessage("      F - full includes existance checks and separate component files", "T")
                 SendMessage("      X - table components in XML existance checks for code files", "T")
                 SendMessage("      I - intermediate has no existance checks but separate component files", "T")
                 SendMessage("      S - summary has no existance checks and all components are in a single", "T")
-                SendMessage("          file.", "T")
+                SendMessage("          file. This is the default for schema extractions.", "T")
+                SendMessage("     For data extracts it can be one of:", "T")
+                SendMessage("      S - SQL insert statements. This is default for data extractions.", "T")
+                SendMessage("      C - CSV Comma delimited text file", "T")
                 SendMessage("", "T")
                 SendMessage("   -c ignore constraint name switch. If provided, constraint names are not", "T")
                 SendMessage("      included in the generated scripts.", "T")
@@ -192,6 +196,10 @@ Module Scriptor
                     mode = "F"
                 Case "I"
                     mode = "I"
+                Case "S"
+                    mode = "S"
+                Case "C"
+                    mode = "C"
             End Select
             opt.DefaultFix = GetSwitch("-z")
             UniCode = GetSwitch("-y")
@@ -342,15 +350,19 @@ Module Scriptor
 
     Private Sub ProcessData(ByVal Database As String, ByVal Table As String, ByVal Schema As String)
         Dim sOut As String = ""
-        Dim s As String
 
         Try
             sqllib.Database = Database
-            s = GetCommandParameter("-w")
             Dim cData As New Data(Table, Schema, sqllib)
-            sOut = cData.DataScript(s)
-
-            WriteFile("data", Schema, Table, "", "sql", sOut)
+            cData.Filter = GetCommandParameter("-w")
+            Select Case mode
+                Case "C"
+                    cData.FileName = GetFileName("data", Schema, Table, "", "csv")
+                    cData.DataCSV()
+                Case Else
+                    cData.FileName = GetFileName("data", Schema, Table, "", "sql")
+                    cData.DataScript()
+            End Select
 
         Catch ex As Exception
             SendMessage(ex.ToString, "E")
@@ -939,9 +951,9 @@ Module Scriptor
         Return 0
     End Function
 
-    Private Function WriteFile(ByVal Pre As String, ByVal Schema As String, _
+    Private Function GetFileName(ByVal Pre As String, ByVal Schema As String, _
                           ByVal ObjectName As String, ByVal Post As String, _
-                          ByVal Ext As String, ByVal Content As String) As Boolean
+                          ByVal Ext As String) As String
         Dim i As Integer
         Dim s As String = ""
         Dim ss As String = ""
@@ -971,10 +983,8 @@ Module Scriptor
 
         If s = "" Then
             SendMessage("No FileName provided.", "E")
-            Return False
+            Return ""
         End If
-
-        Dim file As System.IO.StreamWriter
 
         For i = 1 To Len(s)
             ss = LCase(Mid(s, i, 1))
@@ -982,7 +992,20 @@ Module Scriptor
                 s = Replace(s, ss, "#0x" & Hex(Asc(ss)) & "#")
             End If
         Next
+        Return s
+    End Function
 
+    Private Function WriteFile(ByVal Pre As String, ByVal Schema As String, _
+                          ByVal ObjectName As String, ByVal Post As String, _
+                          ByVal Ext As String, ByVal Content As String) As Boolean
+        Dim s As String
+
+        s = GetFileName(Pre, Schema, ObjectName, Post, Ext)
+        If s = "" Then
+            Return False
+        End If
+
+        Dim file As System.IO.StreamWriter
         If UniCode Then
             file = New System.IO.StreamWriter(s, False, System.Text.Encoding.Unicode)
         Else

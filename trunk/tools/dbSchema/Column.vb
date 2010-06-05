@@ -261,18 +261,25 @@ Public Class TableColumn
 #End Region
 
 #Region "Methods"
-    Public Function DataFormat(ByVal Value As Object) As String
+    Public Function QuotedFormat(ByVal Value As Object, ByVal bQuotes As Boolean) As String
         Dim s As String
+        Dim sQ As String
+
         If IsDBNull(Value) Then
             s = "null"
         Else
+            If bQuotes Then
+                sQ = """"
+            Else
+                sQ = "'"
+            End If
             Select Case vbType
                 Case "string", "Guid"
-                    s = "'" & Replace(RTrim(Value.ToString), "'", "''", 1, -1, CompareMethod.Text) & "'"
+                    s = sQ & Replace(RTrim(Value.ToString), sQ, sQ & sQ, 1, -1, CompareMethod.Text) & sQ
                 Case "datetime"
-                    s = "'" & Format(Value, "d-MMM-yyyy hh:mm:ss tt") & "'"
+                    s = sQ & Format(Value, "d-MMM-yyyy hh:mm:ss tt") & sQ
                 Case "date"
-                    s = "'" & Format(Value, "d-MMM-yyyy") & "'"
+                    s = sQ & Format(Value, "d-MMM-yyyy") & sQ
                 Case Else
                     s = Value.ToString
             End Select
