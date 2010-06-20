@@ -143,63 +143,23 @@ Public Class DialogField
 End Class
 
 Public Class DialogFields
-
-#Region "enumerator implementation"
-    Implements IEnumerable
-    Public Function GetEnumerator() As System.Collections.IEnumerator _
-                    Implements System.Collections.IEnumerable.GetEnumerator
-        Return New ActStatesCollection(Values)
-    End Function
-
-    Public Class ActStatesCollection
-        Implements IEnumerable, IEnumerator
-        Private Values As New Collection
-        Private EnumeratorPosition As Integer = 0
-
-        Public Sub New(ByVal col As Collection)
-            Values = col
-        End Sub
-
-        Public Function GetEnumerator() As System.Collections.IEnumerator _
-                            Implements System.Collections.IEnumerable.GetEnumerator
-            Return CType(Me, IEnumerator)
-        End Function
-
-        Public Overridable Overloads ReadOnly Property Current() As Object _
-                                                    Implements IEnumerator.Current
-            Get
-                Return CType(Values.Item(EnumeratorPosition), DialogField)
-            End Get
-        End Property
-
-        Public Function MoveNext() As Boolean _
-                                Implements System.Collections.IEnumerator.MoveNext
-            EnumeratorPosition += 1
-            Return (EnumeratorPosition <= Values.Count)
-        End Function
-
-        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
-            EnumeratorPosition = 0
-        End Sub
-    End Class
-#End Region
-
-    Private Values As New Collection ''Hashtable
+    Inherits CollectionBase
 
     Public Function Add(ByVal fField As Field) As DialogField
         Dim parm As New DialogField(fField)
 
-        Values.Add(parm, parm.Name)
+        Me.List.Add(parm)
         Return parm
     End Function
 
-    Public ReadOnly Property Item(ByVal index As String) As DialogField
+    Default Public Overloads ReadOnly Property Item(ByVal Name As String) As DialogField
         Get
-            Try
-                Return CType(Values.Item(index), DialogField)
-            Catch
-                Return Nothing
-            End Try
+            For Each df As DialogField In Me
+                If df.Name = Name Then
+                    Return df
+                End If
+            Next
+            Return Nothing
         End Get
     End Property
 End Class

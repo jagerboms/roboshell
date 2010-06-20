@@ -964,6 +964,8 @@ Module Publics
                 vt = DbType.Object
             Case "string"
                 vt = DbType.String
+            Case "varbinary"
+                vt = DbType.Binary
             Case Else
                 vt = DbType.String
                 MessageOut("Unknown parameter value type in database")
