@@ -45,59 +45,10 @@ Public Class ShellProperty
 End Class
 
 Public Class shellProperties
+    Inherits CollectionBase
 
-#Region "enumerator implementation"
-    Implements IEnumerable
-    Public Function GetEnumerator() As System.Collections.IEnumerator _
-                    Implements System.Collections.IEnumerable.GetEnumerator
-        Return New PropertyCollection(Keys, Values)
-    End Function
-
-    Public Class PropertyCollection
-        Implements IEnumerable, IEnumerator
-        Private Values As New Hashtable
-        Dim Keys() As String
-        Private EnumeratorPosition As Integer = -1
-
-        Public Sub New(ByVal aKeys() As String, ByVal Hash As Hashtable)
-            Keys = aKeys
-            Values = Hash
-        End Sub
-
-        Public Function GetEnumerator() As System.Collections.IEnumerator _
-                            Implements System.Collections.IEnumerable.GetEnumerator
-            Return CType(Me, IEnumerator)
-        End Function
-
-        Public Overridable Overloads ReadOnly Property Current() As Object _
-                                                    Implements IEnumerator.Current
-            Get
-                Return CType(Values.Item(Keys(EnumeratorPosition)), ShellProperty)
-            End Get
-        End Property
-
-        Public Function MoveNext() As Boolean _
-                                Implements System.Collections.IEnumerator.MoveNext
-            EnumeratorPosition += 1
-            Return (EnumeratorPosition < Values.Count)
-        End Function
-
-        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
-            EnumeratorPosition = -1
-        End Sub
-    End Class
-#End Region
-
-    Private Values As New Hashtable
-    Private Keys() As String
-
-    Public Sub Add(ByVal Parm As ShellProperty)
-        Dim i As Integer
-
-        i = Values.Count
-        ReDim Preserve Keys(i)
-        Values.Add(Parm.Type & ":" & Parm.Name, Parm)
-        Keys(i) = Parm.Type & ":" & Parm.Name
+    Public Sub zzAdd(ByVal Parm As ShellProperty)
+        Me.List.Add(Parm)
     End Sub
 
     Public Function Add(ByVal PropertyName As String, ByVal PropertyType As String, _
@@ -110,23 +61,18 @@ Public Class shellProperties
             .UserSpecific = UserSpecified
             .Value = PropertyValue
         End With
-        Me.Add(parm)
+        Me.List.Add(parm)
         Return parm
     End Function
 
-    Public ReadOnly Property Item(ByVal Name As String, ByVal Type As String) As ShellProperty
+    Default Public Overloads ReadOnly Property Item(ByVal Name As String, ByVal Type As String) As ShellProperty
         Get
-            Try
-                Return CType(Values.Item(Type & ":" & Name), ShellProperty)
-            Catch
-                Return Nothing
-            End Try
-        End Get
-    End Property
-
-    Public ReadOnly Property count() As Integer
-        Get
-            Return Values.Count
+            For Each ic As ShellProperty In Me
+                If ic.Name = Name And ic.Type = Type Then
+                    Return ic
+                End If
+            Next
+            Return Nothing
         End Get
     End Property
 End Class

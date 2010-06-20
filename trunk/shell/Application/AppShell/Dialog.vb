@@ -559,7 +559,7 @@ Public Class Dialog
         For Each f As Field In sDefn.Fields
             d = dlogf.Item(f.Name)
             If d.Field.DisplayType <> "REL" And d.Field.DisplayType <> "H" _
-            And d.Field.Container = sCont Then ' do nothing for hidden fields
+            And d.Field.DisplayType <> "DT" And d.Field.Container = sCont Then ' do nothing for hidden fields
                 Select Case d.Field.Locate
                     Case "G"
                         gl = 5
@@ -867,6 +867,13 @@ Public Class Dialog
                         AddHandler cb.CheckedChanged, AddressOf Field_Change
                         If ch = 0 Then ch = 23
 
+                    Case "PIC"            'PictureBox
+                        Dim pbox As New PictureBox
+                        iH = d.Field.DisplayHeight
+                        AddControl(d, CType(pbox, Control), ctrs, ct, _
+                              cl + cw, d.Field.DisplayWidth, iH)
+                        cw += d.Field.DisplayWidth
+                        If pbox.Height > ch Then ch = pbox.Height
                 End Select
                 If ct + ch > ft Then ft = ct + ch
                 If cw > gw Then gw = cw
@@ -1381,6 +1388,12 @@ Public Class Dialog
                     '        Return "N"
                     '    End If
 
+                Case "PIC"
+                    Dim memStream As New System.IO.MemoryStream()
+                    Dim pb As PictureBox = DirectCast(c.Control, PictureBox)
+                    pb.Image.Save(memStream, pb.Image.RawFormat)
+                    Return memStream.ToArray()
+
                 Case Else
                     Return c.Value
             End Select
@@ -1396,7 +1409,8 @@ Public Class Dialog
         Try
             d.Text = d.Control.Text
 
-            If GetString(d.Text) = "" And d.Field.DisplayType <> "C" And d.Field.DisplayType <> "CHK" Then
+            If GetString(d.Text) = "" And d.Field.DisplayType <> "C" _
+            And d.Field.DisplayType <> "CHK" And d.Field.DisplayType <> "PIC" Then
                 d.Value = Nothing
             Else
                 d.Value = d.Text
@@ -1512,6 +1526,7 @@ Public Class Dialog
                                     End Try
                             End Select
                         End If
+
                     Case Else
                         d.Value = d.Control.Text
                 End Select
@@ -1571,7 +1586,8 @@ Public Class Dialog
             Next
         End If
 
-        If d.Field.DisplayType <> "REL" And d.Field.DisplayType <> "H" Then
+        If d.Field.DisplayType <> "REL" And d.Field.DisplayType <> "H" _
+        And d.Field.DisplayType <> "DT" Then
             d.Errs.Clear()
 
             If s = "" Then
@@ -1961,6 +1977,13 @@ Public Class Dialog
                         End If
                     End If
 
+                Case "PIC"            'Picturebox
+                    Dim pb As PictureBox = DirectCast(d.Control, PictureBox)
+                    Dim memStream As New System.IO.MemoryStream(CType(d.Value, Byte()))
+                    Dim g As Image
+                    g = Image.FromStream(memStream)
+                    pb.Image = g
+
             End Select
             CheckField(Field)
         Catch ex As Exception
@@ -2077,6 +2100,16 @@ Public Class Dialog
             fForm.ContextMenu2.MenuItems.Clear()
             mi = fForm.ContextMenu2.MenuItems.Add("Copy to Clipboard", _
                                         New EventHandler(AddressOf mnuClip_Click))
+
+            For Each d As DialogField In dlogf
+                If d.Field.DisplayType = "PIC" Then
+                    mi = fForm.ContextMenu2.MenuItems.Add("Copy Picture to Clipboard", _
+                                           New EventHandler(AddressOf mnuClipPic_Click))
+
+                    Exit For
+                End If
+            Next
+
         End If
     End Sub
 
@@ -2089,7 +2122,7 @@ Public Class Dialog
         Dim d As DialogField
 
         For Each d In dlogf
-            If d.Field.DisplayType <> "H" Then
+            If d.Field.DisplayType <> "H" And d.Field.DisplayType <> "PIC" Then
                 Obj = GetFieldValue(d.Name)
                 If d.Field.Label = "" Then
                     s = d.Name
@@ -2104,6 +2137,20 @@ Public Class Dialog
             End If
         Next
         Clipboard.SetDataObject(New DataObject(DataFormats.Text, Line))
+    End Sub
+
+    Private Sub mnuClipPic_Click(ByVal sender As System.Object, _
+                                            ByVal e As System.EventArgs)
+        Dim iData As IDataObject = Clipboard.GetDataObject()
+        Dim pb As PictureBox
+
+        For Each d As DialogField In dlogf
+            If d.Field.DisplayType = "PIC" Then
+                pb = DirectCast(d.Control, PictureBox)
+                Clipboard.SetData(DataFormats.Bitmap, pb.Image)
+                Return
+            End If
+        Next
     End Sub
 
     Private Sub mnuComboRefresh_Click(ByVal sender As System.Object, _
