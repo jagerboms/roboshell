@@ -1,9 +1,13 @@
 Option Explicit On 
 Option Strict On
 
+Imports System.Drawing.Drawing2D
+
 Public Class TreeForm
     Inherits System.Windows.Forms.Form
     Friend oOwner As Tree
+    Friend WithEvents statusBar As System.Windows.Forms.StatusStrip
+    Friend WithEvents panel0 As System.Windows.Forms.ToolStripStatusLabel
     Friend DblClkKey As String
 
 #Region " Windows Form Designer generated code "
@@ -39,7 +43,6 @@ Public Class TreeForm
     Friend WithEvents ImageList As System.Windows.Forms.ImageList
     Friend WithEvents ContextMenu1 As System.Windows.Forms.ContextMenu
     Friend WithEvents ContextMenu2 As System.Windows.Forms.ContextMenu
-    Friend WithEvents statusBar As System.Windows.Forms.StatusBar
     <System.Diagnostics.DebuggerStepThrough()> Private Sub InitializeComponent()
         Me.components = New System.ComponentModel.Container
         Me.TreeView1 = New System.Windows.Forms.TreeView
@@ -47,7 +50,9 @@ Public Class TreeForm
         Me.ToolTip1 = New System.Windows.Forms.ToolTip(Me.components)
         Me.ImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.ContextMenu1 = New System.Windows.Forms.ContextMenu
-        Me.statusBar = New System.Windows.Forms.StatusBar
+        Me.statusBar = New System.Windows.Forms.StatusStrip
+        Me.panel0 = New System.Windows.Forms.ToolStripStatusLabel
+        Me.statusBar.SuspendLayout()
         Me.SuspendLayout()
         '
         'TreeView1
@@ -73,10 +78,19 @@ Public Class TreeForm
         '
         'statusBar
         '
+        Me.statusBar.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.panel0})
         Me.statusBar.Location = New System.Drawing.Point(0, 271)
         Me.statusBar.Name = "statusBar"
         Me.statusBar.Size = New System.Drawing.Size(296, 22)
         Me.statusBar.TabIndex = 1
+        Me.statusBar.Text = "StatusStrip1"
+        '
+        'panel0
+        '
+        Me.panel0.BackColor = System.Drawing.Color.Transparent
+        Me.panel0.Name = "panel0"
+        Me.panel0.Size = New System.Drawing.Size(11, 17)
+        Me.panel0.Text = " "
         '
         'TreeForm
         '
@@ -88,7 +102,10 @@ Public Class TreeForm
         Me.Name = "TreeForm"
         Me.StartPosition = System.Windows.Forms.FormStartPosition.Manual
         Me.Text = "Tree"
+        Me.statusBar.ResumeLayout(False)
+        Me.statusBar.PerformLayout()
         Me.ResumeLayout(False)
+        Me.PerformLayout()
 
     End Sub
 
@@ -125,6 +142,14 @@ Public Class TreeForm
     Private Sub ContextMenu2_Popup(ByVal sender As System.Object, _
                 ByVal e As System.EventArgs) Handles ContextMenu2.Popup
         oOwner.DoMenu()
+    End Sub
+
+    Private Sub statusBar_Paint(ByVal sender As Object, ByVal e As System.Windows.Forms.PaintEventArgs) Handles statusBar.Paint
+        Dim tb As StatusStrip = DirectCast(sender, StatusStrip)
+        Dim r As New Rectangle(0, 0, tb.Width, tb.Height)
+        Dim Br As New LinearGradientBrush(r, DialogStyle.NameToColour(DialogStyle.ToolEnd), DialogStyle.NameToColour(DialogStyle.ToolStart), LinearGradientMode.Vertical)
+        e.Graphics.FillRectangle(Br, e.ClipRectangle)
+        'tb.Items(0).Width = tb.Width - 20
     End Sub
 End Class
 
