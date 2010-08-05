@@ -80,7 +80,7 @@ Public Class DialogForm
         Me.panel0.BackColor = System.Drawing.Color.Transparent
         Me.panel0.Name = "panel0"
         Me.panel0.Size = New System.Drawing.Size(190, 17)
-        Me.panel0.Text = "..."
+        Me.panel0.Text = " "
         Me.panel0.TextAlign = System.Drawing.ContentAlignment.MiddleLeft
         '
         'DialogForm
@@ -600,6 +600,7 @@ Public Class Dialog
                     cw += d.Field.DisplayWidth
                     ch = iH
                     ctrs.Add(tb)
+                    d.AddControl(CType(tb, Control))
 
                     For Each ff As Field In sDefn.Fields
                         dd = dlogf.Item(ff.Name)
@@ -1230,16 +1231,6 @@ Public Class Dialog
                         Return o
                     End If
 
-                    'Case "TBP"
-                    '    Dim i As Integer
-                    '    i = CType(dlogf.Item(c.Name).Control, TabPage).
-                    '    i = CType(dlogf.Item(c.Field.Container).Control, TabControl).SelectedIndex
-                    '    If i = c.ControlIndex Then
-                    '        Return "Y"
-                    '    Else
-                    '        Return "N"
-                    '    End If
-
                 Case "PIC"
                     Dim memStream As New System.IO.MemoryStream()
                     Dim pb As PictureBox = DirectCast(c.Control, PictureBox)
@@ -1683,11 +1674,21 @@ Public Class Dialog
     End Sub
 
     Private Sub SetErrorState(ByVal d As DialogField)
-        Dim b As Boolean
+        Dim b, bt As Boolean
         Dim sField As String = d.ErrField
         Dim dErr As DialogField = dlogf.Item(sField)
         Dim lab As Label = dErr.Label()
         Dim con As Control = d.Control
+        Dim dd As DialogField
+        Dim tb As rsTab = Nothing
+        Dim s As String
+
+        s = d.Field.Container
+        dd = dlogf.Item(s)
+        If dd.Field.DisplayType = "TBP" Then
+            dd = dlogf.Item(dd.Field.Container)
+            tb = DirectCast(dd.Control, rsTab)
+        End If
 
         If d.Errs.count = 0 Then
             If fForm.ToolTip1.GetToolTip(con) <> "" Then
@@ -1695,22 +1696,31 @@ Public Class Dialog
             End If
 
             b = True
-            For Each dd As DialogField In dlogf
+            bt = False
+            For Each dd In dlogf
                 If dd.ErrField = sField And dd.Errs.count > 0 Then
                     b = False
-                    Exit For
+                End If
+                If dd.Field.Container = s And dd.Errs.count > 0 Then
+                    bt = True
                 End If
             Next
-            If b Then
-                lab.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeColour)
-            Else
-                lab.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeError)
-            End If
         Else
-            lab.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeError)
+            b = False
+            bt = True
             fForm.ToolTip1.SetToolTip(con, d.Errs.Message)
         End If
+
+        If b Then
+            lab.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeColour)
+        Else
+            lab.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeError)
+        End If
+        If Not tb Is Nothing Then
+            tb.SetError(s, bt)
+        End If
     End Sub
+
 
     Private Sub SetFieldValue(ByVal Field As String, ByVal Value As Object, _
                                                             ByVal sText As String)

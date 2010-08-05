@@ -1,5 +1,6 @@
 Option Explicit On
 Option Strict On
+
 Imports System.Drawing.Drawing2D
 
 Public Class Grid
@@ -450,6 +451,7 @@ Public Class GridForm
                 fForm.oOwner = Me
                 fForm.BackColor = DialogStyle.NameToColour(DialogStyle.BackColour)
                 fForm.Grid1.BackgroundColor = DialogStyle.NameToColour(DialogStyle.BackColour)
+                fForm.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeColour)
                 fForm.Grid1.GridColor = DialogStyle.NameToColour(DialogStyle.BorderNormal)
 
                 fForm.Name = sDefn.Title
