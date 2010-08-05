@@ -25,8 +25,48 @@ Public Class ObjectRegister
 End Class
 
 Public Class ObjectRegisters
-    Inherits CollectionBase
 
+#Region "enumerator implementation"
+    Implements IEnumerable
+    Public Function GetEnumerator() As System.Collections.IEnumerator _
+                    Implements System.Collections.IEnumerable.GetEnumerator
+        Return New ObjRegCollection(Values)
+    End Function
+
+    Public Class ObjRegCollection
+        Implements IEnumerable, IEnumerator
+        Private Values As New Collection
+        Private EnumeratorPosition As Integer = 0
+
+        Public Sub New(ByVal Coll As Collection)
+            Values = Coll
+        End Sub
+
+        Public Function GetEnumerator() As System.Collections.IEnumerator _
+                            Implements System.Collections.IEnumerable.GetEnumerator
+            Return CType(Me, IEnumerator)
+        End Function
+
+        Public Overridable Overloads ReadOnly Property Current() As Object _
+                                                    Implements IEnumerator.Current
+            Get
+                Return CType(Values.Item(EnumeratorPosition), ObjectRegister)
+            End Get
+        End Property
+
+        Public Function MoveNext() As Boolean _
+                                Implements System.Collections.IEnumerator.MoveNext
+            EnumeratorPosition += 1
+            Return (EnumeratorPosition < Values.Count + 1)
+        End Function
+
+        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
+            EnumeratorPosition = 0
+        End Sub
+    End Class
+#End Region
+
+    Private Values As New Collection
     Private iCount As Integer = 1
     Private oListen As New Listeners
 
@@ -40,7 +80,7 @@ Public Class ObjectRegisters
     End Property
 
     Public Sub Add(ByVal Parm As ObjectRegister)
-        Me.List.Add(Parm)
+        Values.Add(Parm, Parm.Key)
     End Sub
 
     Public Function Add(ByVal pObject As ShellObject) As ObjectRegister
@@ -53,29 +93,29 @@ Public Class ObjectRegisters
             .Key = sKey
             .pObject = pObject
         End With
-        Me.List.Add(parm)
-        Return parm
+        Me.Add(parm)
+        Return CType(Values.Item(sKey), ObjectRegister)
     End Function
 
-    Default Public Overloads ReadOnly Property Item(ByVal sKey As String) As ObjectRegister
+    Public ReadOnly Property Item(ByVal index As Object) As ObjectRegister
         Get
-            For Each org As ObjectRegister In Me
-                If org.Key = sKey Then
-                    Return org
-                End If
-            Next
-            Return Nothing
+            Try
+                Return CType(Values.Item(index), ObjectRegister)
+            Catch
+                Return Nothing
+            End Try
+        End Get
+    End Property
+
+    Public ReadOnly Property count() As Integer
+        Get
+            Return Values.Count
         End Get
     End Property
 
     Public Sub Remove(ByVal sKey As String)
-        Dim org As ObjectRegister
-
         Listen.Remove(sKey)
-        org = Me.Item(sKey)
-        If Not org Is Nothing Then
-            Me.List.Remove(org)
-        End If
+        Values.Remove(sKey)
     End Sub
 End Class
 
@@ -123,10 +163,51 @@ Public Class Listener
 End Class
 
 Public Class Listeners
-    Inherits CollectionBase
+
+#Region "enumerator implementation"
+    Implements IEnumerable
+    Public Function GetEnumerator() As System.Collections.IEnumerator _
+                    Implements System.Collections.IEnumerable.GetEnumerator
+        Return New ListenerCollection(Values)
+    End Function
+
+    Public Class ListenerCollection
+        Implements IEnumerable, IEnumerator
+        Private Values As New Collection
+        Private EnumeratorPosition As Integer = 0
+
+        Public Sub New(ByVal Coll As Collection)
+            Values = Coll
+        End Sub
+
+        Public Function GetEnumerator() As System.Collections.IEnumerator _
+                            Implements System.Collections.IEnumerable.GetEnumerator
+            Return CType(Me, IEnumerator)
+        End Function
+
+        Public Overridable Overloads ReadOnly Property Current() As Object _
+                                                    Implements IEnumerator.Current
+            Get
+                Return CType(Values.Item(EnumeratorPosition), Listener)
+            End Get
+        End Property
+
+        Public Function MoveNext() As Boolean _
+                                Implements System.Collections.IEnumerator.MoveNext
+            EnumeratorPosition += 1
+            Return (EnumeratorPosition < Values.Count + 1)
+        End Function
+
+        Public Overridable Overloads Sub Reset() Implements IEnumerator.Reset
+            EnumeratorPosition = 0
+        End Sub
+    End Class
+#End Region
+
+    Private Values As New Collection
 
     Public Sub Add(ByVal Parm As Listener)
-        Me.List.Add(Parm)
+        Values.Add(Parm, Parm.Key & "||" & Parm.ObjectKey)
     End Sub
 
     Public Function Add(ByVal sKey As String, _
@@ -135,31 +216,36 @@ Public Class Listeners
         Dim parm As New Listener
 
         With parm
-            .Index = Me.List.Count
+            .Index = Values.Count
             .Key = sKey
             .KeyType = KeyType
             .ObjectKey = ObjectKey
         End With
-        Me.List.Add(parm)
-        Return parm
+        Me.Add(parm)
+        Return CType(Values.Item(sKey & "||" & ObjectKey), Listener)
     End Function
 
-    Default Public Overloads ReadOnly Property Item(ByVal sKey As String) As Listener
+    Public ReadOnly Property Item(ByVal index As Object) As Listener
         Get
-            For Each l As Listener In Me
-                If l.Key = sKey Then
-                    Return l
-                End If
-            Next
-            Return Nothing
+            Try
+                Return CType(Values.Item(index), Listener)
+            Catch
+                Return Nothing
+            End Try
+        End Get
+    End Property
+
+    Public ReadOnly Property count() As Integer
+        Get
+            Return Values.Count
         End Get
     End Property
 
     Public Sub Remove(ByVal sObjectKey As String)
-        Dim l As Listener = Me.Item(sObjectKey)
-
-        If Not l Is Nothing Then
-            Me.List.Remove(l)
-        End If
+        For Each r As Listener In Values
+            If r.ObjectKey = sObjectKey Then
+                Values.Remove(r.Key & "||" & sObjectKey)
+            End If
+        Next
     End Sub
 End Class

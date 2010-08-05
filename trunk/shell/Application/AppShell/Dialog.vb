@@ -1,9 +1,13 @@
 Option Explicit On 
 Option Strict On
 
+Imports System.Drawing.Drawing2D
+
 Public Class DialogForm
     Inherits System.Windows.Forms.Form
     Friend oOwner As Dialog
+    Friend WithEvents statusBar As System.Windows.Forms.StatusStrip
+    Friend WithEvents panel0 As System.Windows.Forms.ToolStripStatusLabel
     Friend DblClkKey As String
 
 #Region " Windows Form Designer generated code "
@@ -38,20 +42,15 @@ Public Class DialogForm
     Friend WithEvents ContextMenu1 As System.Windows.Forms.ContextMenu
     Friend WithEvents MenuItem1 As System.Windows.Forms.MenuItem
     Friend WithEvents ContextMenu2 As System.Windows.Forms.ContextMenu
-    Friend WithEvents statusBar As System.Windows.Forms.StatusBar
-    Friend WithEvents Message As System.Windows.Forms.StatusBarPanel
-    Friend WithEvents Stale As System.Windows.Forms.StatusBarPanel
     <System.Diagnostics.DebuggerStepThrough()> Private Sub InitializeComponent()
         Me.components = New System.ComponentModel.Container
         Me.ToolTip1 = New System.Windows.Forms.ToolTip(Me.components)
         Me.ContextMenu1 = New System.Windows.Forms.ContextMenu
         Me.MenuItem1 = New System.Windows.Forms.MenuItem
         Me.ContextMenu2 = New System.Windows.Forms.ContextMenu
-        Me.statusBar = New System.Windows.Forms.StatusBar
-        Me.Message = New System.Windows.Forms.StatusBarPanel
-        Me.Stale = New System.Windows.Forms.StatusBarPanel
-        CType(Me.Message, System.ComponentModel.ISupportInitialize).BeginInit()
-        CType(Me.Stale, System.ComponentModel.ISupportInitialize).BeginInit()
+        Me.statusBar = New System.Windows.Forms.StatusStrip
+        Me.panel0 = New System.Windows.Forms.ToolStripStatusLabel
+        Me.statusBar.SuspendLayout()
         Me.SuspendLayout()
         '
         'ContextMenu1
@@ -68,27 +67,21 @@ Public Class DialogForm
         '
         'statusBar
         '
-        Me.statusBar.ContextMenu = Me.ContextMenu2
-        Me.statusBar.Location = New System.Drawing.Point(0, 249)
+        Me.statusBar.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.panel0})
+        Me.statusBar.Location = New System.Drawing.Point(0, 255)
         Me.statusBar.Name = "statusBar"
-        Me.statusBar.Panels.AddRange(New System.Windows.Forms.StatusBarPanel() {Me.Message, Me.Stale})
-        Me.statusBar.ShowPanels = True
-        Me.statusBar.Size = New System.Drawing.Size(224, 28)
-        Me.statusBar.TabIndex = 1
+        Me.statusBar.Size = New System.Drawing.Size(224, 22)
+        Me.statusBar.TabIndex = 0
+        Me.statusBar.Text = "StatusStrip1"
         '
-        'Message
+        'panel0
         '
-        Me.Message.AutoSize = System.Windows.Forms.StatusBarPanelAutoSize.Spring
-        Me.Message.BorderStyle = System.Windows.Forms.StatusBarPanelBorderStyle.None
-        Me.Message.Name = "Message"
-        Me.Message.Width = 170
-        '
-        'Stale
-        '
-        Me.Stale.Alignment = System.Windows.Forms.HorizontalAlignment.Center
-        Me.Stale.BorderStyle = System.Windows.Forms.StatusBarPanelBorderStyle.None
-        Me.Stale.Name = "Stale"
-        Me.Stale.Width = 38
+        Me.panel0.AutoSize = False
+        Me.panel0.BackColor = System.Drawing.Color.Transparent
+        Me.panel0.Name = "panel0"
+        Me.panel0.Size = New System.Drawing.Size(190, 17)
+        Me.panel0.Text = "..."
+        Me.panel0.TextAlign = System.Drawing.ContentAlignment.MiddleLeft
         '
         'DialogForm
         '
@@ -97,14 +90,16 @@ Public Class DialogForm
         Me.ClientSize = New System.Drawing.Size(224, 277)
         Me.ContextMenu = Me.ContextMenu2
         Me.Controls.Add(Me.statusBar)
-        Me.ForeColor = System.Drawing.Color.Blue
+        Me.Font = New System.Drawing.Font("Tahoma", 8.25!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.ForeColor = System.Drawing.Color.Navy
         Me.KeyPreview = True
         Me.Name = "DialogForm"
         Me.StartPosition = System.Windows.Forms.FormStartPosition.Manual
         Me.Text = "Dialog"
-        CType(Me.Message, System.ComponentModel.ISupportInitialize).EndInit()
-        CType(Me.Stale, System.ComponentModel.ISupportInitialize).EndInit()
+        Me.statusBar.ResumeLayout(False)
+        Me.statusBar.PerformLayout()
         Me.ResumeLayout(False)
+        Me.PerformLayout()
 
     End Sub
 
@@ -169,6 +164,14 @@ Public Class DialogForm
         Next
         Return False
     End Function
+
+    Private Sub statusBar_Paint(ByVal sender As Object, ByVal e As System.Windows.Forms.PaintEventArgs) Handles statusBar.Paint
+        Dim tb As StatusStrip = DirectCast(sender, StatusStrip)
+        Dim r As New Rectangle(0, 0, tb.Width, tb.Height)
+        Dim Br As New LinearGradientBrush(r, DialogStyle.NameToColour(DialogStyle.ToolEnd), DialogStyle.NameToColour(DialogStyle.ToolStart), LinearGradientMode.Vertical)
+        e.Graphics.FillRectangle(Br, e.ClipRectangle)
+        tb.Items(0).Width = tb.Width - 20
+    End Sub
 End Class
 
 Public Class DialogDefn
@@ -306,7 +309,8 @@ Public Class Dialog
                 LocalParms.MergeValues(Parms)
                 fForm = New DialogForm
                 fForm.oOwner = Me
-                fForm.BackColor = Publics.GetBackColour()
+                fForm.BackColor = DialogStyle.NameToColour(DialogStyle.BackColour)
+                fForm.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeColour)
                 fForm.Name = sDefn.Title
                 SetTitle()
                 If Not Publics.MDIParent Is Nothing Then
@@ -319,14 +323,13 @@ Public Class Dialog
                 End If
                 InitialiseAction()
                 Publics.SetFormPosition(CType(fForm, Form), sDefn.Name)
-                For Each d In dlogf
-                    If d.Field.DisplayType = "D" Then
-                        If Not d.Control Is Nothing Then
-                            CType(d.Control, ComboBox).SelectedIndex = -1
-                            CType(d.Control, ComboBox).SelectedIndex = -1
-                        End If
-                    End If
-                Next
+                'For Each d In dlogf
+                '    If d.Field.DisplayType = "D" Then
+                '        If Not d.Control Is Nothing Then
+                '            CType(d.Control, rsCombo).SelectedIndex = -1
+                '        End If
+                '    End If
+                'Next
 
                 fForm.Show()
                 For Each d In dlogf
@@ -370,9 +373,6 @@ Public Class Dialog
                     Application.DoEvents()
                 Next
                 bInit = False
-                If FirstField <> "" Then
-                    FieldEnter(FirstField)
-                End If
 
                 Dim hProcs() As String = Nothing ' Call each field based action but only
                 Dim bDo As Boolean               ' once for each underlying process...
@@ -403,20 +403,24 @@ Public Class Dialog
                     End If
                 Next
                 SetActions()
-
                 ProcessAction("Refresh")
+                If FirstField <> "" Then
+                    d = dlogf.Item(FirstField)
+                    d.Control.Focus()
+                    FieldEnter(FirstField)
+                End If
             Else
                 SetTitle()
                 If Not Parms Is Nothing And Not bLoading Then
                     For Each p In Parms
                         If p.Output Then
-                            p2 = MyBase.Parms.Item(p.Name)
+                            p2 = MyBase.parms.Item(p.Name)
                             If Not p2 Is Nothing Then
                                 If p2.Input Then
                                     d = dlogf.Item(p.Name)
                                     If Not d Is Nothing Then
-                                        If Not MyBase.Parms.Item(d.Name) Is Nothing Then
-                                            obj = MyBase.Parms.Item(d.Name).Value
+                                        If Not MyBase.parms.Item(d.Name) Is Nothing Then
+                                            obj = MyBase.parms.Item(d.Name).Value
                                             p2 = LocalParms.Item(d.Name)
                                             If Not p2 Is Nothing Then
                                                 p2.Value = obj
@@ -551,7 +555,8 @@ Public Class Dialog
         Dim ft As Integer = 30
 
         Dim ci As String = ""
-        Dim d As DialogField
+        Dim d, dd As DialogField
+        Dim s As String
 
         gt = iTop
         ch = iLeft
@@ -575,9 +580,9 @@ Public Class Dialog
                 End Select
 
                 If UCase(d.Field.DisplayType) = "TAB" Then
-                    Dim tb As New TabControl
-
                     cl = gl
+                    Dim tb As New rsTab
+
                     ct += ch + 5
                     cw = d.Field.LabelWidth
                     If d.Field.DisplayHeight > 1 Then
@@ -587,7 +592,6 @@ Public Class Dialog
                     End If
                     With tb
                         .Name = d.Name
-                        .Appearance = TabAppearance.FlatButtons
                         .Top = ct - 2
                         .Left = cl + cw
                         .Height = iH
@@ -595,33 +599,25 @@ Public Class Dialog
                     End With
                     cw += d.Field.DisplayWidth
                     ch = iH
-                    AddHandler tb.DrawItem, AddressOf TabDrawItem
-                    tb.DrawMode = TabDrawMode.OwnerDrawFixed
                     ctrs.Add(tb)
-                    LoadContainer(d.Name, tb.Controls, 0, 0)
 
-                ElseIf UCase(d.Field.DisplayType) = "TBP" Then
-                    Dim s As String
-                    s = d.Field.Label
-                    If d.Field.LinkField <> "" Then
-                        s = GetString(GetFieldValue(d.Field.LinkField))
-                    End If
-                    If s <> "" Then
-                        Dim tp As New TabPage(s)
-                        With tp
-                            .Name = d.Name
-                            .AutoScroll = True
-                            .BackColor = GetBackColour()
-                            .BorderStyle = BorderStyle.None
-                            .Margin = New System.Windows.Forms.Padding(0)
-                        End With
-                        ctrs.Add(tp)
-                        LoadContainer(d.Name, tp.Controls, 0, 0)
-                    End If
+                    For Each ff As Field In sDefn.Fields
+                        dd = dlogf.Item(ff.Name)
+                        If UCase(dd.Field.DisplayType) = "TBP" And UCase(dd.Field.Container) = UCase(d.Name) Then
+                            s = dd.Field.Label
+                            If dd.Field.LinkField <> "" Then
+                                s = GetString(GetFieldValue(dd.Field.LinkField))
+                            End If
+                            If s <> "" Then
+                                Dim tp As Panel
+                                tp = tb.AddPanel(dd.Name, s)
+                                LoadContainer(dd.Name, tp.Controls, 0, 0)
+                            End If
+                        End If
+                    Next
 
                 ElseIf UCase(d.Field.DisplayType) = "GRP" Then
                     Dim gb As New GroupBox
-                    Dim s As String
 
                     cl = gl
                     ct += ch + 5
@@ -637,9 +633,9 @@ Public Class Dialog
                         .Left = cl + cw
                         .Height = iH
                         .Width = d.Field.DisplayWidth
-                        .BackColor = GetBackColour()
+                        .BackColor = DialogStyle.NameToColour(DialogStyle.BackColour)
                         .FlatStyle = FlatStyle.Standard
-                        .ForeColor = System.Drawing.Color.Blue
+                        .ForeColor = DialogStyle.NameToColour(DialogStyle.ForeColour)
                         s = d.Field.Label
                         If d.Field.LinkField <> "" Then
                             s = GetString(GetFieldValue(d.Field.LinkField))
@@ -671,8 +667,7 @@ Public Class Dialog
                         End Select
                         .Left = cl
                         .Width = cw
-                        .ForeColor = System.Drawing.Color.Blue
-                        .Visible = True
+                        .ForeColor = DialogStyle.NameToColour(DialogStyle.ForeColour)
                     End With
                     cw += 5
                     ctrs.Add(l)
@@ -684,90 +679,47 @@ Public Class Dialog
                     'ct = gt
                     cw += 2
                     d.ErrField = ci
-
                 End If
 
                 Select Case UCase(d.Field.DisplayType)
                     Case "L", "B"       ' Label
-
-                        If d.Field.DisplayHeight > 1 Then
-                            Dim t As New TextBox
-                            With t
+                        Dim t As New rsText
+                        With t
+                            .Enabled = False
+                            .ScrollBars = System.Windows.Forms.ScrollBars.None
+                            .Cursor = System.Windows.Forms.Cursors.Default
+                            .TabStop = False
+                            .WordWrap = True
+                            .Justify = d.Field.Justify
+                            If d.Field.DisplayHeight > 1 Then
                                 .Multiline = True
-                                .ReadOnly = True
-                                .ScrollBars = System.Windows.Forms.ScrollBars.None
-                                .Cursor = System.Windows.Forms.Cursors.Default
-                                .TabStop = False
-                                .WordWrap = True
-                                .BackColor = Publics.GetBackColour
-                                Select Case d.Field.Justify
-                                    Case "R"
-                                        .TextAlign = HorizontalAlignment.Right
-                                    Case "C"
-                                        .TextAlign = HorizontalAlignment.Center
-                                    Case Else
-                                        .TextAlign = HorizontalAlignment.Left
-                                End Select
-                                If d.Field.DisplayType = "B" Then
-                                    .BorderStyle = BorderStyle.FixedSingle
-                                Else
-                                    .BorderStyle = BorderStyle.None
-                                End If
-                            End With
-                            TxtHeight = t.Height
-                            iH = TxtHeight * d.Field.DisplayHeight
-                            AddControl(d, CType(t, Control), ctrs, ct - 1, _
-                                    cl + cw, d.Field.DisplayWidth, iH)
-                            iH = t.Height + 3
-
-                        Else
-                            l = New Label
-                            With l
-                                Select Case d.Field.Justify
-                                    Case "R"
-                                        .TextAlign = ContentAlignment.MiddleRight
-                                    Case "C"
-                                        .TextAlign = ContentAlignment.MiddleCenter
-                                    Case Else
-                                        .TextAlign = ContentAlignment.MiddleLeft
-                                End Select
-                                If d.Field.DisplayType = "B" Then
-                                    .BorderStyle = BorderStyle.Fixed3D
-                                End If
-                            End With
-                            iH = -1
-                            AddControl(d, CType(l, Control), ctrs, ct - 1, _
-                                    cl + cw, d.Field.DisplayWidth, iH)
-                            iH = l.Height
-                        End If
+                                iH = t.Height * d.Field.DisplayHeight
+                            Else
+                                iH = -1
+                            End If
+                            If d.Field.DisplayType = "L" Then
+                                .Border = False
+                            End If
+                            .Width = d.Field.DisplayWidth
+                        End With
+                        AddControl(d, CType(t, Control), ctrs, ct - 1, _
+                                cl + cw, d.Field.DisplayWidth, iH)
                         cw += d.Field.DisplayWidth
                         If iH > ch Then ch = iH
 
                     Case "T", "P"            'Textbox, DatePicker
-                        Dim t As New TextBox
+                        Dim t As New rsText
                         With t
-                            Select Case d.Field.Justify
-                                Case "R"
-                                    .TextAlign = HorizontalAlignment.Right
-                                Case "C"
-                                    .TextAlign = HorizontalAlignment.Center
-                                Case Else
-                                    .TextAlign = HorizontalAlignment.Left
-                            End Select
-                            If d.Field.Enabled Then
-                                If d.Field.Required Then
-                                    .BackColor = Color.FromArgb(255, 255, 100)
-                                End If
-                            Else
-                                .ReadOnly = True
-                            End If
+                            .Justify = d.Field.Justify
+                            .Enabled = d.Field.Enabled
+                            .Required = d.Field.Required
                             If d.Field.DisplayHeight > 1 And UCase(d.Field.DisplayType) = "T" Then
                                 .Multiline = True
                                 iH = t.Height * d.Field.DisplayHeight
                             Else
                                 iH = -1
                             End If
-                            .BorderStyle = BorderStyle.FixedSingle
+                            .Width = d.Field.DisplayWidth
                         End With
                         AddControl(d, CType(t, Control), ctrs, ct, _
                                 cl + cw, d.Field.DisplayWidth, iH)
@@ -797,14 +749,9 @@ Public Class Dialog
                         End If
 
                     Case "D"        'Dropdownlist
-                        Dim cbox As New ComboBox
+                        Dim cbox As New rsCombo
                         With cbox
-                            'd.Sorted = True
-                            If d.Field.Required Then
-                                .BackColor = Color.FromArgb(255, 255, 100)
-                            End If
-                            .DropDownStyle = ComboBoxStyle.DropDown
-                            AddHandler .KeyUp, AddressOf Combo_KeyUp
+                            .Required = d.Field.Required
                             If d.Field.FillProcess <> "" Then
                                 Dim dt As DataTable
                                 Dim p As New ShellProcess(d.Field.FillProcess, _
@@ -819,7 +766,6 @@ Public Class Dialog
                                 .DataSource = dt
                             Else
                                 Dim ds As New ArrayList
-                                Dim s As String
                                 If d.Field.ValueField = "" Then
                                     s = "Y||Yes||N||No"
                                 Else
@@ -833,21 +779,15 @@ Public Class Dialog
                                 .DisplayMember = "Text"
                                 .ValueMember = "Value"
                             End If
-
+                            .Width = d.Field.DisplayWidth
                         End With
                         AddControl(d, CType(cbox, Control), ctrs, ct, _
                               cl + cw, d.Field.DisplayWidth, -1)
                         cw += d.Field.DisplayWidth
-                        AddHandler cbox.SelectedIndexChanged, AddressOf Field_Change
                         If cbox.Height > ch Then ch = cbox.Height
 
                     Case "LST"            'Listbox
                         Dim lbox As New ListBox
-                        'With lbox
-                        '    If d.Field.Required Then
-                        '        .BackColor = Color.FromArgb(255, 255, 100)
-                        '    End If
-                        'End With
                         If d.Field.DisplayHeight > 1 Then
                             iH = 17 + 13 * d.Field.DisplayHeight
                         Else
@@ -856,7 +796,6 @@ Public Class Dialog
                         AddControl(d, CType(lbox, Control), ctrs, ct, _
                               cl + cw, d.Field.DisplayWidth, iH)
                         cw += d.Field.DisplayWidth
-                        AddHandler lbox.SelectedIndexChanged, AddressOf Field_Change
                         If lbox.Height > ch Then ch = lbox.Height
 
                     Case "CHK", "C"            'Checkbox
@@ -864,7 +803,6 @@ Public Class Dialog
                         AddControl(d, CType(cb, Control), ctrs, ct - 2, _
                                           cl + cw, 15, -1)
                         cw += 15
-                        AddHandler cb.CheckedChanged, AddressOf Field_Change
                         If ch = 0 Then ch = 23
 
                     Case "PIC"            'PictureBox
@@ -896,8 +834,7 @@ Public Class Dialog
             .Enabled = d.Field.Enabled
             AddHandler .Enter, AddressOf Field_Enter
             AddHandler .Leave, AddressOf Field_Leave
-            AddHandler .TextChanged, AddressOf Field_Change
-            .ForeColor = System.Drawing.Color.Blue
+            .ForeColor = DialogStyle.NameToColour(DialogStyle.ForeColour)
             .Top = top
             .Left = left
             .Width = width
@@ -926,12 +863,12 @@ Public Class Dialog
         Dim s As String
         Dim dt As Date
         Dim d As DialogField
-        Dim t As TextBox
+        Dim t As rsText
 
         dp = DirectCast(sender, DateTimePicker)
         s = CType(dp.Tag, String)
         d = dlogf.Item(s)
-        t = DirectCast(d.Control, TextBox)
+        t = DirectCast(d.Control, rsText)
         s = t.Text
         If IsDate(s) Then
             dt = CDate(s)
@@ -943,83 +880,18 @@ Public Class Dialog
         Dim dp As DateTimePicker
         Dim s As String
         Dim d As DialogField
-        Dim t As TextBox
+        Dim t As rsText
 
         dp = DirectCast(sender, DateTimePicker)
         s = CType(dp.Tag, String)
         d = dlogf.Item(s)
-        t = DirectCast(d.Control, TextBox)
+        t = DirectCast(d.Control, rsText)
         If d.Field.Format = "" Then
             t.Text = Format(dp.Value, "d-MMM-yyyy")
         Else
             t.Text = Format(dp.Value, d.Field.Format)
         End If
         SetFieldText(s)
-    End Sub
-
-    Private Sub TabDrawItem(ByVal sender As Object, ByVal e As System.Windows.Forms.DrawItemEventArgs)
-        Dim tc As System.Windows.Forms.TabControl = DirectCast(sender, System.Windows.Forms.TabControl)
-        Dim sf As New StringFormat
-        'Dim r As Rectangle
-        'Dim rf As RectangleF
-
-        sf.Alignment = StringAlignment.Center
-        sf.LineAlignment = StringAlignment.Center
-        sf.HotkeyPrefix = Drawing.Text.HotkeyPrefix.Show
-        If tc.SelectedIndex = e.Index Then
-            e.Graphics.FillRectangle(New SolidBrush(GetBackColour()), e.Bounds.X, e.Bounds.Y, e.Bounds.Width, e.Bounds.Height)
-
-            'r = tc.GetTabRect(tc.TabPages.Count - 1)
-            'rf = New RectangleF(r.X + r.Width, r.Y - 5, _
-            '  tc.Width - (r.X + r.Width), r.Height + 5)
-
-            'e.Graphics.FillRectangle(New SolidBrush(tc.Parent.BackColor), rf)
-            'Else
-            '    e.Graphics.FillRectangle(Brushes.Gainsboro, e.Bounds.X, e.Bounds.Y, e.Bounds.Width, e.Bounds.Height)
-        End If
-        e.Graphics.DrawString(tc.TabPages(e.Index).Text, tc.Font, Brushes.Blue, RectangleF.op_Implicit(e.Bounds), sf)
-        sf.Dispose()
-    End Sub
-
-    'Auto fill combo box input functionality...
-
-    Private Sub Combo_KeyUp(ByVal sender As Object, ByVal e As KeyEventArgs)
-        Dim s As String
-        Dim ss As String
-        Dim i As Integer
-
-        Try
-            Dim c As ComboBox = CType(sender, ComboBox)
-
-            Select Case e.KeyCode
-                Case Keys.Left, Keys.Right, Keys.Up, Keys.Delete, Keys.Down, _
-                     Keys.Shift, Keys.ShiftKey, Keys.Tab, Keys.F1, Keys.Home, Keys.End
-                Case Keys.Back
-                    s = c.Text
-                    If Len(s) > 1 Then
-                        s = Mid(s, 1, Len(s) - 1)
-                    Else
-                        s = ""
-                    End If
-                Case Else
-                    If c.Text <> "" And c.SelectionStart = Len(c.Text) Then
-                        s = c.Text
-                        i = c.FindString(c.Text)
-                        If i > -1 Then
-                            c.SelectedIndex = i
-                            ss = c.Text
-                            If Len(s) < Len(ss) Then
-                                c.Select(Len(s), Len(ss) - Len(s))
-                            Else
-                                c.Select(Len(s), 1)
-                            End If
-                        End If
-                    End If
-            End Select
-            'ProcessKey(e.KeyCode, e.Modifiers.ToString)
-
-        Catch ex As Exception
-        End Try
     End Sub
 
     Private Sub Field_Enter(ByVal sender As Object, ByVal e As System.EventArgs)
@@ -1036,17 +908,14 @@ Public Class Dialog
     Private Sub FieldEnter(ByVal sField As String)
         Dim d As DialogField = dlogf.Item(sField)
         Dim c As Control
-        fForm.statusBar.Panels(0).Text = d.Field.HelpText
+        fForm.statusBar.Items(0).Text = d.Field.HelpText
         d.Last = d.Value
         ActiveField = d.Name
-
         c = d.Control
         If Not c Is Nothing Then
-            If c.GetType.Name = "TextBox" Then
-                Dim t As TextBox = DirectCast(c, TextBox)
+            If c.GetType.Name = "rsText" Then
+                Dim t As rsText = DirectCast(c, rsText)
                 t.Text = d.Text
-                t.SelectionStart = 0
-                t.SelectionLength = Len(t.Text)
             End If
         End If
         bEditing = True
@@ -1054,31 +923,14 @@ Public Class Dialog
 
     Private Sub Field_Leave(ByVal sender As Object, ByVal e As System.EventArgs)
         Dim d As DialogField = dlogf.Item(CType(CType(sender, Control).Tag, String))
-        ActiveField = ""
-        fForm.statusBar.Panels(0).Text = ""
-        SetFieldText(d.Name)
-        bEditing = False
-        fForm.statusBar.Panels(1).Style = StatusBarPanelStyle.Text
-        fForm.statusBar.Panels(1).Text = ""
+        FieldLeave(d.Name)
     End Sub
 
     Private Sub FieldLeave(ByVal sName As String)
         ActiveField = ""
-        fForm.statusBar.Panels(0).Text = ""
+        fForm.statusBar.Items(0).Text = ""
         SetFieldText(sName)
         bEditing = False
-        fForm.statusBar.Panels(1).Style = StatusBarPanelStyle.Text
-        fForm.statusBar.Panels(1).Text = ""
-    End Sub
-
-    Private Sub Field_Change(ByVal sender As Object, ByVal e As System.EventArgs)
-        Dim d As DialogField = dlogf.Item(CType(CType(sender, Control).Tag, String))
-        If ActiveField = d.Name Then
-            If Not d.Actions Is Nothing And bEditing Then
-                fForm.statusBar.Panels(1).Style = StatusBarPanelStyle.OwnerDraw
-                fForm.statusBar.Panels(1).Text = "Stale"
-            End If
-        End If
     End Sub
 
     Private Function ValidateFields() As Boolean
@@ -1340,7 +1192,7 @@ Public Class Dialog
                     c2 = dlogf.Item(c.Field.LinkField)
                     Select Case c2.Field.DisplayType
                         Case "D"
-                            Dim cb As ComboBox = DirectCast(c2.Control, ComboBox)
+                            Dim cb As rsCombo = DirectCast(c2.Control, rsCombo)
                             i = cb.SelectedIndex
                             ds = cb.DataSource
 
@@ -1416,7 +1268,7 @@ Public Class Dialog
                 d.Value = d.Text
                 Select Case d.Field.DisplayType
                     Case "D"            'DropdownList
-                        Dim cb As ComboBox = DirectCast(d.Control, ComboBox)
+                        Dim cb As rsCombo = DirectCast(d.Control, rsCombo)
                         If cb.SelectedIndex = -1 Then
                             d.Value = Nothing
                         Else
@@ -1488,9 +1340,9 @@ Public Class Dialog
                                             Else
                                                 dt = CType(s, Date)
                                             End If
+                                            d.Value = dt
                                         Catch
                                         End Try
-                                        d.Value = dt
                                     End If
 
                                 Case DbType.Currency
@@ -1538,29 +1390,30 @@ Public Class Dialog
     End Sub
 
     Private Sub CheckField(ByVal Field As String)
-        Dim s As String
+        Dim s, ss As String
         Dim a As ActionDefn
         Dim d As DialogField = dlogf.Item(Field)
         Dim con As Control = d.Control
         Dim sComp1 As String
         Dim sComp2 As String = ""
         Dim b As Boolean
+        Dim cb As rsCombo
+        Dim tx As rsText
 
         s = GetString(d.Value)
 
         If Not d.LinkedFields Is Nothing Then
             Dim dx As DialogField
-            Dim cb As ComboBox
             Dim dt As DataTable
             Dim save As String
-            For Each ss As String In d.LinkedFields
+            For Each ss In d.LinkedFields
                 dx = dlogf.Item(ss)
                 If Not dx Is Nothing Then
                     Select Case dx.Field.DisplayType
                         Case "D"   ' dropdown list
                             If dx.Field.FillProcess <> "" Then
                                 If dx.Field.LinkColumn <> "" Then
-                                    cb = DirectCast(dx.Control, ComboBox)
+                                    cb = DirectCast(dx.Control, rsCombo)
                                     save = cb.Text
                                     dt = CType(cb.DataSource, DataTable)
                                     dt.DefaultView.RowFilter = dx.Field.LinkColumn & " = '" & s & "'"
@@ -1590,22 +1443,31 @@ Public Class Dialog
         And d.Field.DisplayType <> "DT" Then
             d.Errs.Clear()
 
-            If s = "" Then
-                If d.Field.Required Then
-                    d.Errs.Add("R", "Must not be empty")
-                End If
-                If d.BusDateRelated Then
-                    If d.Field.Required = True Then
-                        con.BackColor = Color.FromArgb(255, 255, 100)
-                    Else
-                        con.BackColor = Color.White
+            Select Case d.Field.DisplayType
+                Case "D"   ' dropdown list
+                    cb = DirectCast(d.Control, rsCombo)
+                    ss = cb.ErrorMsg
+                    If ss <> "" Then
+                        d.Errs.Add("R", ss)
                     End If
+
+                Case "T", "P"
+                    tx = DirectCast(d.Control, rsText)
+                    tx.UserMsg = ""
+                    ss = tx.ErrorMsg
+                    If ss <> "" Then
+                        d.Errs.Add("R", ss)
+                    End If
+            End Select
+
+            If s = "" Then
+                If d.BusDateRelated Then
                     d.BusDateRelated = False
                 End If
-
             Else
                 If d.Field.DisplayType = "T" Or d.Field.DisplayType = "P" _
                     Or d.Field.DisplayType = "L" Or d.Field.DisplayType = "B" Then
+                    tx = DirectCast(d.Control, rsText)
                     Select Case d.Field.ValueType
                         Case DbType.Date, DbType.DateTime
                             Dim dt As System.DateTime
@@ -1613,9 +1475,11 @@ Public Class Dialog
                                 dt = CType(d.Value, Date)
                                 If dt = DateTime.MinValue Then
                                     d.Errs.Add("V", "Invalid date")
+                                    tx.UserMsg = "Invalid date"
                                 End If
                             Catch
                                 d.Errs.Add("V", "Invalid date")
+                                tx.UserMsg = "Invalid date"
                             End Try
                             If d.Errs.count = 0 Then
                                 If d.Field.Format = "" Then
@@ -1629,12 +1493,6 @@ Public Class Dialog
                                 If d.BusDateRelated And _
                                     Format(Publics.BusinessDate, "yyyyMMdd") <> Format(Now(), "yyyyMMdd") Then
                                     con.BackColor = Color.GreenYellow
-                                Else
-                                    If d.Field.Required = True Then
-                                        con.BackColor = Color.FromArgb(255, 255, 100)
-                                    Else
-                                        con.BackColor = Color.White
-                                    End If
                                 End If
                             End If
 
@@ -1644,6 +1502,7 @@ Public Class Dialog
                                 dc = CType(d.Value, Decimal)
                             Catch
                                 d.Errs.Add("V", "Invalid numeric value")
+                                tx.UserMsg = "Invalid numeric value"
                             End Try
                             If d.Errs.count = 0 Then
                                 dc = CType(d.Text, Decimal)
@@ -1656,6 +1515,7 @@ Public Class Dialog
                                 db = CType(d.Value, Double)
                             Catch
                                 d.Errs.Add("V", "Invalid numeric value")
+                                tx.UserMsg = "Invalid numeric value"
                             End Try
                             If d.Errs.count = 0 Then
                                 db = CType(d.Text, Double)
@@ -1668,6 +1528,7 @@ Public Class Dialog
                                 i2 = CType(d.Value, Integer)
                             Catch
                                 d.Errs.Add("V", "Invalid integer value")
+                                tx.UserMsg = "Invalid integer value"
                             End Try
                             If d.Errs.count = 0 Then
                                 i2 = CType(d.Text, Integer)
@@ -1680,6 +1541,7 @@ Public Class Dialog
                                 i4 = CType(d.Value, Int64)
                             Catch
                                 d.Errs.Add("V", "Invalid integer value")
+                                tx.UserMsg = "Invalid integer value"
                             End Try
                             If d.Errs.count = 0 Then
                                 i4 = CType(d.Text, Int64)
@@ -1689,6 +1551,7 @@ Public Class Dialog
                         Case DbType.String
                             If Len(d.Text) > d.Field.Width Then
                                 d.Errs.Add("V", "Too many characters")
+                                tx.UserMsg = "Too many characters"
                             End If
                             If d.Errs.count = 0 Then
                                 con.Text = d.Text
@@ -1744,7 +1607,7 @@ Public Class Dialog
                             d.Errs.Add("-" & vv.Name, vv.Message)
                         End If
                     ElseIf Not vv.AssociatedFields Is Nothing Then
-                        For Each ss As String In vv.AssociatedFields
+                        For Each ss In vv.AssociatedFields
                             If ss = Field Then
                                 Dim dff As DialogField = dlogf.Item(vv.FieldName)
                                 dff.Errs.Remove("-" & vv.Name)
@@ -1800,7 +1663,6 @@ Public Class Dialog
                     End If
                 Next
             End If
-
             SetErrorState(d)
         End If
 
@@ -1840,16 +1702,15 @@ Public Class Dialog
                 End If
             Next
             If b Then
-                lab.ForeColor = Color.Blue
+                lab.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeColour)
             Else
-                lab.ForeColor = Color.Red
+                lab.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeError)
             End If
         Else
-            lab.ForeColor = Color.Red
+            lab.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeError)
             fForm.ToolTip1.SetToolTip(con, d.Errs.Message)
         End If
     End Sub
-
 
     Private Sub SetFieldValue(ByVal Field As String, ByVal Value As Object, _
                                                             ByVal sText As String)
@@ -1878,17 +1739,11 @@ Public Class Dialog
             Select Case d.Field.DisplayType
                 Case "D"            'Dropdownlist
                     If GetString(Value) = "" Then
-                        CType(cc, ComboBox).SelectedIndex = -1
-                        CType(cc, ComboBox).SelectedIndex = -1
+                        CType(cc, rsCombo).SelectedIndex = -1
                         d.Value = Nothing
                     Else
-                        Dim cb As ComboBox = CType(cc, ComboBox)
+                        Dim cb As rsCombo = CType(cc, rsCombo)
                         cb.SelectedValue = GetString(Value)
-                        If cb.SelectedIndex <> -1 And Field = FirstField Then
-                            If cb.SelectionLength = 0 Then
-                                cb.SelectionLength = Len(cb.Text)
-                            End If
-                        End If
                     End If
 
                 Case "LST"            'Listbox
@@ -1969,7 +1824,7 @@ Public Class Dialog
                     cc.Text = d.Text
 
                     If d.Field.DisplayHeight > 1 Then
-                        Dim txt As TextBox = CType(cc, TextBox)
+                        Dim txt As rsText = CType(cc, rsText)
                         If txt.Lines.Length > d.Field.DisplayHeight Then
                             txt.ScrollBars = ScrollBars.Vertical
                         Else
@@ -2000,8 +1855,8 @@ Public Class Dialog
             fForm.ContextMenu1.MenuItems.Clear()
 
             Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-                Case "TextBox"
-                    Dim t As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+                Case "rsText"
+                    Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
 
                     ''Handle Undo text.
                     mi = fForm.ContextMenu1.MenuItems.Add("Undo", _
@@ -2042,9 +1897,9 @@ Public Class Dialog
                     mi = fForm.ContextMenu1.MenuItems.Add("View text...", _
                                         New EventHandler(AddressOf DisplayText))
                     'End If
-                Case "ComboBox"
-                    Dim t As ComboBox = _
-                                CType(fForm.ContextMenu1.SourceControl, ComboBox)
+                Case "rsCombo"
+                    Dim t As rsCombo = _
+                                CType(fForm.ContextMenu1.SourceControl, rsCombo)
 
                     Dim blnEnable As Boolean = (t.SelectedText.Length > 0)
                     mi = fForm.ContextMenu1.MenuItems.Add("Cut", _
@@ -2157,7 +2012,7 @@ Public Class Dialog
                             ByVal e As System.EventArgs)
         If ActiveField <> "" Then
             Dim d As DialogField = dlogf.Item(ActiveField)
-            Dim cb As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
+            Dim cb As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
             Dim s As String
 
             If d.Field.FillProcess <> "" Then
@@ -2183,18 +2038,18 @@ Public Class Dialog
 
     Private Sub mnuUndo_Click(ByVal sender As System.Object, _
                             ByVal e As System.EventArgs)
-        Dim t As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+        Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
         t.Undo()
     End Sub
 
     Private Sub mnuCut_Click(ByVal sender As System.Object, _
                             ByVal e As System.EventArgs)
         Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-            Case "TextBox"
-                Dim t As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+            Case "rsText"
+                Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
                 t.Cut()
-            Case "ComboBox"
-                Dim c As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
+            Case "rsCombo"
+                Dim c As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
                 Clipboard.SetDataObject(New DataObject(DataFormats.Text, c.SelectedText))
                 c.SelectedText = ""
         End Select
@@ -2203,11 +2058,11 @@ Public Class Dialog
     Private Sub mnuCopy_Click(ByVal sender As System.Object, _
                             ByVal e As System.EventArgs)
         Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-            Case "TextBox"
-                Dim t As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+            Case "rsText"
+                Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
                 t.Copy()
-            Case "ComboBox"
-                Dim c As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
+            Case "rsCombo"
+                Dim c As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
                 Dim iData As IDataObject = Clipboard.GetDataObject()
 
                 Clipboard.SetDataObject(New DataObject(DataFormats.Text, c.SelectedText))
@@ -2217,11 +2072,11 @@ Public Class Dialog
     Private Sub mnuPaste_Click(ByVal sender As System.Object, _
                             ByVal e As System.EventArgs)
         Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-            Case "TextBox"
-                Dim t As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+            Case "rsText"
+                Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
                 t.Paste()
-            Case "ComboBox"
-                Dim c As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
+            Case "rsBox"
+                Dim c As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
                 c.SelectedText = CStr(Clipboard.GetDataObject().GetData(DataFormats.Text))
         End Select
     End Sub
@@ -2230,11 +2085,11 @@ Public Class Dialog
                             ByVal e As System.EventArgs)
 
         Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-            Case "TextBox"
-                Dim t As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+            Case "rsText"
+                Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
                 t.SelectedText = ""
-            Case "ComboBox"
-                Dim c As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
+            Case "rsBox"
+                Dim c As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
                 c.SelectedText = ""
         End Select
     End Sub
@@ -2242,11 +2097,11 @@ Public Class Dialog
     Private Sub mnuSelect_Click(ByVal sender As System.Object, _
                             ByVal e As System.EventArgs)
         Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-            Case "TextBox"
-                Dim t As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+            Case "rsText"
+                Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
                 t.SelectAll()
-            Case "ComboBox"
-                Dim c As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
+            Case "rsCombo"
+                Dim c As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
                 c.SelectAll()
         End Select
     End Sub

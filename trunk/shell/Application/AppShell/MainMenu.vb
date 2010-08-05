@@ -120,7 +120,7 @@ Public Class MainMenu
     End Sub
 
     Private Sub InitialiseAction()
-        If sDefn.Actions.count = 0 Then
+        If sDefn.Actions.Count = 0 Then
             Publics.MessageOut("No menu definition can not continue!")
             Exit Sub
         End If

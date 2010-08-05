@@ -6,6 +6,8 @@ Public Class Grid
     Inherits System.Windows.Forms.Form
     Friend oOwner As GridForm
     Friend WithEvents Context As System.Windows.Forms.ContextMenuStrip
+    Friend WithEvents statusBar As System.Windows.Forms.StatusStrip
+    Friend WithEvents ToolStripStatusLabel1 As System.Windows.Forms.ToolStripStatusLabel
     Friend DblClkKey As String
 
 #Region " Windows Form Designer generated code "
@@ -38,7 +40,6 @@ Public Class Grid
     'Do not modify it using the code editor.
     Friend WithEvents Grid1 As System.Windows.Forms.DataGridView
     Friend WithEvents ToolTip1 As System.Windows.Forms.ToolTip
-    Friend WithEvents statusBar As System.Windows.Forms.StatusBar
     <System.Diagnostics.DebuggerStepThrough()> Private Sub InitializeComponent()
         Me.components = New System.ComponentModel.Container
         Dim DataGridViewCellStyle1 As System.Windows.Forms.DataGridViewCellStyle = New System.Windows.Forms.DataGridViewCellStyle
@@ -46,8 +47,10 @@ Public Class Grid
         Me.Grid1 = New System.Windows.Forms.DataGridView
         Me.Context = New System.Windows.Forms.ContextMenuStrip(Me.components)
         Me.ToolTip1 = New System.Windows.Forms.ToolTip(Me.components)
-        Me.statusBar = New System.Windows.Forms.StatusBar
+        Me.statusBar = New System.Windows.Forms.StatusStrip
+        Me.ToolStripStatusLabel1 = New System.Windows.Forms.ToolStripStatusLabel
         CType(Me.Grid1, System.ComponentModel.ISupportInitialize).BeginInit()
+        Me.statusBar.SuspendLayout()
         Me.SuspendLayout()
         '
         'Grid1
@@ -79,7 +82,7 @@ Public Class Grid
         Me.Grid1.RowHeadersDefaultCellStyle = DataGridViewCellStyle2
         Me.Grid1.RowHeadersWidth = 23
         Me.Grid1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect
-        Me.Grid1.Size = New System.Drawing.Size(312, 314)
+        Me.Grid1.Size = New System.Drawing.Size(312, 317)
         Me.Grid1.TabIndex = 1
         '
         'Context
@@ -89,11 +92,19 @@ Public Class Grid
         '
         'statusBar
         '
-        Me.statusBar.ContextMenuStrip = Me.Context
+        Me.statusBar.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.ToolStripStatusLabel1})
         Me.statusBar.Location = New System.Drawing.Point(0, 343)
         Me.statusBar.Name = "statusBar"
         Me.statusBar.Size = New System.Drawing.Size(312, 22)
-        Me.statusBar.TabIndex = 3
+        Me.statusBar.TabIndex = 2
+        Me.statusBar.Text = "StatusStrip1"
+        '
+        'ToolStripStatusLabel1
+        '
+        Me.ToolStripStatusLabel1.BackColor = System.Drawing.Color.Transparent
+        Me.ToolStripStatusLabel1.Name = "ToolStripStatusLabel1"
+        Me.ToolStripStatusLabel1.Size = New System.Drawing.Size(19, 17)
+        Me.ToolStripStatusLabel1.Text = "..."
         '
         'Grid
         '
@@ -106,11 +117,113 @@ Public Class Grid
         Me.StartPosition = System.Windows.Forms.FormStartPosition.Manual
         Me.Text = "Grid"
         CType(Me.Grid1, System.ComponentModel.ISupportInitialize).EndInit()
+        Me.statusBar.ResumeLayout(False)
+        Me.statusBar.PerformLayout()
         Me.ResumeLayout(False)
+        Me.PerformLayout()
 
     End Sub
 
 #End Region
+
+    Private Sub Grid_RowPrePaint(ByVal sender As Object, ByVal e As System.Windows.Forms.DataGridViewRowPrePaintEventArgs) Handles Grid1.RowPrePaint
+        oOwner.SetRowColour(sender, e)
+    End Sub
+
+    Private Sub dataGridView1_CellFormatting(ByVal sender As Object, ByVal e As DataGridViewCellFormattingEventArgs) Handles Grid1.CellFormatting
+        e.CellStyle.ForeColor = oOwner.rowforecolour
+        e.CellStyle.BackColor = oOwner.rowbackcolour
+        e.CellStyle.SelectionForeColor = oOwner.selforecolour
+        e.CellStyle.SelectionBackColor = oOwner.selbackcolour
+    End Sub
+
+    Private Sub Grid1_CellPainting(ByVal sender As Object, _
+        ByVal e As System.Windows.Forms.DataGridViewCellPaintingEventArgs) _
+                                        Handles Grid1.CellPainting
+        Dim Bh As Brush
+        Dim pe As New Pen(DialogStyle.NameToColour(DialogStyle.ForeColour))
+        Dim c As Color
+        Dim sf As New StringFormat
+
+        If e.RowIndex <> -1 Then
+            If e.ColumnIndex = -1 Then
+                If Grid1.CurrentRow.Index = e.RowIndex Then
+                    Bh = New SolidBrush(oOwner.selbackcolour)
+                Else
+                    Bh = New SolidBrush(oOwner.rowbackcolour)
+                End If
+                e.Graphics.FillRectangle(Bh, e.CellBounds)
+
+                If Grid1.CurrentRow.Index = e.RowIndex Then
+                    sf.Alignment = StringAlignment.Center
+                    sf.LineAlignment = StringAlignment.Center
+                    Bh = New SolidBrush(oOwner.selforecolour)
+                    e.Graphics.DrawString("u", New Font("wingdings 3", 8), Bh, e.CellBounds, sf)
+                End If
+
+                e.Graphics.DrawRectangle( _
+                    New Pen(DialogStyle.NameToColour(DialogStyle.BorderNormal)), _
+                    e.CellBounds.X, e.CellBounds.Y - 1, e.CellBounds.Width - 1, _
+                    e.CellBounds.Height)
+                e.Handled = True
+            End If
+            Return
+        End If
+
+        Bh = New LinearGradientBrush(e.CellBounds, _
+            DialogStyle.NameToColour(DialogStyle.ToolStart), _
+            DialogStyle.NameToColour(DialogStyle.ToolEnd), _
+            LinearGradientMode.Vertical)
+        e.Graphics.FillRectangle(Bh, e.CellBounds)
+
+        If e.ColumnIndex = -1 Then
+            e.Graphics.DrawRectangle( _
+                New Pen(DialogStyle.NameToColour(DialogStyle.BorderNormal)), _
+                e.CellBounds.X, e.CellBounds.Y, e.CellBounds.Width - 1, _
+                e.CellBounds.Height - 1)
+        Else
+            e.Graphics.DrawRectangle( _
+                New Pen(DialogStyle.NameToColour(DialogStyle.BorderNormal)), _
+                e.CellBounds.X - 1, e.CellBounds.Y, e.CellBounds.Width, _
+                e.CellBounds.Height - 1)
+
+            Dim so As SortOrder = Grid1.Columns(e.ColumnIndex).HeaderCell.SortGlyphDirection
+            If so <> SortOrder.None Then
+                sf.Alignment = StringAlignment.Far
+                sf.LineAlignment = StringAlignment.Center
+                Bh = New SolidBrush(DialogStyle.NameToColour(DialogStyle.ForeColour))
+                If so = SortOrder.Ascending Then
+                    e.Graphics.DrawString("p", New Font("wingdings 3", 8), Bh, e.CellBounds, sf)
+                Else
+                    e.Graphics.DrawString("q", New Font("wingdings 3", 8), Bh, e.CellBounds, sf)
+                End If
+            End If
+        End If
+
+        c = e.CellStyle.ForeColor
+        e.CellStyle.ForeColor = DialogStyle.NameToColour(DialogStyle.ForeColour)
+        e.Paint(e.CellBounds, DataGridViewPaintParts.ContentForeground Or DataGridViewPaintParts.Focus)
+        e.CellStyle.ForeColor = c
+        e.Handled = True
+    End Sub
+
+    Private Sub CellPainting(ByVal sender As Object, ByVal e As System.Windows.Forms.DataGridViewCellPaintingEventArgs)
+        Dim sf As New StringFormat
+        If e.ColumnIndex >= 0 And e.RowIndex < 0 Then
+            Dim so As SortOrder = Grid1.Columns(e.ColumnIndex).HeaderCell.SortGlyphDirection
+            If so <> SortOrder.None Then
+                e.Paint(e.CellBounds, DataGridViewPaintParts.Background Or DataGridViewPaintParts.Border Or DataGridViewPaintParts.ContentForeground Or DataGridViewPaintParts.Focus)
+                sf.Alignment = StringAlignment.Far
+                sf.LineAlignment = StringAlignment.Center
+                If so = SortOrder.Ascending Then
+                    e.Graphics.DrawString("ASC", Grid1.Font, Brushes.Red, e.CellBounds, sf)
+                Else
+                    e.Graphics.DrawString("DSC", Grid1.Font, Brushes.Red, e.CellBounds, sf)
+                End If
+                e.Handled = True
+            End If
+        End If
+    End Sub
 
     Private Sub Grid1_DoubleClick(ByVal sender As Object, ByVal e As System.EventArgs) Handles Grid1.DoubleClick
         If DblClkKey <> "" Then
@@ -130,17 +243,6 @@ Public Class Grid
         oOwner.SetActions()
     End Sub
 
-    Private Sub Grid_RowPrePaint(ByVal sender As Object, ByVal e As System.Windows.Forms.DataGridViewRowPrePaintEventArgs) Handles Grid1.RowPrePaint
-        oOwner.SetRowColour(sender, e)
-    End Sub
-
-    Private Sub dataGridView1_CellFormatting(ByVal sender As Object, ByVal e As DataGridViewCellFormattingEventArgs) Handles Grid1.CellFormatting
-        e.CellStyle.ForeColor = oOwner.rowforecolour
-        e.CellStyle.BackColor = oOwner.rowbackcolour
-        e.CellStyle.SelectionForeColor = oOwner.selforecolour
-        e.CellStyle.SelectionBackColor = oOwner.selbackcolour
-    End Sub
-
     Private Sub Grid_Load(ByVal sender As System.Object, _
                              ByVal e As System.EventArgs) Handles MyBase.Load
         Me.Icon = Publics.ShellIcon
@@ -153,10 +255,18 @@ Public Class Grid
     Private Sub Grid_Resize(ByVal sender As Object, ByVal e As System.EventArgs) Handles MyBase.Resize
         Me.Grid1.Width = Me.Width - 10
         Me.Grid1.Height = Me.statusBar.Top - Me.Grid1.Top
+        Me.statusBar.Items(0).Width = Me.Width - 20
     End Sub
 
     Private Sub Grid_Closing(ByVal sender As Object, ByVal e As System.ComponentModel.CancelEventArgs) Handles MyBase.Closing
         oOwner.ProcessClose()
+    End Sub
+
+    Private Sub statusBar_Paint(ByVal sender As Object, ByVal e As System.Windows.Forms.PaintEventArgs) Handles statusBar.Paint
+        Dim tb As StatusStrip = DirectCast(sender, StatusStrip)
+        Dim r As New Rectangle(0, 0, tb.Width, tb.Height)
+        Dim Br As New LinearGradientBrush(r, DialogStyle.NameToColour(DialogStyle.ToolEnd), DialogStyle.NameToColour(DialogStyle.ToolStart), LinearGradientMode.Vertical)
+        e.Graphics.FillRectangle(Br, e.ClipRectangle)
     End Sub
 End Class
 
@@ -237,7 +347,8 @@ End Class
 Public Class GridForm
     Inherits ShellObject
 
-    Private oStyle As New shellStyle("", "zz", "zz", "zz", "zz")
+    Private oStyle As New shellStyle("", DialogStyle.ForeColour, _
+        DialogStyle.BackColour, DialogStyle.SelForeColour, DialogStyle.SelBackColour)
 
     Private oforecolour As System.Drawing.Color
     Private obackcolour As System.Drawing.Color
@@ -337,8 +448,9 @@ Public Class GridForm
             If fForm Is Nothing Then
                 fForm = New Grid
                 fForm.oOwner = Me
-                fForm.BackColor = Publics.GetBackColour
-                fForm.Grid1.BackgroundColor = fForm.BackColor
+                fForm.BackColor = DialogStyle.NameToColour(DialogStyle.BackColour)
+                fForm.Grid1.BackgroundColor = DialogStyle.NameToColour(DialogStyle.BackColour)
+                fForm.Grid1.GridColor = DialogStyle.NameToColour(DialogStyle.BorderNormal)
 
                 fForm.Name = sDefn.Title
                 SetTitle()
@@ -389,7 +501,7 @@ Public Class GridForm
                 SetFilter()
 
                 Parms.Item(sData).Value = Nothing
-                fForm.statusBar.Text = dt.Rows.Count & " rows."
+                fForm.statusBar.Items(0).Text = dt.Rows.Count & " rows."
             End If
             SetActions()
         Catch ex As Exception
