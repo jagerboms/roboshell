@@ -1,6 +1,8 @@
 Option Explicit On 
 Option Strict On
 
+Imports System.Drawing.Drawing2D
+
 Public Class MenuDefn
     Inherits ObjectDefn
 
@@ -188,7 +190,18 @@ Public Class ShellMenu
                 End If
             End If
         Next
+        AddHandler ts.Paint, AddressOf ToolBar_Paint
         oForm.Controls.Add(ts)
+    End Sub
+
+    Private Sub ToolBar_Paint(ByVal sender As Object, ByVal e As System.Windows.Forms.PaintEventArgs)
+        Dim tb As ToolStrip = DirectCast(sender, ToolStrip)
+        Dim r As New Rectangle(0, 0, tb.Width, tb.Height)
+        Dim Br As New LinearGradientBrush(r, _
+                DialogStyle.NameToColour(DialogStyle.ToolStart), _
+                DialogStyle.NameToColour(DialogStyle.ToolEnd), _
+                LinearGradientMode.Vertical)
+        e.Graphics.FillRectangle(Br, e.ClipRectangle)
     End Sub
 
     Public Sub Enable(ByVal Action As ActionDefn)

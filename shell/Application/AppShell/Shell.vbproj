@@ -123,7 +123,26 @@
     <Compile Include="CallOut.vb">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="DialogStyle.vb" />
     <Compile Include="Directory.vb" />
+    <Compile Include="rsCombo.Designer.vb">
+      <DependentUpon>rsCombo.vb</DependentUpon>
+    </Compile>
+    <Compile Include="rsCombo.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="rsTab.Designer.vb">
+      <DependentUpon>rsTab.vb</DependentUpon>
+    </Compile>
+    <Compile Include="rsTab.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="rsText.Designer.vb">
+      <DependentUpon>rsText.vb</DependentUpon>
+    </Compile>
+    <Compile Include="rsText.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="StoredProc.vb">
       <SubType>Code</SubType>
     </Compile>
@@ -219,6 +238,18 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="missing.gif" />
+    <EmbeddedResource Include="rsCombo.resx">
+      <DependentUpon>rsCombo.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="rsTab.resx">
+      <DependentUpon>rsTab.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="rsText.resx">
+      <DependentUpon>rsText.vb</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <Content Include="shell.ico" />

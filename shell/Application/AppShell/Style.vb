@@ -11,10 +11,10 @@ Public Class shellStyle
     Public Sub New(ByVal ID As String, ByVal sRowForeColour As String, ByVal sRowBackColour As String, _
                    ByVal sSelForeColour As String, ByVal sSelBackColour As String)
         sID = ID
-        oRF = System.Drawing.Color.FromName(sRowForeColour)
-        oRB = System.Drawing.Color.FromName(sRowBackColour)
-        oSF = System.Drawing.Color.FromName(sSelForeColour)
-        oSB = System.Drawing.Color.FromName(sSelBackColour)
+        oRF = NameToColour(sRowForeColour)
+        oRB = NameToColour(sRowBackColour)
+        oSF = NameToColour(sSelForeColour)
+        oSB = NameToColour(sSelBackColour)
     End Sub
 
     Public ReadOnly Property ID() As String
@@ -28,7 +28,7 @@ Public Class shellStyle
             If oRF.IsKnownColor Then
                 RowForeColour = oRF
             Else
-                RowForeColour = Color.Black
+                RowForeColour = DialogStyle.NameToColour(DialogStyle.ForeColour)
             End If
         End Get
     End Property
@@ -38,7 +38,7 @@ Public Class shellStyle
             If oRB.IsKnownColor Then
                 RowBackColour = oRB
             Else
-                RowBackColour = Color.White
+                RowBackColour = DialogStyle.NameToColour(DialogStyle.BackNormal)
             End If
         End Get
     End Property
@@ -48,7 +48,7 @@ Public Class shellStyle
             If oSF.IsKnownColor Then
                 SelForeColour = oSF
             Else
-                SelForeColour = Color.Black
+                SelForeColour = DialogStyle.NameToColour(DialogStyle.ForeColour)
             End If
         End Get
     End Property
@@ -62,6 +62,19 @@ Public Class shellStyle
             End If
         End Get
     End Property
+
+    Private Function NameToColour(ByVal Name As String) As Color
+        Dim c As Color
+
+        If Mid(Name, 1, 3) = "rgb" Then
+            Dim s As String = Mid(Name, 4)
+            Dim a() As String = Split(s, ",")
+            c = Color.FromArgb(CInt(a(0)), CInt(a(1)), CInt(a(2)))
+        Else
+            c = Color.FromName(Name)
+        End If
+        Return c
+    End Function
 End Class
 
 Public Class shellStyles
