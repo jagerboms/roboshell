@@ -4,13 +4,11 @@ print 'Application shell'
 print '-----------------------------------'
 set nocount on
 go
-
 if object_id('dbo.shlFieldsInsert') is not null
 begin
     drop procedure dbo.shlFieldsInsert
 end
 go
-
 create procedure dbo.shlFieldsInsert
     @ObjectName varchar(32)            -- identity of object owning field/column
    ,@FieldName varchar(32)             -- Unique field identifier
@@ -19,7 +17,7 @@ create procedure dbo.shlFieldsInsert
    ,@DisplayWidth integer              -- display item width / default grid column width
    ,@DisplayHeight integer = 1         -- number of lines to display (text and label display types on dialog only)
    ,@ValueType varchar(25)             -- 'string' 'integer' 'double' 'currency' 'object' etc
-   ,@DisplayType varchar(3) = 'T'      -- (H)idden, d(R)opdown field, (L)abel, (B)ordered label, (T)extbox, (D)ropdown list, li(S)tbox, (C)heckbox
+   ,@DisplayType varchar(3) = 'T'      -- (H)idden,(L)abel,(B)ordered label,(T)extbox,(D)ropdown list,(LiST)box,(C)heckbox,(TAB)control,(TaBP)age,(REL)ated field,(GR)ou(P) box
    ,@FillProcess varchar(32) = null    -- shell process to retrieve data for dropdown or listbox controls
    ,@TextField varchar(32) = null      -- column of datatable to display
    ,@ValueField varchar(200) = null    -- column of datatable to use as field value 

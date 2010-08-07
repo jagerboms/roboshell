@@ -21,8 +21,8 @@ begin
         @StyleID = 'disabled'
        ,@RowForeColor = 'red'
        ,@RowBackColor = 'mistyrose'
-       ,@SelForeColor = 'red'
-       ,@SelBackColor = 'lightcoral'
+       ,@SelForeColor = 'crimson'
+       ,@SelBackColor = 'pink'
 end
 go
 
