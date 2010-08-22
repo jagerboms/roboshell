@@ -717,6 +717,7 @@ Public Class Dialog
                             If d.Field.DisplayHeight > 1 And UCase(d.Field.DisplayType) = "T" Then
                                 .Multiline = True
                                 iH = t.Height * d.Field.DisplayHeight
+                                .Height = iH
                             Else
                                 iH = -1
                             End If

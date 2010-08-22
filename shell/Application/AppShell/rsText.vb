@@ -65,7 +65,11 @@ Public Class rsText
             Multiline = Me.TextBox1.Multiline
         End Get
         Set(ByVal ml As Boolean)
+            Dim i As Integer = DialogStyle.BorderWidth
             Me.TextBox1.Multiline = ml
+            If ml Then
+                Me.TextBox1.Height = MyBase.Height - 2 * i
+            End If
         End Set
     End Property
 
