@@ -88,6 +88,7 @@ Public Class TablePermission
             ByVal pPermissionName As String)
 
         sGrantee = pGrantee
+        sGranted = pGranted
         sPermissionName = pPermissionName
     End Sub
 
