@@ -216,6 +216,15 @@ Public Class rsText
         End Set
     End Property
 
+    Public Overrides Property ContextMenu() As System.Windows.Forms.ContextMenu
+        Get
+            ContextMenu = Me.TextBox1.ContextMenu
+        End Get
+        Set(ByVal cm As System.Windows.Forms.ContextMenu)
+            Me.TextBox1.ContextMenu = cm
+        End Set
+    End Property
+
     Private Sub TextBox1_Enter(ByVal sender As Object, ByVal e As System.EventArgs) Handles TextBox1.Enter
         If Not Me.TextBox1.Multiline Then
             Me.TextBox1.SelectionStart = 0

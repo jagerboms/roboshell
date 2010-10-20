@@ -1,4 +1,4 @@
-Option Explicit On 
+Option Explicit On
 Option Strict On
 
 Imports System.Drawing.Drawing2D
@@ -1866,8 +1866,8 @@ Public Class Dialog
             fForm.ContextMenu1.MenuItems.Clear()
 
             Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-                Case "rsText"
-                    Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
+                Case "TextBox"
+                    Dim t As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
 
                     ''Handle Undo text.
                     mi = fForm.ContextMenu1.MenuItems.Add("Undo", _
@@ -1908,9 +1908,9 @@ Public Class Dialog
                     mi = fForm.ContextMenu1.MenuItems.Add("View text...", _
                                         New EventHandler(AddressOf DisplayText))
                     'End If
-                Case "rsCombo"
-                    Dim t As rsCombo = _
-                                CType(fForm.ContextMenu1.SourceControl, rsCombo)
+                Case "ComboBox"
+                    Dim t As ComboBox = _
+                                CType(fForm.ContextMenu1.SourceControl, ComboBox)
 
                     Dim blnEnable As Boolean = (t.SelectedText.Length > 0)
                     mi = fForm.ContextMenu1.MenuItems.Add("Cut", _

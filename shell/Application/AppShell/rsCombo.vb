@@ -132,6 +132,15 @@ Public Class rsCombo
         End Set
     End Property
 
+    Public Overrides Property ContextMenu() As System.Windows.Forms.ContextMenu
+        Get
+            ContextMenu = Me.ComboBox1.ContextMenu
+        End Get
+        Set(ByVal cm As System.Windows.Forms.ContextMenu)
+            Me.ComboBox1.ContextMenu = cm
+        End Set
+    End Property
+
     Public Sub SelectAll()
         Me.ComboBox1.SelectAll()
     End Sub
