@@ -132,6 +132,15 @@ Public Class rsCombo
         End Set
     End Property
 
+    Public Overloads Property xTag() As Object
+        Get
+            xTag = Me.ComboBox1.Tag
+        End Get
+        Set(ByVal tg As Object)
+            Me.ComboBox1.Tag = tg
+        End Set
+    End Property
+
     Public Overrides Property ContextMenu() As System.Windows.Forms.ContextMenu
         Get
             ContextMenu = Me.ComboBox1.ContextMenu

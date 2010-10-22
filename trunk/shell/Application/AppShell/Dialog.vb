@@ -782,6 +782,7 @@ Public Class Dialog
                                 .ValueMember = "Value"
                             End If
                             .Width = d.Field.DisplayWidth
+                            .xTag = d.Name
                         End With
                         AddControl(d, CType(cbox, Control), ctrs, ct, _
                               cl + cw, d.Field.DisplayWidth, -1)
