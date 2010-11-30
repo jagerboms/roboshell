@@ -18,7 +18,6 @@ Public Class SQLCompliler
     Dim Files As SQLFiles
     Dim Cons As Connects
     Dim sResult As String = ""
-    Dim bErrorLatch As Boolean
     Dim sTitle As String = "SQL Compiler"
 
     Private Sub SQLCompliler_Load(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles MyBase.Load
@@ -53,10 +52,6 @@ Public Class SQLCompliler
         LoadFile()
     End Sub
 
-    Private Sub TSView_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TSView.Click
-        View()
-    End Sub
-
     Private Sub TSStart_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles TSStart.Click
         Dim bDBOK As Boolean = False
 
@@ -79,7 +74,7 @@ Public Class SQLCompliler
                     End If
                 Case "SQL"
                     If bDBOK And sql.State = "U" Then
-                        CompileIt(sql.File)
+                        CompileSQL(sql.File)
                     End If
                 Case "FILE"
                     If bDBOK And sql.State = "U" Then
@@ -90,6 +85,9 @@ Public Class SQLCompliler
                             sql.State = "E"
                         End If
                         sql.Results = sResult
+                        If sql.Node.IsSelected Then
+                            View()
+                        End If
                     End If
             End Select
             Application.DoEvents()
@@ -116,7 +114,7 @@ Public Class SQLCompliler
         vw.Show()
     End Sub
 
-    Private Sub TreeView1_DoubleClick(ByVal sender As Object, ByVal e As System.EventArgs) Handles TreeView1.DoubleClick
+    Private Sub TreeView1_AfterSelect(ByVal sender As System.Object, ByVal e As System.Windows.Forms.TreeViewEventArgs) Handles TreeView1.AfterSelect
         View()
     End Sub
 
@@ -151,8 +149,11 @@ Public Class SQLCompliler
             DataBase = instance.GetValue(dbSource, dbSource.GetType).ToString()
         End If
         If FileName <> "" Then
+            Me.Text = "SQL Compiler - " & FileName
             LoadIt(FileName)
             Me.TreeView1.ExpandAll()
+        Else
+            Me.Text = "SQL Compiler"
         End If
     End Sub
 
@@ -174,8 +175,8 @@ Public Class SQLCompliler
                 sFile = sList
             End If
 
-            s = Path.Combine(s, sList)
-            If Dir(s) = "" Then
+            's = Path.Combine(s, sFile)
+            If Dir(sFile) = "" Then
                 AddNode(s, "SCL", s)
             Else
                 Dim file As New System.IO.StreamReader(sFile)
@@ -208,7 +209,14 @@ Public Class SQLCompliler
 
                             Case Else
                                 s = Path.Combine(Environment.CurrentDirectory, line)
-                                AddNode(s, "FILE", sList)
+                                Select Case LCase(Path.GetExtension(s))
+                                    Case ".sql"
+                                        AddNode(s, "FILE", sList)
+                                    Case ".tdef"
+                                        AddNode(s, "TDEF", sList)
+                                    Case Else
+                                        AddNode(s, "FILE", sList)
+                                End Select
                         End Select
                     End If
                 Loop Until file.EndOfStream
@@ -342,13 +350,14 @@ Public Class SQLCompliler
         End If
         vw.Text = sTitle & " " & st
         sOut &= " }"
-        vw.Output.Rtf = sOut
-        vw.Output.BackColor = Drawing.Color.White
-        vw.Show()
+        Me.Output.Rtf = sOut
+        Me.Output.BackColor = Drawing.Color.White
+        Me.Show()
     End Sub
 
     Private Function CompileFile(ByVal sFile As String) As Boolean
         Dim s As String = ""
+        Dim bErrorLatch As Boolean
 
         Try
             Dim file As New System.IO.StreamReader(sFile)
@@ -381,7 +390,7 @@ Public Class SQLCompliler
         Dim Mode As Integer = 0
         Dim b As Boolean = True
         Dim c As String
-
+        Dim result As IAsyncResult
         Dim psConn As SqlConnection
         Dim psAdapt As SqlDataAdapter
         Dim cn As Connect
@@ -391,7 +400,7 @@ Public Class SQLCompliler
 
             cn = Cons.Item(DataBase)
             If cn Is Nothing Then
-                SaveOutput("CompileIt: Error retreving connsection string for Database '" & DataBase & "'.", "E")
+                SaveOutput("CompileSQL: Error retreving connsection string for Database '" & DataBase & "'.", "E")
                 Return False
             End If
             psConn = New SqlConnection(cn.ConnectString)
@@ -509,7 +518,12 @@ Public Class SQLCompliler
                         sCommands = Mid(sText, j, k - j)
 
                         psAdapt.SelectCommand.CommandText = sCommands
-                        psAdapt.SelectCommand.ExecuteNonQuery()
+                        'psAdapt.SelectCommand.ExecuteNonQuery()
+                        result = psAdapt.SelectCommand.BeginExecuteNonQuery()
+                        While Not result.IsCompleted
+                            Threading.Thread.Sleep(100)
+                        End While
+                        psAdapt.SelectCommand.EndExecuteNonQuery(result)
 
                     End If
                     Mode = 0
@@ -527,35 +541,6 @@ Public Class SQLCompliler
         End Try
     End Function
 
-    Private Function CompileIt(ByVal sText As String) As Boolean
-        Dim b As Boolean = True
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim cn As Connect
-
-        CompileIt = False
-        Try
-            If Trim(sText) <> "" Then
-                cn = Cons.Item(DataBase)
-                If cn Is Nothing Then
-                    SaveOutput("CompileIt: Error retreving connsection string for Database '" & DataBase & "'.", "E")
-                    Return False
-                End If
-                psConn = New SqlConnection(cn.ConnectString)
-                AddHandler psConn.InfoMessage, AddressOf psConn_InfoMessage
-                psConn.Open()
-                psAdapt = New SqlDataAdapter("", psConn)
-                psAdapt.SelectCommand.CommandText = sText
-                psAdapt.SelectCommand.ExecuteNonQuery()
-                psConn.Close()
-            End If
-        Catch ex As Exception
-            SaveOutput(ex.Message, "E")
-            b = False
-        End Try
-        CompileIt = b
-    End Function
-
     Private Sub psConn_InfoMessage(ByVal sender As Object, _
             ByVal e As System.Data.SqlClient.SqlInfoMessageEventArgs)
         For Each ex As SqlError In e.Errors
@@ -568,12 +553,10 @@ Public Class SQLCompliler
             Case 0
                 Me.TSOpen.Enabled = True
                 Me.TSRefresh.Enabled = False
-                Me.TSView.Enabled = False
                 Me.TSStart.Enabled = False
             Case 1
                 Me.TSOpen.Enabled = True
                 Me.TSRefresh.Enabled = True
-                Me.TSView.Enabled = True
                 If badDB Then
                     Me.TSStart.Enabled = False
                 ElseIf DataBase = "" Then
@@ -584,12 +567,10 @@ Public Class SQLCompliler
             Case 2
                 Me.TSOpen.Enabled = True
                 Me.TSRefresh.Enabled = True
-                Me.TSView.Enabled = True
                 Me.TSStart.Enabled = False
             Case 9
                 Me.TSOpen.Enabled = False
                 Me.TSRefresh.Enabled = False
-                Me.TSView.Enabled = False
                 Me.TSStart.Enabled = False
         End Select
     End Sub

@@ -124,6 +124,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="sql.vb" />
     <Compile Include="SQLFiles.vb" />
     <Compile Include="SQLCompliler.Designer.vb">
       <DependentUpon>SQLCompliler.vb</DependentUpon>
