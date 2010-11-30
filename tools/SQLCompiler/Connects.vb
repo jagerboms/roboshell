@@ -12,7 +12,7 @@ Public Class Connect
 
     Public Sub New(ByVal Name As String, ByVal ConnectString As String, ByVal Provider As String)
         sName = Name
-        sConnectString = ConnectString
+        sConnectString = ConnectString & ";Asynchronous Processing=true"
         sProvider = Provider
     End Sub
 
@@ -48,42 +48,28 @@ Public Class Connect
     End Property
 
     Private Sub CheckAccess()
-        Dim psConn As SqlConnection
-        Dim psAdapt As SqlDataAdapter
-        Dim DS As DataSet
+        Dim slib As New sql()
+        Dim s As String
 
         Try
             If LCase(sProvider) <> "system.data.sqlclient" Then
                 Return
             End If
-            psConn = New SqlConnection(sConnectString)
-            psConn.Open()
-            psAdapt = New SqlDataAdapter("", psConn)
-            psAdapt.SelectCommand.CommandText = "select is_member('db_owner')"
-            DS = New DataSet
-            psAdapt.Fill(DS, "data")
 
-            If Not DS.Tables("data") Is Nothing Then
-                If DS.Tables("data").Rows.Count > 0 Then
-                    If DS.Tables("data").Rows(0).Item(0).ToString = "1" Then
-                        sState = "OK"
-                    Else
-                        sErr &= "The user has insufficient privileges to run SQL compiler in the database." & vbCrLf
-                    End If
-                Else
-                    sErr &= "Unable to determine user permissions in the database, the application cannot run with these credentials." & vbCrLf
-                End If
+            slib.ConnectString = sConnectString
+            s = slib.CheckAccess()
+
+            If slib.CheckAccess() = "OK" Then
+                sState = "OK"
             Else
-                sErr &= "Failed to connect to the database, the application cannot run with these credentials." & vbCrLf
+                sErr &= "The user has insufficient privileges to run SQL compiler in the database." & vbCrLf
+                sState = "Error"
             End If
-            psConn.Close()
 
         Catch ex As Exception
             sErr &= ex.Message & vbCrLf
-        End Try
-        If sState <> "OK" Then
             sState = "Error"
-        End If
+        End Try
     End Sub
 End Class
 

@@ -21,29 +21,20 @@ Partial Class SQLCompliler
     Private Sub InitializeComponent()
         Me.components = New System.ComponentModel.Container
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(SQLCompliler))
-        Me.TreeView1 = New System.Windows.Forms.TreeView
         Me.ImageList1 = New System.Windows.Forms.ImageList(Me.components)
         Me.ToolStrip1 = New System.Windows.Forms.ToolStrip
         Me.TSOpen = New System.Windows.Forms.ToolStripButton
         Me.TSRefresh = New System.Windows.Forms.ToolStripButton
-        Me.TSView = New System.Windows.Forms.ToolStripButton
         Me.TSStart = New System.Windows.Forms.ToolStripButton
         Me.TSLicence = New System.Windows.Forms.ToolStripButton
+        Me.SplitContainer1 = New System.Windows.Forms.SplitContainer
+        Me.TreeView1 = New System.Windows.Forms.TreeView
+        Me.Output = New System.Windows.Forms.RichTextBox
         Me.ToolStrip1.SuspendLayout()
+        Me.SplitContainer1.Panel1.SuspendLayout()
+        Me.SplitContainer1.Panel2.SuspendLayout()
+        Me.SplitContainer1.SuspendLayout()
         Me.SuspendLayout()
-        '
-        'TreeView1
-        '
-        Me.TreeView1.Anchor = CType((((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Bottom) _
-                    Or System.Windows.Forms.AnchorStyles.Left) _
-                    Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.TreeView1.ImageIndex = 0
-        Me.TreeView1.ImageList = Me.ImageList1
-        Me.TreeView1.Location = New System.Drawing.Point(0, 28)
-        Me.TreeView1.Name = "TreeView1"
-        Me.TreeView1.SelectedImageIndex = 0
-        Me.TreeView1.Size = New System.Drawing.Size(303, 385)
-        Me.TreeView1.TabIndex = 0
         '
         'ImageList1
         '
@@ -63,10 +54,10 @@ Partial Class SQLCompliler
         '
         'ToolStrip1
         '
-        Me.ToolStrip1.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.TSOpen, Me.TSRefresh, Me.TSView, Me.TSStart, Me.TSLicence})
+        Me.ToolStrip1.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.TSOpen, Me.TSRefresh, Me.TSStart, Me.TSLicence})
         Me.ToolStrip1.Location = New System.Drawing.Point(0, 0)
         Me.ToolStrip1.Name = "ToolStrip1"
-        Me.ToolStrip1.Size = New System.Drawing.Size(303, 25)
+        Me.ToolStrip1.Size = New System.Drawing.Size(447, 25)
         Me.ToolStrip1.TabIndex = 1
         Me.ToolStrip1.Text = "ToolStrip1"
         '
@@ -92,17 +83,6 @@ Partial Class SQLCompliler
         Me.TSRefresh.Text = "ToolStripButton2"
         Me.TSRefresh.ToolTipText = "Reload the current file"
         '
-        'TSView
-        '
-        Me.TSView.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image
-        Me.TSView.Image = CType(resources.GetObject("TSView.Image"), System.Drawing.Image)
-        Me.TSView.ImageTransparentColor = System.Drawing.Color.Magenta
-        Me.TSView.Name = "TSView"
-        Me.TSView.Size = New System.Drawing.Size(23, 22)
-        Me.TSView.Tag = "view"
-        Me.TSView.Text = "ToolStripButton3"
-        Me.TSView.ToolTipText = "View details"
-        '
         'TSStart
         '
         Me.TSStart.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image
@@ -122,30 +102,75 @@ Partial Class SQLCompliler
         Me.TSLicence.Name = "TSLicence"
         Me.TSLicence.Size = New System.Drawing.Size(23, 22)
         Me.TSLicence.Text = "ToolStripButton1"
+        Me.TSLicence.ToolTipText = "Show Licence"
+        '
+        'SplitContainer1
+        '
+        Me.SplitContainer1.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.SplitContainer1.Location = New System.Drawing.Point(0, 25)
+        Me.SplitContainer1.Name = "SplitContainer1"
+        '
+        'SplitContainer1.Panel1
+        '
+        Me.SplitContainer1.Panel1.Controls.Add(Me.TreeView1)
+        '
+        'SplitContainer1.Panel2
+        '
+        Me.SplitContainer1.Panel2.Controls.Add(Me.Output)
+        Me.SplitContainer1.Size = New System.Drawing.Size(447, 388)
+        Me.SplitContainer1.SplitterDistance = 149
+        Me.SplitContainer1.TabIndex = 2
+        '
+        'TreeView1
+        '
+        Me.TreeView1.BorderStyle = System.Windows.Forms.BorderStyle.None
+        Me.TreeView1.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.TreeView1.ImageIndex = 0
+        Me.TreeView1.ImageList = Me.ImageList1
+        Me.TreeView1.Location = New System.Drawing.Point(0, 0)
+        Me.TreeView1.Name = "TreeView1"
+        Me.TreeView1.SelectedImageIndex = 0
+        Me.TreeView1.Size = New System.Drawing.Size(149, 388)
+        Me.TreeView1.TabIndex = 2
+        '
+        'Output
+        '
+        Me.Output.BorderStyle = System.Windows.Forms.BorderStyle.None
+        Me.Output.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.Output.Location = New System.Drawing.Point(0, 0)
+        Me.Output.Name = "Output"
+        Me.Output.ReadOnly = True
+        Me.Output.Size = New System.Drawing.Size(294, 388)
+        Me.Output.TabIndex = 1
+        Me.Output.Text = ""
         '
         'SQLCompliler
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(303, 413)
+        Me.ClientSize = New System.Drawing.Size(447, 413)
+        Me.Controls.Add(Me.SplitContainer1)
         Me.Controls.Add(Me.ToolStrip1)
-        Me.Controls.Add(Me.TreeView1)
         Me.Icon = CType(resources.GetObject("$this.Icon"), System.Drawing.Icon)
         Me.Name = "SQLCompliler"
         Me.Text = "SQLCompliler"
         Me.ToolStrip1.ResumeLayout(False)
         Me.ToolStrip1.PerformLayout()
+        Me.SplitContainer1.Panel1.ResumeLayout(False)
+        Me.SplitContainer1.Panel2.ResumeLayout(False)
+        Me.SplitContainer1.ResumeLayout(False)
         Me.ResumeLayout(False)
         Me.PerformLayout()
 
     End Sub
-    Friend WithEvents TreeView1 As System.Windows.Forms.TreeView
     Friend WithEvents ImageList1 As System.Windows.Forms.ImageList
     Friend WithEvents ToolStrip1 As System.Windows.Forms.ToolStrip
     Friend WithEvents TSOpen As System.Windows.Forms.ToolStripButton
     Friend WithEvents ToolStripButton2 As System.Windows.Forms.ToolStripButton
     Friend WithEvents TSRefresh As System.Windows.Forms.ToolStripButton
-    Friend WithEvents TSView As System.Windows.Forms.ToolStripButton
     Friend WithEvents TSStart As System.Windows.Forms.ToolStripButton
     Friend WithEvents TSLicence As System.Windows.Forms.ToolStripButton
+    Friend WithEvents SplitContainer1 As System.Windows.Forms.SplitContainer
+    Friend WithEvents TreeView1 As System.Windows.Forms.TreeView
+    Friend WithEvents Output As System.Windows.Forms.RichTextBox
 End Class
