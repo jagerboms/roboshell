@@ -1686,10 +1686,12 @@ Public Class Dialog
         Dim s As String
 
         s = d.Field.Container
-        dd = dlogf.Item(s)
-        If dd.Field.DisplayType = "TBP" Then
-            dd = dlogf.Item(dd.Field.Container)
-            tb = DirectCast(dd.Control, rsTab)
+        If s <> "" Then
+            dd = dlogf.Item(s)
+            If dd.Field.DisplayType = "TBP" Then
+                dd = dlogf.Item(dd.Field.Container)
+                tb = DirectCast(dd.Control, rsTab)
+            End If
         End If
 
         If d.Errs.count = 0 Then
@@ -1723,7 +1725,6 @@ Public Class Dialog
         End If
     End Sub
 
-
     Private Sub SetFieldValue(ByVal Field As String, ByVal Value As Object, _
                                                             ByVal sText As String)
         Try
@@ -1755,6 +1756,7 @@ Public Class Dialog
                         d.Value = Nothing
                     Else
                         Dim cb As rsCombo = CType(cc, rsCombo)
+                        cb.SelectedIndex = -1
                         cb.SelectedValue = GetString(Value)
                     End If
 
@@ -1846,10 +1848,16 @@ Public Class Dialog
 
                 Case "PIC"            'Picturebox
                     Dim pb As PictureBox = DirectCast(d.Control, PictureBox)
-                    Dim memStream As New System.IO.MemoryStream(CType(d.Value, Byte()))
-                    Dim g As Image
-                    g = Image.FromStream(memStream)
-                    pb.Image = g
+                    If Value Is Nothing Then
+                        pb.Image = Nothing
+                        d.Value = Nothing
+                    Else
+                        Dim memStream As New System.IO.MemoryStream(CType(Value, Byte()))
+                        Dim g As Image
+                        g = Image.FromStream(memStream)
+                        pb.Image = g
+                        d.Value = Value
+                    End If
 
             End Select
             CheckField(Field)

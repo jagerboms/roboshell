@@ -242,13 +242,21 @@ Module Publics
         i = InStr(1, sCommand, sSwitch, CompareMethod.Text)
         sParameter = ""
         If i > 0 Then
-            sParameter = Mid(sCommand, i + 2)
-            i = InStr(1, sParameter, " ", CompareMethod.Text)
-            If i > 0 Then
-                sParameter = Mid(sParameter, 1, i - 1)
+            sParameter = LTrim(Mid(sCommand, i + 2))
+            If Mid(sParameter, 1, 1) = "-" Then
+                sParameter = ""
+            ElseIf Mid(sParameter, 1, 1) = """" Then
+                sParameter = Mid(sParameter, 2)
+                i = InStr(1, sParameter, """", CompareMethod.Text)
+                If i > 0 Then
+                    sParameter = Mid(sParameter, 1, i - 1)
+                End If
+            Else
+                i = InStr(1, sParameter, " ", CompareMethod.Text)
+                If i > 0 Then
+                    sParameter = Mid(sParameter, 1, i - 1)
+                End If
             End If
-        Else
-            sParameter = sDefault
         End If
         GetCommandParameter = sParameter
     End Function
