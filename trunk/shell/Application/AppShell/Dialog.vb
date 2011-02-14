@@ -791,6 +791,26 @@ Public Class Dialog
 
                     Case "LST"            'Listbox
                         Dim lbox As New ListBox
+                        With lbox
+                            If d.Field.FillProcess <> "" Then
+                                Dim dt As DataTable
+                                Dim p As New ShellProcess(d.Field.FillProcess, _
+                                                                Me, Me.parms)
+                                .DisplayMember = d.Field.TextField
+                                .ValueMember = d.Field.ValueField
+                                dt = CType(Me.parms.Item(d.Field.FillProcess).Value, DataTable)
+                                If d.Field.LinkField <> "" Then
+                                    dt.DefaultView.RowFilter = d.Field.LinkColumn & " = '" _
+                                        & GetString(GetFieldValue(d.Field.LinkField)) & "'"
+                                End If
+                                .DataSource = dt
+                            Else
+                                .DataSource = Nothing
+                                .DisplayMember = "Text"
+                                .ValueMember = "Value"
+                            End If
+                        End With
+
                         If d.Field.DisplayHeight > 1 Then
                             iH = 17 + 13 * d.Field.DisplayHeight
                         Else
@@ -1268,14 +1288,6 @@ Public Class Dialog
                             d.Value = cb.SelectedValue
                         End If
 
-                        'Case "LST"            'Listbox
-                        '    Dim lb As ListBox = directcast(d.Control, ListBox)
-                        '    If lb.SelectedIndex = -1 Then
-                        '        d.Value = Nothing
-                        '    Else
-                        '        d.Value = lb.SelectedValue
-                        '    End If
-
                     Case "CHK", "C"            'Checkbox
                         If Len(d.Field.ValueField) > 1 Then
                             s = UCase(d.Field.ValueField)
@@ -1427,6 +1439,10 @@ Public Class Dialog
                             If ss <> Field Then
                                 CheckField(ss)
                             End If
+
+                            'Case "L", "B"
+                            '    SetFieldValue(ss, GetFieldValue(ss), "")
+
                     End Select
                 End If
             Next
@@ -1759,10 +1775,6 @@ Public Class Dialog
                         cb.SelectedIndex = -1
                         cb.SelectedValue = GetString(Value)
                     End If
-
-                Case "LST"            'Listbox
-                    CType(cc, ListBox).DataSource = Value
-                    d.Value = Value
 
                 Case "CHK", "C"            'Checkbox
                     Dim so As String = "YN"
