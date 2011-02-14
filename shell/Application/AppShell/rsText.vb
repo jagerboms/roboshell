@@ -234,8 +234,9 @@ Public Class rsText
 
     Protected Overrides Sub OnPaint(ByVal e As System.Windows.Forms.PaintEventArgs)
         Dim g As Graphics = e.Graphics
+        Dim r As Rectangle
         SetColour()
-        Dim r As New Rectangle(e.ClipRectangle.X, e.ClipRectangle.Y, e.ClipRectangle.Width - 1, e.ClipRectangle.Height - 1)
+        r = New Rectangle(e.Graphics.VisibleClipBounds.X, e.Graphics.VisibleClipBounds.Y, e.Graphics.VisibleClipBounds.Width - 1, e.Graphics.VisibleClipBounds.Height - 1)
         g.FillRectangle(New SolidBrush(Me.TextBox1.BackColor), r)
         g.DrawRectangle(New Pen(borderColour, DialogStyle.BorderWidth), r)
     End Sub
