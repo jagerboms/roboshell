@@ -815,7 +815,7 @@ Public Class sql
             sql &= "s.freq_subday_interval,s.freq_relative_interval,s.freq_recurrence_factor,"
             sql &= "s.active_end_date, s.active_start_time, s.active_end_time "
             sql &= "from dbo.sysjobschedules j "
-            sql &= "join dbo.sysschedules s on s.Schedule_id = j.schedule_id "
+            sql &= "join dbo.sysschedules s on s.schedule_id = j.schedule_id "
             sql &= "where j.job_id='" & ID & "' and s.enabled=1"
         End If
         Return GetTable(sql)
