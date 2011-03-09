@@ -744,7 +744,7 @@ Module Scriptor
                 End If
 
             Case "TR"
-                Pre = "trigger." & Parent & "."
+                Pre = "trigger." & Parent
                 sHead &= "trigger"
                 If mode = "F" Then
                     Settings = GetSetings(qName, qSchema)
@@ -989,6 +989,9 @@ Module Scriptor
         For i = 1 To Len(s)
             ss = LCase(Mid(s, i, 1))
             If InStr(System.IO.Path.GetInvalidPathChars(), ss, CompareMethod.Text) <> 0 Then
+                s = Replace(s, ss, "#0x" & Hex(Asc(ss)) & "#")
+            End If
+            If InStr(System.IO.Path.GetInvalidFileNameChars(), ss, CompareMethod.Text) <> 0 Then
                 s = Replace(s, ss, "#0x" & Hex(Asc(ss)) & "#")
             End If
         Next
