@@ -1101,9 +1101,9 @@ Public Class TableDefn
 
         If bFull Then
             sTab = "    "
-            sOut = "if object_id('" & qSchema & "." & qTable & "') is null" & vbCrLf
+            sOut = "if object_id(" & slib.QuoteString(sSchema & "." & sTable) & ") is null" & vbCrLf
             sOut &= "begin" & vbCrLf
-            sOut &= "    print 'creating " & sSchema & "." & sTable & "'" & vbCrLf
+            sOut &= "    print 'creating " & slib.GetSQLString(sSchema & "." & sTable) & "'" & vbCrLf
         Else
             sTab = ""
         End If
