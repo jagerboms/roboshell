@@ -668,7 +668,7 @@ Module Scriptor
             Return 0
         End If
 
-        sHead = "if object_id('" & qSchema & "." & qName & "') is not null" & vbCrLf
+        sHead = "if object_id(" & sqllib.QuoteString(Schema & "." & Name) & ") is not null" & vbCrLf
         sHead &= "begin" & vbCrLf
         sHead &= "    drop "
 
