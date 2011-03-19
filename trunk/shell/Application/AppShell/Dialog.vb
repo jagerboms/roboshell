@@ -2070,18 +2070,18 @@ Public Class Dialog
 
     Private Sub mnuUndo_Click(ByVal sender As System.Object, _
                             ByVal e As System.EventArgs)
-        Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
-        t.Undo()
+        Dim tb As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+        tb.Undo()
     End Sub
 
     Private Sub mnuCut_Click(ByVal sender As System.Object, _
                             ByVal e As System.EventArgs)
         Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-            Case "rsText"
-                Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
-                t.Cut()
-            Case "rsCombo"
-                Dim c As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
+            Case "TextBox"
+                Dim tb As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+                tb.Cut()
+            Case "ComboBox"
+                Dim c As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
                 Clipboard.SetDataObject(New DataObject(DataFormats.Text, c.SelectedText))
                 c.SelectedText = ""
         End Select
@@ -2090,11 +2090,11 @@ Public Class Dialog
     Private Sub mnuCopy_Click(ByVal sender As System.Object, _
                             ByVal e As System.EventArgs)
         Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-            Case "rsText"
-                Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
-                t.Copy()
-            Case "rsCombo"
-                Dim c As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
+            Case "TextBox"
+                Dim tb As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+                tb.Copy()
+            Case "ComboBox"
+                Dim c As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
                 Dim iData As IDataObject = Clipboard.GetDataObject()
 
                 Clipboard.SetDataObject(New DataObject(DataFormats.Text, c.SelectedText))
@@ -2104,11 +2104,11 @@ Public Class Dialog
     Private Sub mnuPaste_Click(ByVal sender As System.Object, _
                             ByVal e As System.EventArgs)
         Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-            Case "rsText"
-                Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
-                t.Paste()
-            Case "rsBox"
-                Dim c As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
+            Case "TextBox"
+                Dim tb As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+                tb.Paste()
+            Case "ComboBox"
+                Dim c As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
                 c.SelectedText = CStr(Clipboard.GetDataObject().GetData(DataFormats.Text))
         End Select
     End Sub
@@ -2117,11 +2117,11 @@ Public Class Dialog
                             ByVal e As System.EventArgs)
 
         Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-            Case "rsText"
-                Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
-                t.SelectedText = ""
-            Case "rsBox"
-                Dim c As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
+            Case "TextBox"
+                Dim tb As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
+                tb.SelectedText = ""
+            Case "ComboBox"
+                Dim c As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
                 c.SelectedText = ""
         End Select
     End Sub
@@ -2129,11 +2129,11 @@ Public Class Dialog
     Private Sub mnuSelect_Click(ByVal sender As System.Object, _
                             ByVal e As System.EventArgs)
         Select Case fForm.ContextMenu1.SourceControl.GetType.Name
-            Case "rsText"
-                Dim t As rsText = CType(fForm.ContextMenu1.SourceControl, rsText)
+            Case "TextBox"
+                Dim t As TextBox = CType(fForm.ContextMenu1.SourceControl, TextBox)
                 t.SelectAll()
-            Case "rsCombo"
-                Dim c As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
+            Case "ComboBox"
+                Dim c As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
                 c.SelectAll()
         End Select
     End Sub
