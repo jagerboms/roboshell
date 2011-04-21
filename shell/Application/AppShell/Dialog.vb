@@ -2044,7 +2044,7 @@ Public Class Dialog
                             ByVal e As System.EventArgs)
         If ActiveField <> "" Then
             Dim d As DialogField = dlogf.Item(ActiveField)
-            Dim cb As rsCombo = CType(fForm.ContextMenu1.SourceControl, rsCombo)
+            Dim cb As ComboBox = CType(fForm.ContextMenu1.SourceControl, ComboBox)
             Dim s As String
 
             If d.Field.FillProcess <> "" Then
