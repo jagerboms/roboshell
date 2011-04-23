@@ -24,8 +24,8 @@ Public Class DialogStyle
     Public Const BorderError As String = "Red"
     Public Const BorderWidth As Integer = 1
 
-    Public Const SelForeColour As String = "DarkGreen"
-    Public Const SelBackColour As String = "Lavender" ' "LightSteelBlue"
+    Public Const SelForeColour As String = "Black"
+    Public Const SelBackColour As String = "LightSteelBlue"
 
     Public Const ToolStart As String = "LightSteelBlue"
     Public Const ToolEnd As String = "Ivory"
