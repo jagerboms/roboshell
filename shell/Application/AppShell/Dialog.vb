@@ -823,6 +823,7 @@ Public Class Dialog
 
                     Case "CHK", "C"            'Checkbox
                         Dim cb As New CheckBox
+                        cb.FlatStyle = FlatStyle.Flat
                         AddControl(d, CType(cb, Control), ctrs, ct - 2, _
                                           cl + cw, 15, -1)
                         cw += 15
