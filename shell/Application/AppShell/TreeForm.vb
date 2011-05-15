@@ -130,8 +130,12 @@ Public Class TreeForm
     End Sub
 
     Private Sub Tree_Closing(ByVal sender As Object, _
-            ByVal e As System.ComponentModel.CancelEventArgs) Handles MyBase.Closing
-        oOwner.ProcessClose()
+            ByVal e As System.Windows.Forms.FormClosingEventArgs) Handles MyBase.FormClosing
+        If e.CloseReason = CloseReason.MdiFormClosing Then
+            e.Cancel = True
+        Else
+            oOwner.ProcessClose()
+        End If
     End Sub
 
     Private Sub Tree_KeyDown(ByVal sender As Object, _

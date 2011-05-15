@@ -259,8 +259,12 @@ Public Class Grid
         Me.statusBar.Items(0).Width = Me.Width - 20
     End Sub
 
-    Private Sub Grid_Closing(ByVal sender As Object, ByVal e As System.ComponentModel.CancelEventArgs) Handles MyBase.Closing
-        oOwner.ProcessClose()
+    Private Sub Grid_Closing(ByVal sender As Object, ByVal e As System.Windows.Forms.FormClosingEventArgs) Handles MyBase.FormClosing
+        If e.CloseReason = CloseReason.MdiFormClosing Then
+            e.Cancel = True
+        Else
+            oOwner.ProcessClose()
+        End If
     End Sub
 
     Private Sub statusBar_Paint(ByVal sender As Object, ByVal e As System.Windows.Forms.PaintEventArgs) Handles statusBar.Paint

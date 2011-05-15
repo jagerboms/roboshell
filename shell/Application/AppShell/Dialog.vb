@@ -123,8 +123,12 @@ Public Class DialogForm
     End Sub
 
     Private Sub Dialog_Closing(ByVal sender As Object, _
-             ByVal e As System.ComponentModel.CancelEventArgs) Handles MyBase.Closing
-        oOwner.ProcessClose()
+             ByVal e As System.Windows.Forms.FormClosingEventArgs) Handles MyBase.FormClosing
+        If e.CloseReason = CloseReason.MdiFormClosing Then
+            e.Cancel = True
+        Else
+            oOwner.ProcessClose()
+        End If
     End Sub
 
     Private Sub ContextMenu1_Popup(ByVal sender As System.Object, _
@@ -826,6 +830,8 @@ Public Class Dialog
                         cb.FlatStyle = FlatStyle.Flat
                         AddControl(d, CType(cb, Control), ctrs, ct - 2, _
                                           cl + cw, 15, -1)
+                        cb.BackColor = DialogStyle.NameToColour(DialogStyle.BackColour)
+                        cb.ForeColor = DialogStyle.NameToColour(DialogStyle.BorderNormal)
                         cw += 15
                         If ch = 0 Then ch = 23
 
