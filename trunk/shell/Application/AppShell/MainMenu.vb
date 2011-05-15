@@ -149,7 +149,7 @@ Public Class MainMenu
     End Sub
 
     Private Sub Navigate_Closing(ByVal sender As Object, _
-            ByVal e As System.ComponentModel.CancelEventArgs) Handles MyBase.Closing
+            ByVal e As System.Windows.Forms.FormClosingEventArgs) Handles MyBase.FormClosing
         Dim s As String
         If Not Publics.inInit Then
             s = Publics.GetVariable("SystemName")
@@ -160,7 +160,11 @@ Public Class MainMenu
                                                                 MsgBoxResult.No Then
                 e.Cancel = True
             Else
+                For Each a As Form In Me.MdiChildren
+                    a.Close()
+                Next
                 SaveFormPosition(Me, "MainMenu")
+                e.Cancel = False
             End If
         End If
     End Sub
