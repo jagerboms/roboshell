@@ -2,6 +2,12 @@ Option Explicit On
 Option Strict On
 
 Public Class ScriptOptions
+    Public Enum TargetEnvironments As Integer
+        SQLServer2005 = 1
+        SQLServer2000 = 1
+        PostGres = 3
+    End Enum
+
     Private bPKShowName As Boolean = True
 
     Private bDefShowName As Boolean = True
@@ -10,6 +16,8 @@ Public Class ScriptOptions
     Private bCollShow As Boolean = False
 
     Private bChkShowName As Boolean = True
+
+    Private eTargetEnvironment As TargetEnvironments = TargetEnvironments.SQLServer2005
 
     Public Property PrimaryKeyShowName() As Boolean
         Get
@@ -53,6 +61,15 @@ Public Class ScriptOptions
         End Get
         Set(ByVal dsn As Boolean)
             bChkShowName = dsn
+        End Set
+    End Property
+
+    Public Property TargetEnvironment() As TargetEnvironments
+        Get
+            TargetEnvironment = eTargetEnvironment
+        End Get
+        Set(ByVal te As TargetEnvironments)
+            eTargetEnvironment = te
         End Set
     End Property
 End Class

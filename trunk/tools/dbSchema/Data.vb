@@ -25,7 +25,8 @@ Public Class Data
     Private slib As New sql
     Private cTable As TableDefn
     Private sFilter As String
-    Private sFileName As String
+    Private sFileName As String = ""
+    Private sSchemaName As String = ""
 
     Public Property Filter() As String
         Get
@@ -42,6 +43,15 @@ Public Class Data
         End Get
         Set(ByVal fn As String)
             sFileName = fn
+        End Set
+    End Property
+
+    Public Property SchemaName() As String
+        Get
+            SchemaName = sSchemaName
+        End Get
+        Set(ByVal sn As String)
+            sSchemaName = sn
         End Set
     End Property
 
@@ -173,5 +183,19 @@ Public Class Data
         Next
 
         file.Close()
+    End Sub
+
+    Public Sub DataXML()
+        Dim dt As DataTable
+        Dim file As New System.IO.StreamWriter(sFileName)
+        dt = slib.TableData(cTable.QuotedName, cTable.QuotedSchema, sFilter)
+        dt.WriteXml(file)
+        file.Close()
+
+        If sSchemaName <> "" Then
+            file = New System.IO.StreamWriter(sSchemaName)
+            dt.WriteXmlSchema(file)
+            file.Close()
+        End If
     End Sub
 End Class

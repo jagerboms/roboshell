@@ -98,7 +98,7 @@ Module Scriptor
                 SendMessage("      J - job", "T")
                 SendMessage("      D - data", "T")
                 SendMessage("      S - script permissions", "T")
-                SendMessage("      X - table definition XML file", "T")
+                SendMessage("      X - XML definition file", "T")
                 SendMessage("     Stored procedures, tables, functions, views and triggers types", "T")
                 SendMessage("     can be combined.", "T")
                 SendMessage("", "T")
@@ -126,6 +126,8 @@ Module Scriptor
                 SendMessage("     For data extracts it can be one of:", "T")
                 SendMessage("      S - SQL insert statements. This is default for data extractions.", "T")
                 SendMessage("      C - CSV Comma delimited text file", "T")
+                SendMessage("      X - written ADO.Net XML file", "T")
+                SendMessage("      M - written ADO.Net XML file including schema", "T")
                 SendMessage("", "T")
                 SendMessage("   -c ignore constraint name switch. If provided, constraint names are not", "T")
                 SendMessage("      included in the generated scripts.", "T")
@@ -187,23 +189,27 @@ Module Scriptor
                 sqllib.TimeOut = CInt(s)
             End If
             sqllib.Network = GetCommandParameter("-n")
+            sType = GetCommandParameter("-t")
             s = GetCommandParameter("-f")
-            Select Case UCase(Mid(s, 1, 1))
-                Case "X"
-                    mode = "F"
-                    bXML = True
-                Case "F"
-                    mode = "F"
-                Case "I"
-                    mode = "I"
-                Case "S"
-                    mode = "S"
-                Case "C"
-                    mode = "C"
-            End Select
+            If Mid(LCase(sType), 1, 1) = "d" Or Mid(LCase(sType), 1, 1) = "j" Then
+                mode = UCase(Mid(s, 1, 1))
+            Else
+                Select Case UCase(Mid(s, 1, 1))
+                    Case "X"
+                        mode = "F"
+                        bXML = True
+                    Case "F"
+                        mode = "F"
+                    Case "I"
+                        mode = "I"
+                    Case "S"
+                        mode = "S"
+                    Case "C"
+                        mode = "C"
+                End Select
+            End If
             opt.DefaultFix = GetSwitch("-z")
             UniCode = GetSwitch("-y")
-            sType = GetCommandParameter("-t")
             sObject = GetCommandParameter("-o")
             sSchema = GetCommandParameter("-h")
             If GetSwitch("-a") Then
@@ -250,7 +256,7 @@ Module Scriptor
             SendMessage(ex.ToString, "E")
         End Try
         SendMessage("", "T")
-        SendMessage("", "N")
+        SendMessage("Complete." & vbCrLf, "T")
     End Sub
 
     Private Function ProcessJobs(ByVal Database As String) As Boolean
@@ -271,7 +277,8 @@ Module Scriptor
             dt = sqllib.JobList(sObject)
             For Each dr In dt.Rows
                 s = sqllib.GetString(dr.Item("job_id"))
-                GetJob(s, mode)
+                Dim js As New Job(s, sqllib)
+                GetJob(js, mode)
             Next
 
         Catch ex As Exception
@@ -285,20 +292,38 @@ Module Scriptor
     Private Sub ProcessXML(ByVal XMLFile As String)
         Dim sOut As String = ""
         Dim sDir As String
+        Dim dom As New Xml.XmlDocument
+        Dim x As Xml.XmlElement
 
         Try
             sDir = Dir(XMLFile)
             Do While sDir <> ""
-                Dim ts As New TableDefn(sqllib, sDir)
-                Select Case mode
-                    Case "F"
-                        GetTableFull(ts)
-                    Case "I"
-                        GetTableIntermediate(ts)
-                    Case Else
-                        GetTable(ts)
-                End Select
+                dom.Load(sDir)
+                If dom.DocumentElement.Name = "sqldef" Then
+                    For Each x In dom.DocumentElement.ChildNodes
+                        Select Case x.Name
+                            Case "table"
+                                Dim ts As New TableDefn(sqllib, x)
+                                If bXML Then
+                                    GetTableXML(ts)
+                                Else
+                                    Select Case mode
+                                        Case "F"
+                                            GetTableFull(ts)
+                                        Case "I"
+                                            GetTableIntermediate(ts)
+                                        Case Else
+                                            GetTable(ts)
+                                    End Select
+                                End If
 
+                            Case "job"
+                                Dim js As New Job(sqllib, x)
+                                GetJob(js, mode)
+
+                        End Select
+                    Next
+                End If
                 sDir = Dir()
             Loop
 
@@ -359,6 +384,16 @@ Module Scriptor
                 Case "C"
                     cData.FileName = GetFileName("data", Schema, Table, "", "csv")
                     cData.DataCSV()
+
+                Case "X"
+                    cData.FileName = GetFileName("data", Schema, Table, "", "xml")
+                    cData.DataXML()
+
+                Case "M"
+                    cData.FileName = GetFileName("data", Schema, Table, "", "xml")
+                    cData.SchemaName = GetFileName("schema", Schema, Table, "", "xml")
+                    cData.DataXML()
+
                 Case Else
                     cData.FileName = GetFileName("data", Schema, Table, "", "sql")
                     cData.DataScript()
@@ -921,10 +956,10 @@ Module Scriptor
         Return sOut
     End Function
 
-    Private Function GetJob(ByVal sJobID As String, ByVal mode As String) As Integer
-        Dim js As New Job(sJobID, sqllib)
+    Private Function GetJob(ByVal js As Job, ByVal mode As String) As Integer
         Dim sOut As String = ""
         Dim s As String
+        Dim sExt As String = "sql"
 
         s = js.JobName
         If s = "" Then Return -1
@@ -938,15 +973,24 @@ Module Scriptor
                 WriteFile("jobsql", "", s, "", "sql", sOut)
             End If
         Else
-            If mode = "F" Then
-                sOut = js.FullText
-            Else
-                sOut = js.CommonText
-            End If
-            sOut &= "go" & vbCrLf
-            sOut &= vbCrLf
+            Select Case mode
+                Case "F"
+                    sOut = js.FullText(opt)
+                    sOut &= "go" & vbCrLf
+                    sOut &= vbCrLf
 
-            WriteFile("job", "", s, "", "sql", sOut)
+                Case "X"
+                    sOut = js.XML(opt)
+                    sExt = "tdef"
+
+                Case Else
+                    sOut = js.JobText(opt)
+                    sOut &= "go" & vbCrLf
+                    sOut &= vbCrLf
+
+            End Select
+
+            WriteFile("job", "", s, "", sExt, sOut)
         End If
         Return 0
     End Function
@@ -1061,14 +1105,13 @@ Module Scriptor
     End Function
 
     Private Sub SendMessage(ByVal sMessage As String, ByVal sType As String)
+        Dim s As String
         If Not verbose And sType = "N" Then Return
         Console.WriteLine(sMessage)
         If LogFile <> "" Then
             Dim file As New System.IO.StreamWriter(LogFile, True)
-            If sType = "H" Then
-                file.WriteLine("Run Time: " & Now())
-            End If
-            file.WriteLine(sMessage)
+            s = Format(Now(), "yyyy-mm-dd hh:mm:ss.fff") & " | " & sMessage
+            file.WriteLine(s)
             file.Close()
         End If
     End Sub
