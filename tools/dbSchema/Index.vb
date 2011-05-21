@@ -602,11 +602,13 @@ Public Class TableIndex
         If opt.PrimaryKeyShowName And Not bPKNamed Then
             sOut &= "constraint " & qName & " "
         End If
-        sOut &= "primary key "
-        If bClustered Then
-            sOut &= "clustered"
-        Else
-            sOut &= "nonclustered"
+        sOut &= "primary key"
+        If opt.TargetEnvironment <> ScriptOptions.TargetEnvironments.PostGres Then
+            If bClustered Then
+                sOut &= " clustered"
+            Else
+                sOut &= " nonclustered"
+            End If
         End If
         sOut &= vbCrLf
 

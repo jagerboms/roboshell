@@ -723,10 +723,10 @@ Public Class sql
         openConnect()
 
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select j.name,j.notify_level_eventlog,j.notify_level_email,"
+            sql = "select j.name,j.enabled,j.start_step_id,j.notify_level_eventlog,j.notify_level_email,"
             sql &= "j.notify_level_netsend,j.notify_level_page,j.delete_level,"
             sql &= "o1.name email,o2.name netsend,o3.name page,j.description,"
-            sql &= "c.name category,suser_sname(j.owner_sid) owner "
+            sql &= "c.name category,c.category_type,suser_sname(j.owner_sid) owner "
             sql &= "from dbo.sysjobs j "
             sql &= "join dbo.syscategories c "
             sql &= "on c.category_id=j.category_id "
@@ -738,10 +738,11 @@ Public Class sql
             sql &= "on o3.id = j.notify_page_operator_id "
             sql &= "where job_id='" & ID & "'"
         Else
-            sql = "select j.name,j.notify_level_eventlog,j.notify_level_email,"
+            sql = "select j.name,j.enabled,j.start_step_id,j.notify_level_eventlog,j.notify_level_email,"
             sql &= "j.notify_level_netsend,j.notify_level_page,j.delete_level,"
-            sql &= "o1.name email,o2.name netsend,o3.name page,j.description,"
-            sql &= "c.name category,suser_sname(j.owner_sid) owner "
+            sql &= "o1.name email,o2.name netsend,o3.name page,j.description,c.name category,"
+            sql &= "case c.category_type when 1 then 'LOCAL' when 2 then 'MULTI-SERVER' else null end category_type,"
+            sql &= "suser_sname(j.owner_sid) owner "
             sql &= "from dbo.sysjobs j "
             sql &= "join dbo.syscategories c "
             sql &= "on c.category_id=j.category_id "
@@ -756,7 +757,7 @@ Public Class sql
         Return GetRow(sql)
     End Function
 
-    Public Function JobServer(ByVal ID As String) As DataRow
+    Public Function JobServer(ByVal ID As String) As DataTable
         Dim sql As String
 
         openConnect()
@@ -771,7 +772,7 @@ Public Class sql
             sql &= "join master.sys.servers s on j.server_id=s.server_id "
             sql &= "where job_id='" & ID & "'"
         End If
-        Return GetRow(sql)
+        Return GetTable(sql)
     End Function
 
     Public Function JobStep(ByVal ID As String) As DataTable
@@ -784,15 +785,18 @@ Public Class sql
             sql &= "j.cmdexec_success_code,j.on_success_action,j.on_success_step_id,"
             sql &= "j.on_fail_action,j.on_fail_step_id,j.server,j.database_name,"
             sql &= "j.database_user_name,j.retry_attempts,j.retry_interval,j.os_run_priority,"
-            sql &= "j.output_file_name,j.flags,null proxy "
+            sql &= "j.output_file_name,j.flags,null proxy,0 proxyenabled,"
+            sql &= "'' proxydescription,'' proxycredential "
             sql &= "from dbo.sysjobsteps j where j.job_id='" & ID & "'"
         Else
             sql = "select j.step_id,j.step_name,j.subsystem,j.command,j.additional_parameters,"
             sql &= "j.cmdexec_success_code,j.on_success_action,j.on_success_step_id,"
             sql &= "j.on_fail_action,j.on_fail_step_id,j.server,j.database_name,"
             sql &= "j.database_user_name,j.retry_attempts,j.retry_interval,j.os_run_priority,"
-            sql &= "j.output_file_name,j.flags,p.name proxy "
+            sql &= "j.output_file_name,j.flags,p.name proxy,p.enabled proxyenabled,"
+            sql &= "p.description proxydescription,c.name proxycredential "
             sql &= "from dbo.sysjobsteps j left join dbo.sysproxies p on p.proxy_id = j.proxy_id "
+            sql &= "left join sys.credentials c on c.credential_id = p.credential_id "
             sql &= "where j.job_id='" & ID & "'"
         End If
 
@@ -807,16 +811,16 @@ Public Class sql
         If Version < 90 Then            'SQL 2000 compatible
             sql = "select j.name,j.freq_type,j.freq_interval,j.freq_subday_type,"
             sql &= "j.freq_subday_interval,j.freq_relative_interval,j.freq_recurrence_factor,"
-            sql &= "j.active_end_date, j.active_start_time, j.active_end_time "
+            sql &= "j.active_start_date,j.active_end_date,j.active_start_time,j.active_end_time,j.enabled,'' OwnerLogin "
             sql &= "from dbo.sysjobschedules j "
-            sql &= "where j.job_id='" & ID & "' and j.enabled=1"
+            sql &= "where j.job_id='" & ID & "'"
         Else
             sql = "select s.name,s.freq_type,s.freq_interval,s.freq_subday_type,"
             sql &= "s.freq_subday_interval,s.freq_relative_interval,s.freq_recurrence_factor,"
-            sql &= "s.active_end_date, s.active_start_time, s.active_end_time "
+            sql &= "s.active_start_date,s.active_end_date,s.active_start_time,s.active_end_time,s.enabled,suser_sname(s.owner_sid) OwnerLogin "
             sql &= "from dbo.sysjobschedules j "
             sql &= "join dbo.sysschedules s on s.schedule_id = j.schedule_id "
-            sql &= "where j.job_id='" & ID & "' and s.enabled=1"
+            sql &= "where j.job_id='" & ID & "'"
         End If
         Return GetTable(sql)
     End Function

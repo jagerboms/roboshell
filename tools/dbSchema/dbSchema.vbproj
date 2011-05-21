@@ -107,6 +107,8 @@
     <Compile Include="ForeignKey.vb" />
     <Compile Include="Index.vb" />
     <Compile Include="Job.vb" />
+    <Compile Include="JobSchedule.vb" />
+    <Compile Include="JobStep.vb" />
     <Compile Include="ScriptOptions.vb" />
     <Compile Include="Scriptor.vb">
       <SubType>Code</SubType>
