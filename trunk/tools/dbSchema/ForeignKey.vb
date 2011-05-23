@@ -372,7 +372,7 @@ Public Class ForeignKey
         End If
         sOut &= ">" & vbCrLf
         For Each fkc As ForeignKeyColumn In cCols
-            sOut &= "  <column name='" & fkc.Name & "'"
+            sOut &= sTab & "  <column name='" & fkc.Name & "'"
             sOut &= " linksto='" & fkc.Linked & "' />" & vbCrLf
         Next
         sOut &= sTab & "</foreignkey>" & vbCrLf
