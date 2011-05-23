@@ -127,7 +127,11 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select name,cmptlevel from master.dbo.sysdatabases where name not in ('master','tempdb','model','distribution')"
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select name,cmptlevel from master.dbo.sysdatabases where name not in ('master','tempdb','model','distribution')"
+        Else
+            sql = "select name,compatibility_level cmptlevel from master.sys.databases where name not in ('master','tempdb','model','distribution')"
+        End If
 
         Return GetTable(sql)
     End Function
@@ -241,14 +245,14 @@ Public Class sql
             sql = "select text from syscomments "
             sql &= "where id = object_id(" & QuoteString(Schema & "." & Name) & ") order by number, colid"
         Else
-            sql = "select text from sys.syscomments "
-            sql &= "where id = object_id(" & QuoteString(Schema & "." & Name) & ") order by number, colid"
+            sql = "select definition text from sys.sql_modules "
+            sql &= "where object_id = object_id(" & QuoteString(Schema & "." & Name) & ")"
         End If
 
         Return GetTable(sql)
     End Function
 
-    Public Function ObjectSettings(ByVal Name As String, ByVal Schema As String) As DataTable
+    Public Function ObjectSettings(ByVal Name As String, ByVal Schema As String) As DataRow
         Dim sql As String
         Dim s As String
 
@@ -257,13 +261,15 @@ Public Class sql
         s = QuoteString(Schema & "." & Name)
         If Version < 90 Then            'SQL 2000 compatible
             sql = "select objectproperty(object_id(" & s & "), 'IsAnsiNullsOn') nulls,"
-            sql &= "objectproperty(object_id(" & s & "), 'IsQuotedIdentOn') quoted"
+            sql &= "objectproperty(object_id(" & s & "), 'IsQuotedIdentOn') quoted,encrypted "
+            sql &= "from syscomments where id=object_id(" & s & ")"
         Else
-            sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted from sys.sql_modules"
-            sql &= " where object_id=object_id(" & s & ")"
+            sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted,"
+            sql &= "case when definition is null then 1 else 0 end encrypted "
+            sql &= "from sys.sql_modules where object_id=object_id(" & s & ")"
         End If
 
-        Return GetTable(sql)
+        Return GetRow(sql)
     End Function
 
     Public Function TableColumns(ByVal TableName As String, ByVal Schema As String) As DataTable
@@ -609,10 +615,16 @@ Public Class sql
         Dim sql As String
 
         openConnect()
-        sql = "select o.name TriggerName "
-        sql &= "from dbo.sysobjects o "
-        sql &= "where o.type = 'TR' "
-        sql &= "and o.parent_obj = object_id(" & QuoteString(Schema & "." & TableName) & ")"
+        If Version < 90 Then            'SQL 2000 compatible
+            sql = "select o.name TriggerName "
+            sql &= "from dbo.sysobjects o "
+            sql &= "where o.type = 'TR' "
+            sql &= "and o.parent_obj = object_id(" & QuoteString(Schema & "." & TableName) & ")"
+        Else
+            sql = "select t.name TriggerName "
+            sql &= "from sys.triggers t "
+            sql &= "where t.parent_id = object_id(" & QuoteString(Schema & "." & TableName) & ")"
+        End If
 
         Return GetTable(sql)
     End Function

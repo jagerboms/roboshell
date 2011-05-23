@@ -30,7 +30,6 @@ Module Scriptor
     Dim sObject As String = ""
     Dim sSchema As String = ""
     Dim mode As String = "S"
-    Dim bXML As Boolean = False
     Dim LogFile As String = ""
     Dim verbose As Boolean = False
     Dim opt As New ScriptOptions
@@ -191,23 +190,7 @@ Module Scriptor
             sqllib.Network = GetCommandParameter("-n")
             sType = GetCommandParameter("-t")
             s = GetCommandParameter("-f")
-            If Mid(LCase(sType), 1, 1) = "d" Or Mid(LCase(sType), 1, 1) = "j" Then
-                mode = UCase(Mid(s, 1, 1))
-            Else
-                Select Case UCase(Mid(s, 1, 1))
-                    Case "X"
-                        mode = "F"
-                        bXML = True
-                    Case "F"
-                        mode = "F"
-                    Case "I"
-                        mode = "I"
-                    Case "S"
-                        mode = "S"
-                    Case "C"
-                        mode = "C"
-                End Select
-            End If
+            mode = UCase(Mid(s, 1, 1))
             opt.DefaultFix = GetSwitch("-z")
             UniCode = GetSwitch("-y")
             sObject = GetCommandParameter("-o")
@@ -304,18 +287,16 @@ Module Scriptor
                         Select Case x.Name
                             Case "table"
                                 Dim ts As New TableDefn(sqllib, x)
-                                If bXML Then
-                                    GetTableXML(ts)
-                                Else
-                                    Select Case mode
-                                        Case "F"
-                                            GetTableFull(ts)
-                                        Case "I"
-                                            GetTableIntermediate(ts)
-                                        Case Else
-                                            GetTable(ts)
-                                    End Select
-                                End If
+                                Select Case mode
+                                    Case "X"
+                                        GetTableXML(ts)
+                                    Case "F"
+                                        GetTableFull(ts)
+                                    Case "I"
+                                        GetTableIntermediate(ts)
+                                    Case Else
+                                        GetTable(ts)
+                                End Select
 
                             Case "job"
                                 Dim js As New Job(sqllib, x)
@@ -510,18 +491,16 @@ Module Scriptor
                 ss = sqllib.GetString(dr.Item("sch"))
                 If sqllib.GetString(dr.Item("type")) = "U" Then
                     Dim ts As New TableDefn(s, ss, sqllib)
-                    If bXML Then
-                        GetTableXML(ts)
-                    Else
-                        Select Case mode
-                            Case "F"
-                                GetTableFull(ts)
-                            Case "I"
-                                GetTableIntermediate(ts)
-                            Case Else
-                                GetTable(ts)
-                        End Select
-                    End If
+                    Select Case mode
+                        Case "X"
+                            GetTableXML(ts)
+                        Case "F"
+                            GetTableFull(ts)
+                        Case "I"
+                            GetTableIntermediate(ts)
+                        Case Else
+                            GetTable(ts)
+                    End Select
                 Else
                     GetText(s, ss, st, sqllib.GetString(dr.Item("parent")))
                 End If
@@ -682,6 +661,31 @@ Module Scriptor
 
         qName = sqllib.QuoteIdentifier(Name)
         qSchema = sqllib.QuoteIdentifier(Schema)
+
+        If Type <> "V" Then
+            Dim dr As DataRow
+            dr = sqllib.ObjectSettings(qName, qSchema)
+            If sqllib.GetInteger(dr("encrypted"), -1) = 1 Then
+                SendMessage(Pre & " " & Schema & "." & Name & " is encrypted and cannot be scripted.", "T")
+                Return 0
+            End If
+
+            If mode = "F" Or mode = "X" Then
+                If Not dr Is Nothing Then
+                    If sqllib.GetInteger(dr("nulls"), -1) = 0 Then
+                        Settings &= "set ansi_nulls off" & vbCrLf
+                    End If
+                    If sqllib.GetInteger(dr("quoted"), -1) = 0 Then
+                        Settings &= "set quoted_identifier off" & vbCrLf
+                    End If
+
+                    If Settings <> "" Then
+                        Settings &= "go" & vbCrLf
+                    End If
+                End If
+            End If
+        End If
+
         sText = GetdbText(qName, qSchema, Type)
         sName = sqllib.getName(sText)
 
@@ -715,7 +719,7 @@ Module Scriptor
                     sPerm = ProcPermissions(qName, qSchema)
                     If sPerm <> "" Then
                         Select Case mode
-                            Case "F", "I"
+                            Case "F", "I", "X"
                                 sPerm &= "go" & vbCrLf
                                 WriteFile("perm", Schema, Name, "", "sql", sPerm)
 
@@ -725,9 +729,6 @@ Module Scriptor
                                 sText &= sPerm
                         End Select
                     End If
-                End If
-                If mode = "F" Then
-                    Settings = GetSetings(qName, qSchema)
                 End If
 
             Case "V"
@@ -741,7 +742,7 @@ Module Scriptor
                     sPerm = ProcPermissions(qName, qSchema)
                     If sPerm <> "" Then
                         Select Case mode
-                            Case "F", "I"
+                            Case "F", "I", "X"
                                 sPerm &= "go" & vbCrLf
                                 WriteFile("perm", Schema, Name, "", "sql", sPerm)
 
@@ -751,9 +752,6 @@ Module Scriptor
                                 sText &= sPerm
                         End Select
                     End If
-                End If
-                If mode = "F" Then
-                    Settings = GetSetings(qName, qSchema)
                 End If
 
             Case "TF" 'table returning function
@@ -763,7 +761,7 @@ Module Scriptor
                     sPerm = TFNPermissions(qName, qSchema)
                     If sPerm <> "" Then
                         Select Case mode
-                            Case "F", "I"
+                            Case "F", "I", "X"
                                 sPerm &= "go" & vbCrLf
                                 WriteFile("perm", Schema, Name, "", "sql", sPerm)
 
@@ -774,16 +772,10 @@ Module Scriptor
                         End Select
                     End If
                 End If
-                If mode = "F" Then
-                    Settings = GetSetings(qName, qSchema)
-                End If
 
             Case "TR"
                 Pre = "trigger." & Parent
                 sHead &= "trigger"
-                If mode = "F" Then
-                    Settings = GetSetings(qName, qSchema)
-                End If
         End Select
 
         sHead &= " " & qSchema & "." & qName & vbCrLf
@@ -791,7 +783,7 @@ Module Scriptor
         sHead &= "go" & vbCrLf
         sHead &= Settings
 
-        If mode = "F" Then
+        If mode = "F" Or mode = "X" Then
             sText = sHead & sText
             sText &= "go" & vbCrLf
         End If
@@ -843,33 +835,6 @@ Module Scriptor
             End Select
         Loop
         sText &= vbCrLf
-
-        Return sText
-    End Function
-
-    Private Function GetSetings(ByVal Name As String, ByVal Schema As String) As String
-        Dim sText As String = ""
-        Dim dt As DataTable
-        Dim dr As DataRow
-
-        dt = sqllib.ObjectSettings(Name, Schema)
-
-        If Not dt Is Nothing Then
-            If dt.Rows.Count > 0 Then
-                dr = dt.Rows(0)
-
-                If sqllib.GetInteger(dr("nulls"), -1) = 0 Then
-                    sText &= "set ansi_nulls off" & vbCrLf
-                End If
-                If sqllib.GetInteger(dr("quoted"), -1) = 0 Then
-                    sText &= "set quoted_identifier off" & vbCrLf
-                End If
-
-                If sText <> "" Then
-                    sText &= "go" & vbCrLf
-                End If
-            End If
-        End If
 
         Return sText
     End Function
