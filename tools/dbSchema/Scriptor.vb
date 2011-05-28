@@ -414,10 +414,15 @@ Module Scriptor
                     MkDir(s)
                     Environment.CurrentDirectory = s
                 End If
-                If s = "msdb" Then
-                    ProcessJobs(s)
+
+                If sqllib.GetInteger(dr.Item("state"), -1) = 0 Then
+                    If s = "msdb" Then
+                        ProcessJobs(s)
+                    Else
+                        ProcessDB(s)
+                    End If
                 Else
-                    ProcessDB(s)
+                    SendMessage("Database " & s & " is not currently available", "I")
                 End If
                 Environment.CurrentDirectory = sPWD
             Next
@@ -450,20 +455,27 @@ Module Scriptor
                     Environment.CurrentDirectory = s
                 End If
 
-                If s = "msdb" Then
-                    OK = ProcessJobs(s)
+                If sqllib.GetInteger(dr.Item("state"), -1) = 0 Then
+                    If s = "msdb" Then
+                        OK = ProcessJobs(s)
+                    Else
+                        OK = ProcessDB(s)
+                    End If
+                    Environment.CurrentDirectory = sPWD
+
+                    If Not OK Then
+                        SendMessage(Environment.CurrentDirectory, "I")
+                        Environment.CurrentDirectory = sPWD
+                        SendMessage("Removing " & s, "I")
+                        RmDir(s)
+                    End If
                 Else
-                    OK = ProcessDB(s)
+                    SendMessage("Database " & s & " is not currently available", "I")
+                    Environment.CurrentDirectory = sPWD
+                    RmDir(s)
+                    OK = False
                 End If
 
-                If Not OK Then
-                    SendMessage(Environment.CurrentDirectory, "I")
-                    Environment.CurrentDirectory = sPWD
-                    SendMessage("Removing " & s, "I")
-                    RmDir(s)
-                Else
-                    Environment.CurrentDirectory = sPWD
-                End If
             Next
 
         Catch ex As Exception
@@ -656,8 +668,20 @@ Module Scriptor
         Dim Settings As String = ""
         Dim Pre As String = ""
         Dim sName As String
+        Dim sSchema As String = "dbo"
         Dim qName As String
         Dim qSchema As String
+
+        Select Case UCase(Type)
+            Case "P"
+                Pre = "Procedure"
+            Case "FN", "TF"
+                Pre = "Function"
+            Case "TR"
+                Pre = "Trigger"
+            Case Else
+                Pre = "Object"
+        End Select
 
         qName = sqllib.QuoteIdentifier(Name)
         qSchema = sqllib.QuoteIdentifier(Schema)
@@ -687,22 +711,9 @@ Module Scriptor
         End If
 
         sText = GetdbText(qName, qSchema, Type)
-        sName = sqllib.getName(sText)
+        sName = sqllib.getName(sText, sSchema)
 
         If qName <> sName And qSchema & "." & qName <> sName Then
-            Select Case Type
-                Case "P"
-                    Pre = "Procedure"
-                Case "V"
-                    Pre = "View"
-                Case "FN", "TF"
-                    Pre = "Function"
-                Case "TR"
-                    Pre = "Trigger"
-                Case Else
-                    Pre = "Object"
-            End Select
-
             SendMessage(Pre & " " & Schema & "." & Name & " was renamed " & sName & " not scripted.", "T")
             Return 0
         End If
