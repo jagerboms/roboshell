@@ -128,9 +128,11 @@ Public Class sql
 
         openConnect()
         If Version < 90 Then            'SQL 2000 compatible
-            sql = "select name,cmptlevel from master.dbo.sysdatabases where name not in ('master','tempdb','model','distribution')"
+            sql = "select name,cmptlevel,status & 7136 state from master.dbo.sysdatabases "
+            sql &= "where name not in ('master','tempdb','model','distribution')"
         Else
-            sql = "select name,compatibility_level cmptlevel from master.sys.databases where name not in ('master','tempdb','model','distribution')"
+            sql = "select name,compatibility_level cmptlevel,state+user_access state from master.sys.databases "
+            sql &= "where name not in ('master','tempdb','model','distribution')"
         End If
 
         Return GetTable(sql)
@@ -261,7 +263,7 @@ Public Class sql
         s = QuoteString(Schema & "." & Name)
         If Version < 90 Then            'SQL 2000 compatible
             sql = "select objectproperty(object_id(" & s & "), 'IsAnsiNullsOn') nulls,"
-            sql &= "objectproperty(object_id(" & s & "), 'IsQuotedIdentOn') quoted,encrypted "
+            sql &= "objectproperty(object_id(" & s & "), 'IsQuotedIdentOn') quoted,cast(encrypted as integer) encrypted "
             sql &= "from syscomments where id=object_id(" & s & ")"
         Else
             sql = "select uses_ansi_nulls nulls,uses_quoted_identifier quoted,"
@@ -913,7 +915,7 @@ Public Class sql
         Return sql
     End Function
 
-    Public Function getName(ByVal sText As String) As String
+    Public Function getName(ByVal sText As String, ByRef sSchema As String) As String
         Dim sOut As String
         Dim Posn As Integer = 1
 
@@ -925,6 +927,11 @@ Public Class sql
                 Or sOut = "function" Or sOut = "func" _
                 Or sOut = "view" Or sOut = "trigger" Then
                     sOut = GetNextToken(sText, Posn)
+                    If Mid(sText, Posn, 1) = "." Then
+                        sSchema = sOut
+                        Posn += 1
+                        sOut = GetNextToken(sText, Posn)
+                    End If
                 Else
                     sOut = ""
                 End If
@@ -1032,35 +1039,40 @@ Public Class sql
                  "when", "double", "openrowset", "where", "drop", "openxml", "while", "dump", _
                  "option", "with", "else", "or", "writetext"
                 s = """" & s & """"
+
             Case Else
-                b = False
-                For i = 1 To Len(s)
-                    ss = LCase(Mid(s, i, 1))
-                    If InStr("abcdefghijklmnopqrstuvwxyz@_$#0123456789", ss, CompareMethod.Text) = 0 Then
-                        b = True
-                        Exit For
+                If InStr(s, """", CompareMethod.Text) > 0 Then
+                    s = "[" & s & "]"
+                Else
+                    b = False
+                    For i = 1 To Len(s)
+                        ss = LCase(Mid(s, i, 1))
+                        If InStr("abcdefghijklmnopqrstuvwxyz@_$#0123456789", ss, CompareMethod.Text) = 0 Then
+                            b = True
+                            Exit For
+                        End If
+                    Next
+                    If b Then
+                        s = Replace(s, """", """""")
+                        s = """" & s & """"
                     End If
-                Next
-                If b Then
-                    s = Replace(s, """", """""")
-                    s = """" & s & """"
+
+
+                    'The first character must be one of the following: 
+                    'A letter as defined by the Unicode Standard 3.2. The Unicode definition of letters includes Latin characters from a through z, from A through Z, and also letter characters from other languages.
+                    'The _, @, or #. 
+                    'Certain symbols at the beginning of an identifier have special meaning in SQL Server. A regular identifier that starts with the at sign always denotes a local variable or parameter and cannot be used as the name of any other type of object. An identifier that starts with a number sign denotes a temporary table or procedure. An identifier that starts with double number signs (##) denotes a global temporary object. Although the number sign or double number sign characters can be used to begin the names of other types of objects, we do not recommend this practice.
+                    'Some Transact-SQL functions have names that start with double at signs (@@). To avoid confusion with these functions, you should not use names that start with @@. 
+
+                    'Subsequent characters can include the following: 
+                    'Letters as defined in the Unicode Standard 3.2.
+                    'Decimal numbers from either Basic Latin or other national scripts.
+                    'The @, $, #, or _.
+                    'The identifier must not be a Transact-SQL reserved word. 
+                    'SQL Server reserves both the uppercase and lowercase versions of reserved words.
+                    'Embedded spaces or special characters are not allowed.
+                    'Supplementary characters are not allowed.
                 End If
-
-                'The first character must be one of the following: 
-                'A letter as defined by the Unicode Standard 3.2. The Unicode definition of letters includes Latin characters from a through z, from A through Z, and also letter characters from other languages.
-                'The _, @, or #. 
-                'Certain symbols at the beginning of an identifier have special meaning in SQL Server. A regular identifier that starts with the at sign always denotes a local variable or parameter and cannot be used as the name of any other type of object. An identifier that starts with a number sign denotes a temporary table or procedure. An identifier that starts with double number signs (##) denotes a global temporary object. Although the number sign or double number sign characters can be used to begin the names of other types of objects, we do not recommend this practice.
-                'Some Transact-SQL functions have names that start with double at signs (@@). To avoid confusion with these functions, you should not use names that start with @@. 
-
-                'Subsequent characters can include the following: 
-                'Letters as defined in the Unicode Standard 3.2.
-                'Decimal numbers from either Basic Latin or other national scripts.
-                'The @, $, #, or _.
-                'The identifier must not be a Transact-SQL reserved word. 
-                'SQL Server reserves both the uppercase and lowercase versions of reserved words.
-                'Embedded spaces or special characters are not allowed.
-                'Supplementary characters are not allowed.
-
 
         End Select
 
@@ -1304,6 +1316,8 @@ Public Class sql
 
     Private Function GetNextToken(ByVal sSQL As String, ByRef Start As Integer) As String
         Dim ls As String = ""
+        Dim Schema As String = ""
+        Dim Name As String = ""
         Dim Mode As Integer = 0
 
         ' liMode =
@@ -1313,6 +1327,7 @@ Public Class sql
         ' 3 = getting parameter single quote
         ' 4 = getting parameter double quote
         ' 5 = block comment
+        ' 6 = getting square bracket delimited data
 
         Do While (Start <= Len(sSQL))
             Select Case Mode
@@ -1341,40 +1356,58 @@ Public Class sql
                         Case Chr(34)
                             ls = Mid(sSQL, Start, 1)
                             Mode = 4
+                        Case "["
+                            ls = Mid(sSQL, Start, 1)
+                            Mode = 6
                         Case Else
                             Mode = 2
                             ls = Mid(sSQL, Start, 1)
                     End Select
+
                 Case 1              ' 1 = line comment
                     If Mid(sSQL, Start, 1) = Chr(10) Then
                         Mode = 0
                     End If
+
                 Case 2              ' 2 = getting parameter no quotes
                     Select Case Mid(sSQL, Start, 1)
-                        Case " ", Chr(9), Chr(10), Chr(13), ",", "("
+                        Case " ", Chr(9), Chr(10), Chr(13), ",", "(", "[", "."
                             Exit Do
                         Case Else
                             ls &= Mid(sSQL, Start, 1)
                     End Select
+
                 Case 3              ' 3 = getting parameter single quote
                     ls &= Mid(sSQL, Start, 1)
                     If Mid$(sSQL, Start, 1) = "'" Then
                         Exit Do
                     End If
+
                 Case 4              ' 4 = getting parameter double quote
                     ls &= Mid(sSQL, Start, 1)
                     If Mid(sSQL, Start, 1) = Chr(34) Then
                         If Mid(sSQL, Start + 1, 1) = Chr(34) Then
+                            ls &= Chr(34)
                             Start += 1
                         Else
                             Exit Do
                         End If
                     End If
+
                 Case 5              ' 5 = block comment
                     If Mid(sSQL, Start, 2) = "*/" Then
                         Start += 1
                         Mode = 0
                     End If
+
+                Case 6              ' 6 = [] delimited
+                    ls &= Mid(sSQL, Start, 1)
+                    If Mid(sSQL, Start, 1) = "]" Then
+                        ls = RemoveSquares(ls)
+                        Start += 1
+                        Exit Do
+                    End If
+
             End Select
             Start += 1
         Loop
