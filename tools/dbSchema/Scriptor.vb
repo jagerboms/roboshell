@@ -51,7 +51,7 @@ Module Scriptor
                         System.Reflection.Assembly.GetExecutingAssembly.Location)
 
             SendMessage("dbSchema (version " & fv.FileVersion & ")", "H")
-            SendMessage("Copyright 2009 Russell Hansen, Tolbeam Pty Limited", "T")
+            SendMessage("Copyright 2011 Russell Hansen, Tolbeam Pty Limited", "T")
             SendMessage("", "T")
             SendMessage("dbSchema comes with ABSOLUTELY NO WARRANTY;", "N")
             SendMessage("for details see the -l option.", "N")
@@ -713,7 +713,7 @@ Module Scriptor
         sText = GetdbText(qName, qSchema, Type)
         sName = sqllib.getName(sText, sSchema)
 
-        If qName <> sName And qSchema & "." & qName <> sName Then
+        If LCase(qName) <> LCase(sName) And LCase(qSchema & "." & qName) <> LCase(sName) Then
             SendMessage(Pre & " " & Schema & "." & Name & " was renamed " & sName & " not scripted.", "T")
             Return 0
         End If
@@ -1086,7 +1086,7 @@ Module Scriptor
         Console.WriteLine(sMessage)
         If LogFile <> "" Then
             Dim file As New System.IO.StreamWriter(LogFile, True)
-            s = Format(Now(), "yyyy-mm-dd hh:mm:ss.fff") & " | " & sMessage
+            s = Format(Now(), "yyyy-MM-dd hh:mm:ss.fff") & " | " & sMessage
             file.WriteLine(s)
             file.Close()
         End If
