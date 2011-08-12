@@ -51,6 +51,7 @@ Public Enum JobScheduleFrequencyRelInt
 End Enum
 
 Public Class JobSchedule
+    Private slib As sql
     Private sName As String
     Private iEnabled As Integer = 1
     Private eFrequencyType As JobScheduleFrequency = Nothing
@@ -233,7 +234,8 @@ Public Class JobSchedule
     End Property
 
 #Region "Methods"
-    Public Sub New(ByVal pScheduleName As String, ByVal iFreqType As Integer)
+    Public Sub New(ByVal pScheduleName As String, ByVal iFreqType As Integer, ByVal sqllib As sql)
+        slib = sqllib
         sName = pScheduleName
         eFrequencyType = Me.GetFrequencyType(iFreqType, 1)
     End Sub
@@ -244,7 +246,7 @@ Public Class JobSchedule
         Dim i As Integer
         Dim ft As Integer
 
-        sOut &= sTab & "<schedule name='" & sName & "'"
+        sOut &= sTab & "<schedule name='" & slib.GetXMLString(sName) & "'"
         If iEnabled <> 1 Then
             sOut &= s & "enabled='0'"
         End If
@@ -289,7 +291,7 @@ Public Class JobSchedule
             sOut &= s & "activeendtime='" & i & "'"
         End If
         If sOwnerLoginName <> "" Then
-            sOut &= s & "ownerloginname='" & sOwnerLoginName & "'"
+            sOut &= s & "ownerloginname='" & slib.GetXMLString(sOwnerLoginName) & "'"
         End If
         sOut &= " />" & vbCrLf
         Return sOut
