@@ -42,6 +42,8 @@ Public Enum JobStepFlag
 End Enum
 
 Public Class JobStep
+    Private slib As sql
+
     Private iID As Integer
     Private sName As String
     Private sSubSystem As String = "TSQL"
@@ -329,7 +331,8 @@ Public Class JobStep
 #End Region
 
 #Region "Methods"
-    Public Sub New(ByVal pID As Integer, ByVal pStepName As String, ByVal pSubSystem As String, ByVal pCommand As String)
+    Public Sub New(ByVal pID As Integer, ByVal pStepName As String, ByVal pSubSystem As String, ByVal pCommand As String, ByVal sqllib As sql)
+        slib = sqllib
         iID = pID
         sName = pStepName
         sSubSystem = pSubSystem
@@ -341,10 +344,10 @@ Public Class JobStep
         Dim s As String = vbCrLf & sTab & "      "
 
         sOut &= sTab & "<step id='" & iID & "'" & vbCrLf
-        sOut &= sTab & "      name='" & sName & "'" & vbCrLf
-        sOut &= sTab & "      subsystem='" & sSubSystem & "'"
+        sOut &= sTab & "      name='" & slib.GetXMLString(sName) & "'" & vbCrLf
+        sOut &= sTab & "      subsystem='" & slib.GetXMLString(sSubSystem) & "'"
         If sParameters <> "" Then
-            sOut &= s & "parameters='" & sParameters & "'"
+            sOut &= s & "parameters='" & slib.GetXMLString(sParameters) & "'"
         End If
         If iExecSuccessCode <> 0 Then
             sOut &= s & "cmdsuccesscode='" & iExecSuccessCode & "'"
@@ -362,13 +365,13 @@ Public Class JobStep
             sOut &= s & "failstep='" & iOnFailStepID & "'"
         End If
         If sServer <> "" Then
-            sOut &= s & "server='" & sServer & "'"
+            sOut &= s & "server='" & slib.GetXMLString(sServer) & "'"
         End If
         If sDatabaseName <> "" Then
-            sOut &= s & "database='" & sDatabaseName & "'"
+            sOut &= s & "database='" & slib.GetXMLString(sDatabaseName) & "'"
         End If
         If sDatabaseUserName <> "" Then
-            sOut &= s & "databaseuser='" & sDatabaseUserName & "'"
+            sOut &= s & "databaseuser='" & slib.GetXMLString(sDatabaseUserName) & "'"
         End If
         If iRetryAttempts <> 0 Then
             sOut &= s & "retryattempts='" & iRetryAttempts & "'"
@@ -380,14 +383,14 @@ Public Class JobStep
             sOut &= s & "osrunpriority='" & iOSRunPriority & "'"
         End If
         If sOutputFileName <> "" Then
-            sOut &= s & "outputfile='" & sOutputFileName & "'"
+            sOut &= s & "outputfile='" & slib.GetXMLString(sOutputFileName) & "'"
         End If
         sOut &= s & "flags='" & eFlags & "'"
         If sProxyName <> "" Then
-            sOut &= s & "proxyname='" & sProxyName & "'"
+            sOut &= s & "proxyname='" & slib.GetXMLString(sProxyName) & "'"
             sOut &= s & "proxyenabled='" & iProxyEnabled & "'"
-            sOut &= s & "proxydescription='" & sProxyDescription & "'"
-            sOut &= s & "proxycredential='" & sProxyCredential & "'"
+            sOut &= s & "proxydescription='" & slib.GetXMLString(sProxyDescription) & "'"
+            sOut &= s & "proxycredential='" & slib.GetXMLString(sProxyCredential) & "'"
         End If
         sOut &= ">" & vbCrLf & sTab & "  <![CDATA[" & sCommand & "]]>" & vbCrLf
         sOut &= sTab & "</step>" & vbCrLf

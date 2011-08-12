@@ -1079,6 +1079,17 @@ Public Class sql
         Return s
     End Function
 
+    Public Function GetXMLString(ByVal sValue As String) As String
+        Dim s As String
+
+        s = Replace(sValue, "&", "&amp;")
+        s = Replace(s, "'", "&apos;")
+        s = Replace(s, "<", "&lt;")
+        s = Replace(s, ">", "&gt;")
+        s = Replace(s, """", "&quot;")
+        Return s
+    End Function
+
     Public Function CleanConstraint(ByVal constratint As String) As String
         Dim s As String
 

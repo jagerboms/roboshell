@@ -281,7 +281,7 @@ Public Class Job
             sSubSystem = slib.GetString(dr("subsystem"))
             sCommand = slib.GetString(dr("command"))
 
-            Dim js As New JobStep(i, s, sSubSystem, sCommand)
+            Dim js As New JobStep(i, s, sSubSystem, sCommand, slib)
 
             js.Parameters = slib.GetString(dr("additional_parameters"))
             js.ExecSuccessCode = slib.GetInteger(dr("cmdexec_success_code"), 0)
@@ -311,7 +311,7 @@ Public Class Job
             s = slib.GetString(dr("name"))
             i = slib.GetInteger(dr("freq_type"), 1)
 
-            Dim js As New JobSchedule(s, i)
+            Dim js As New JobSchedule(s, i, slib)
 
             js.Enabled = slib.GetInteger(dr("enabled"), 1)
             js.FrequencyInterval = slib.GetInteger(dr("freq_interval"), 1)
@@ -473,7 +473,7 @@ Public Class Job
                                 End Select
                             Next
 
-                            Dim js As New JobStep(i, s, sSubSystem, sCommand)
+                            Dim js As New JobStep(i, s, sSubSystem, sCommand, slib)
 
                             For Each att In ele0.Attributes
                                 Select Case att.Name
@@ -553,7 +553,7 @@ Public Class Job
                                 End Select
                             Next
 
-                            Dim js As New JobSchedule(s, i)
+                            Dim js As New JobSchedule(s, i, slib)
 
                             For Each att In ele0.Attributes
                                 Select Case att.Name
@@ -930,20 +930,20 @@ Public Class Job
 
         sOut = "<?xml version='1.0'?>" & vbCrLf
         sOut &= "<sqldef>" & vbCrLf
-        sOut &= "  <job name='" & sName & "'" & vbCrLf
+        sOut &= "  <job name='" & slib.GetXMLString(sName) & "'" & vbCrLf
         sOut &= "       enabled='" & iEnabled & "'" & vbCrLf
-        sOut &= "       description='" & sDescription & "'" & vbCrLf
+        sOut &= "       description='" & slib.GetXMLString(sDescription) & "'" & vbCrLf
         sOut &= "       startstep='" & iStartStepID & "'" & vbCrLf
-        sOut &= "       category='" & sCategory & "'" & vbCrLf
-        sOut &= "       categorytype='" & sCategoryType & "'" & vbCrLf
-        sOut &= "       ownerlogin='" & sOwner & "'" & vbCrLf
+        sOut &= "       category='" & slib.GetXMLString(sCategory) & "'" & vbCrLf
+        sOut &= "       categorytype='" & slib.GetXMLString(sCategoryType) & "'" & vbCrLf
+        sOut &= "       ownerlogin='" & slib.GetXMLString(sOwner) & "'" & vbCrLf
         sOut &= "       notifyeventlog='" & eNotifyEventLog & "'" & vbCrLf
         sOut &= "       notifyemail='" & eNotifyEmail & "'" & vbCrLf
         sOut &= "       notifynetsend='" & eNotifyNetSend & "'" & vbCrLf
         sOut &= "       notifypage='" & eNotifyPage & "'" & vbCrLf
-        sOut &= "       emailoperator='" & sEmail & "'" & vbCrLf
-        sOut &= "       netsendoperator='" & sNetSend & "'" & vbCrLf
-        sOut &= "       pageoperator='" & sPage & "'" & vbCrLf
+        sOut &= "       emailoperator='" & slib.GetXMLString(sEmail) & "'" & vbCrLf
+        sOut &= "       netsendoperator='" & slib.GetXMLString(sNetSend) & "'" & vbCrLf
+        sOut &= "       pageoperator='" & slib.GetXMLString(sPage) & "'" & vbCrLf
         sOut &= "       deletelevel='" & eDeleteLevel & "'>" & vbCrLf
 
         sOut &= "    <servers>" & vbCrLf
