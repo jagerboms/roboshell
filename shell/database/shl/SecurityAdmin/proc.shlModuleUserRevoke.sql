@@ -32,7 +32,7 @@ begin
         )
         begin
             set @e = 50010
-            raiserror @e 'User is not valid in this database'
+			RAISERROR (@e,-1,-1, 'User is not valid in this database');
             break
         end
 
@@ -46,7 +46,7 @@ begin
         )
         begin
             set @e = 50011
-            raiserror @e 'Module does not exist'
+            raiserror (@e,-1,-1, 'Module does not exist')
             break
         end
 
