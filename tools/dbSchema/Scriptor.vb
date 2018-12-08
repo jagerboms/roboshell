@@ -150,6 +150,8 @@ Module Scriptor
                 SendMessage("", "T")
                 SendMessage("   -v verbose output switch. If set extended output is produced.", "T")
                 SendMessage("", "T")
+                Console.WriteLine("Press any kep to exit.")
+                Console.ReadKey()
                 Return
             End If
 
@@ -174,6 +176,8 @@ Module Scriptor
                 SendMessage("   Suite 330,", "T")
                 SendMessage("   Boston, MA 02111-1307 USA.", "T")
                 SendMessage("", "T")
+                Console.WriteLine("Press any kep to exit.")
+                Console.ReadKey()
                 Return
             End If
 
